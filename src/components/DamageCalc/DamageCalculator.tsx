@@ -96,7 +96,7 @@ export default function DamageCalculator({ initialData }: Props) {
   const handleSave = async () => {
     if (!result) return; setSaving(true);
     const label = calcLabel.trim() || new Date().toLocaleString('zh-CN');
-    const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal };
+    const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg };
     try {
       if (loadedEntryId) {
         // 从历史加载后修改 → 提供更新/另存选项
