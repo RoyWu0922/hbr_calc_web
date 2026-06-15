@@ -24,7 +24,7 @@ function computeBiases(s: CharStats): Record<string, number> {
 const N = 6;
 
 export default function FloatingBiasCalc() {
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(true);
   const [names, setNames] = useState<string[]>(Array(N).fill(''));
   const [chars, setChars] = useState<CharStats[]>(
     Array.from({ length: N }, () => ({ pow: 0, spr: 0, int: 0, luk: 0 })),
