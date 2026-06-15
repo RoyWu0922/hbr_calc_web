@@ -95,12 +95,21 @@ export default function SkillDatabase() {
 
   const handleSave = () => {
     if (!addName.trim()) return;
-    if (editingIsBuiltin && editingName) {
+    const isBuiltin = builtinData.some(s => s.name === (editingName || ''));
+    if (editingName && isBuiltin) {
+      // Editing built-in → always override
       overrideBuiltinSkill(tab, editingName, { max: addMax, min: isBuff ? undefined : addMin, border: addBorder });
-    } else {
-      if (editingName && editingName !== addName.trim()) {
+    } else if (editingName) {
+      // Editing custom skill
+      if (editingName !== addName.trim()) {
         deleteCustomSkill(tab, editingName);
       }
+      const newSkill: any = isBuff
+        ? { name: addName.trim(), max: addMax, border: addBorder, _custom: true }
+        : { name: addName.trim(), max: addMax, min: addMin, border: addBorder, _custom: true };
+      addCustomSkill(tab, newSkill);
+    } else {
+      // New skill
       const newSkill: any = isBuff
         ? { name: addName.trim(), max: addMax, border: addBorder, _custom: true }
         : { name: addName.trim(), max: addMax, min: addMin, border: addBorder, _custom: true };
@@ -141,7 +150,7 @@ export default function SkillDatabase() {
             <div>
               <div className="input-label">技能名 *</div>
               <input className="input-field" value={addName} onChange={e => setAddName(e.target.value)}
-                placeholder="输入技能名" disabled={editingIsBuiltin} />
+                placeholder="输入技能名" />
             </div>
             <Field label="Max (1级)" value={addMax} onChange={setAddMax} />
             {!isBuff && <Field label="Min (1级)" value={addMin} onChange={setAddMin} />}
@@ -188,7 +197,7 @@ export default function SkillDatabase() {
                     {editing ? (
                       <input className="input-field text-xs py-1 w-full" value={addName}
                         onChange={e => setAddName(e.target.value)}
-                        disabled={!isCustom && editingIsBuiltin} />
+                        />
                     ) : (<>{s.name}{isCustom && <span className="text-xs text-accent ml-1">(自)</span>}{isOverridden && <span className="text-xs text-gold ml-1">(改)</span>}</>)}
                   </td>
                   <td className="font-mono">
