@@ -26,11 +26,10 @@ function ODCalculator() {
   const [origHit, setOrigHit] = useState(0);
   const [addHit, setAddHit] = useState(0);
   const [fixedOD, setFixedOD] = useState(0);
-  const [targets, setTargets] = useState(0);
+  const [targets, setTargets] = useState(1);
   const [earring, setEarring] = useState(0);
-  const [infant, setInfant] = useState(false);
-  const [otherOD, setOtherOD] = useState(0);
-  const [odRate, setOdRate] = useState(0);
+  const [odRise, setOdRise] = useState(0);
+  const [odRate, setOdRate] = useState(1);
   const [resist, setResist] = useState(false);
   const [normalAtk, setNormalAtk] = useState(false);
 
@@ -41,7 +40,7 @@ function ODCalculator() {
     else if (origHit === 0) j = 0;
     else if (earring === 0) j = 0;
     else j = ((origHit - 1) / 9 * (earring - 5) + 5);
-    j = j / 100 * (normalAtk ? 0 : 1) + 1 + (infant ? 0.2 : 0) + otherOD;
+    j = j / 100 * (normalAtk ? 0 : 1) + 1 + odRise / 100;
 
     // N: actual OD%
     let n: number;
@@ -66,18 +65,32 @@ function ODCalculator() {
         <Field label="原始hit数" value={origHit} onChange={setOrigHit} />
         <Field label="附加连击数" value={addHit} onChange={setAddHit} />
         <Field label="固定OD%" value={fixedOD} onChange={setFixedOD} />
+      </div>
+      <div className="grid grid-cols-3 gap-3 mb-3">
         <Field label="目标数" value={targets} onChange={setTargets} />
-        <Field label="耳环系数" value={earring} onChange={setEarring} />
-        <Field label="目标OD率" value={odRate} onChange={setOdRate} step={0.01} />
-        <div className="grid grid-cols-4 gap-3 items-end">
-          <Field label="其他OD增益" value={otherOD} onChange={setOtherOD} step={0.01} />
-          <Toggle label="幼儿化" value={infant} onChange={setInfant} />
-          <Toggle label="耐性" value={resist} onChange={setResist} />
-          <Toggle label="普攻" value={normalAtk} onChange={setNormalAtk} />
+        <div>
+          <div className="input-label">耳环系数</div>
+          <select className="input-field text-xs py-1.5" value={earring}
+            onChange={e => setEarring(parseInt(e.target.value))}>
+            <option value={0}>0</option>
+            <option value={10}>10</option>
+            <option value={12}>12</option>
+            <option value={15}>15</option>
+          </select>
         </div>
+        <Field label="目标OD率" value={odRate} onChange={setOdRate} step={0.01} />
+      </div>
+      <div className="grid grid-cols-3 gap-3 items-end mb-3">
+        <div>
+          <div className="input-label flex items-center gap-0.5">额外od上升量% <OdRiseTip /></div>
+          <input className="input-field text-xs py-1.5" type="text" inputMode="decimal" step={0.01}
+            value={odRise} onChange={e => setOdRise(parseFloat(e.target.value) || 0)} />
+        </div>
+        <Toggle label="耐性" value={resist} onChange={setResist} />
+        <Toggle label="普攻" value={normalAtk} onChange={setNormalAtk} />
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <StatBox label="实际OD增益系数" value={fmtDec(r.j, 4)} />
+        <StatBox label="实际OD上升量" value={fmtDec(r.j, 4)} />
         <StatBox label="实际OD%" value={(r.n * 100).toFixed(2) + '%'} />
         <StatBox label="实际hit数(参考)" value={fmtDec(r.actualHits)} />
       </div>
@@ -310,7 +323,7 @@ function EncounterCalc() {
 }
 
 // ─── Shared Helpers ───────────────────────────────────────────
-function Field({ label, value, onChange, step }: { label: string; value: number; onChange: (v: number) => void; step?: number; }) {
+function Field({ label, value, onChange, step }: { label: React.ReactNode; value: number; onChange: (v: number) => void; step?: number; }) {
   const [text, setText] = useState(String(value));
   const syncTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -357,6 +370,18 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
         <span className="text-sm text-text-secondary">{label}</span>
       </div>
     </div>
+  );
+}
+
+function OdRiseTip() {
+  return (
+    <span className="relative inline-flex align-middle ml-0.5 group">
+      <span className="text-text-muted group-hover:text-text-secondary text-[10px]"
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', border: '1px solid var(--app-checkbox-border)', fontWeight: 700, cursor: 'help' }}>?</span>
+      <div className="absolute z-30 bottom-full mb-1 left-1/2 -translate-x-1/2 bg-bg-card border border-white/10 rounded-lg p-2 shadow-xl whitespace-pre-line text-[10px] hidden group-hover:block" style={{ minWidth: 180, color: 'var(--app-text-secondary)' }}>
+        如打分词条的OD上升量12%, 或baboo20%
+      </div>
+    </span>
   );
 }
 
