@@ -4,5 +4,5 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/hbr_calc_web/',
+  // base defaults to '/'. GitHub Pages overrides via --base /hbr_calc_web/
 })
