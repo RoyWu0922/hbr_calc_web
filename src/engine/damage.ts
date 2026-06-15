@@ -51,7 +51,7 @@ export function calcSkillPower(skill: SkillInput): {
   // Orb power (I10 formula)
   let orbPower: number;
   const orbThreshold = orb * 20;
-  if (effectiveDiff >= 0) {
+  if (effectiveDiff >= orbThreshold) {
     orbPower = maxPower * 0.02 * orb;
   } else if (currentWeighted + whiteBonus + critBonus - enemyAttr >= 0) {
     const ratio = (currentWeighted + whiteBonus + critBonus - enemyAttr) / (orbThreshold + baseDiff);

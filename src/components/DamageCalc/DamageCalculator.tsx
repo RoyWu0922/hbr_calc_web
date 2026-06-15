@@ -18,7 +18,7 @@ import saPic from '/SA_pic.png';
 const defaultSkill: SkillInput = {
   sp: 0, skillLevel: 0, deviation: 1, token: 1,
   special: 1, orb: 0, maxPower: 0, baseDiff: 0, whiteBonus: 0,
-  currentWeighted: 0, enemyAttr: 0, isCrit: false,
+  currentWeighted: 0, enemyAttr: 0, isCrit: true,
   weaponWeak: 0, elementWeak: 0, hitCount: 0,
 };
 
