@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import ImageInfoTip from '../ImageInfoTip';
 import saPic from '/SA_pic.png';
+import defensePic from '/defense.png';
 import { calcScore, calcBreakDetail, calcEncounterScore, calcIncomingDamage } from '../../engine/damage';
 import { SCORE_TABLE, TURN_COEFF } from '../../engine/skillDb';
 import { BreakParams } from '../../types';
@@ -17,8 +18,8 @@ export default function ExtraFeatures() {
         <BreakCalculator />
       </div>
       <QuickScoreCard />
-      <IncomingDamageCalc />
       <EncounterCalc />
+      <IncomingDamageCalc />
     </div>
   );
 }
@@ -258,7 +259,7 @@ function IncomingDamageCalc() {
   const [spr, setSpr] = useState(400);
   const [biasType, setBiasType] = useState<'hp' | 'dp'>('hp');
   const [enemyBorder, setEnemyBorder] = useState(400);
-  const [enemyPerc, setEnemyPerc] = useState(1);
+  const [enemyPerc, setEnemyPerc] = useState(100);
   const [skillMin, setSkillMin] = useState(1000);
   const [skillMax, setSkillMax] = useState(2000);
   const [skillDiff, setSkillDiff] = useState(100);
@@ -267,14 +268,14 @@ function IncomingDamageCalc() {
   const [passiveDef, setPassiveDef] = useState(0);
 
   const result = useMemo(() => calcIncomingDamage({
-    vit, spr, biasType, enemyBorder, enemyPerc, skillMin, skillMax, skillDiff, mark, necklace, passiveDef,
+    vit, spr, biasType, enemyBorder, enemyPerc: enemyPerc / 100, skillMin, skillMax, skillDiff, mark, necklace, passiveDef,
   }), [vit, spr, biasType, enemyBorder, enemyPerc, skillMin, skillMax, skillDiff, mark, necklace, passiveDef]);
 
   const x = result.biasValue;
 
   return (
     <div className="card">
-      <div className="card-header">受击伤害计算</div>
+      <div className="card-header">受击伤害计算 <ImageInfoTip src={defensePic} alt="受击伤害说明" /></div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-3">
@@ -288,33 +289,33 @@ function IncomingDamageCalc() {
           <div className="input-label">偏向</div>
           <select className="input-field text-xs py-1.5" value={biasType}
             onChange={e => setBiasType(e.target.value as 'hp' | 'dp')}>
-            <option value="hp">HP偏 (体×2 + 精×1) / 3</option>
-            <option value="dp">DP偏 (体×1 + 精×2) / 3</option>
+            <option value="hp">体偏 (体×2 + 精×1) / 3</option>
+            <option value="dp">精偏 (体×1 + 精×2) / 3</option>
           </select>
         </div>
         <div className="flex items-end pb-1.5">
-          <span className="text-xs text-text-muted">偏值 x = <span className="text-accent font-semibold">{x.toFixed(1)}</span></span>
+          <span className="text-xs text-text-muted">加权体精 = <span className="text-accent font-semibold">{x.toFixed(1)}</span></span>
         </div>
       </div>
 
       {/* Enemy params */}
       <div className="grid grid-cols-3 gap-3 mb-3">
-        <Field label="敌方边界" value={enemyBorder} onChange={setEnemyBorder} />
-        <Field label="敌方伤害率" value={enemyPerc} onChange={setEnemyPerc} step={0.01} />
+        <Field label="敌方border" value={enemyBorder} onChange={setEnemyBorder} />
+        <Field label="敌方伤害率%" value={enemyPerc} onChange={setEnemyPerc} step={0.1} />
       </div>
 
       {/* Skill params */}
       <div className="grid grid-cols-3 gap-3 mb-3">
         <Field label="技能最小强度" value={skillMin} onChange={setSkillMin} />
         <Field label="技能最大强度" value={skillMax} onChange={setSkillMax} />
-        <Field label="技能差值 a" value={skillDiff} onChange={setSkillDiff} />
+        <Field label="技能差值" value={skillDiff} onChange={setSkillDiff} />
       </div>
 
       {/* Defense */}
       <div className="flex gap-4 items-end mb-4">
-        <Toggle label="属性印记 (0.1)" value={mark} onChange={setMark} />
-        <Toggle label="加防项链 (0.1)" value={necklace} onChange={setNecklace} />
-        <div className="w-32"><Field label="被动加防%" value={passiveDef} onChange={setPassiveDef} /></div>
+        <Toggle label="属性印记 (10%)" value={mark} onChange={setMark} />
+        <Toggle label="加防项链 (10%)" value={necklace} onChange={setNecklace} />
+        <div className="w-32"><Field label="其它加防(%)" value={passiveDef} onChange={setPassiveDef} /></div>
       </div>
 
       {/* Results */}
@@ -326,9 +327,9 @@ function IncomingDamageCalc() {
           <div className="text-xs text-text-muted">加防乘区: <span className="font-mono">{result.defMultiplier.toFixed(4)}</span></div>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <StatBox label="均伤" value={fmt(result.avgDmg)} />
+          <StatBox label="均伤" value={fmt(result.avgDmg)}highlight />
           <StatBox label="下限 (0.9×)" value={fmt(result.minDmg)} />
-          <StatBox label="上限 (1.1×)" value={fmt(result.maxDmg)} highlight />
+          <StatBox label="上限 (1.1×)" value={fmt(result.maxDmg)}  />
         </div>
       </div>
     </div>
