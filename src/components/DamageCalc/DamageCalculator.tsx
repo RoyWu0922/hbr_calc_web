@@ -416,7 +416,7 @@ function SkillListCard({ skills, lookup, onUpdate, onAdd, onRemove, type, enemyA
                   onChange={e => {
                     const found = lookup.find(s => s.name === e.target.value);
                     if (found) {
-                      const u: any = { ...skill, name: found.name, maxPower: found.max, border: found.border, passive: 1, layers: 1, skillLevel: 10 };
+                      const u: any = { ...skill, name: found.name, maxPower: found.max, border: found.border, passive: 1, layers: 1, skillLevel: 1 };
                       if (!isBuff) u.minPower = found.min; onUpdate(i, u);
                     } else onUpdate(i, { ...skill, name: e.target.value });
                   }}>
