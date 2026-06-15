@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import ImageInfoTip from '../ImageInfoTip';
+import saPic from '/SA_pic.png';
 import { calcScore, calcBreakDetail, calcEncounterScore } from '../../engine/damage';
 import { SCORE_TABLE, TURN_COEFF } from '../../engine/skillDb';
 import { BreakParams } from '../../types';
@@ -212,7 +213,7 @@ function QuickScoreCard() {
 
   return (
     <div className="card border-gold/20">
-      <div className="card-header">便捷打分计算（直接输入伤害）<ImageInfoTip src="/SA_pic.png" alt="打分计算说明" /></div>
+      <div className="card-header">便捷打分计算（直接输入伤害）<ImageInfoTip src={saPic} alt="打分计算说明" /></div>
       <div className="flex gap-3 mb-3 items-end flex-wrap">
         <Field label="总伤" value={totalDmg} onChange={v => setTotalDmg(v)} />
         <Field label="伤害系数" value={damageCoeff} onChange={v => setDamageCoeff(v)} step={0.001} />

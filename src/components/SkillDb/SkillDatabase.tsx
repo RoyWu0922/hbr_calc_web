@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ImageInfoTip from '../ImageInfoTip';
+import skillPic from '/Skill_pic.png';
 import { BUFF_SKILLS, DEBUFF_SKILLS, WEAKNESS_SKILLS } from '../../engine/skillDb';
 import {
   getCustomSkills, addCustomSkill, deleteCustomSkill,
@@ -131,7 +132,7 @@ export default function SkillDatabase() {
           {showForm ? '取消' : '+ 添加自定义技能'}
         </button>
       </div>
-      <p className="text-sm text-text-muted">数据来源: <a href="https://hbr.quest" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">hbr.quest</a><ImageInfoTip src="/Skill_pic.png" alt="技能数据库说明" /> — 可编辑/删除内置技能，修改保存在本地</p>
+      <p className="text-sm text-text-muted">数据来源: <a href="https://hbr.quest" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">hbr.quest</a><ImageInfoTip src={skillPic} alt="技能数据库说明" /> — 可编辑/删除内置技能，修改保存在本地</p>
 
       {showForm && !editingName && (
         <div className="card border-accent/30">

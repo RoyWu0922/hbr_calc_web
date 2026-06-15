@@ -12,6 +12,7 @@ import { saveUserDefaults, loadUserDefaults, clearUserDefaults, UserDefaults } f
 import { encodeShareData, decodeShareData } from '../../utils/shareUrl';
 import DamageResult from './DamageResult';
 import ImageInfoTip from '../ImageInfoTip';
+import saPic from '/SA_pic.png';
 
 const defaultSkill: SkillInput = {
   sp: 0, skillLevel: 0, deviation: 1, token: 1,
@@ -289,7 +290,7 @@ export default function DamageCalculator({ initialData }: Props) {
         <ResultHeaderRow result={result} />
       )}
 
-      <CollapsibleSection title={<span>打分计算 <ImageInfoTip src="/SA_pic.png" alt="打分计算说明" /></span>} defaultOpen>
+      <CollapsibleSection title={<span>打分计算 <ImageInfoTip src={saPic} alt="打分计算说明" /></span>} defaultOpen>
         <ScoreSection score={score} updateScore={updateScore} bonusDmg={bonusDmg} setBonusDmg={setBonusDmg} />
       </CollapsibleSection>
 
