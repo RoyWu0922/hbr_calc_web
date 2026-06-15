@@ -424,5 +424,5 @@ export const BADGE_BONUS: Record<number, number> = {
 };
 
 export const WEAPON_BONUS: Record<number, number> = {
-  0:0, 1:4, 2:8, 3:12, 4:16, 5:20
+  0:5, 1:9, 2:13, 3:17, 4:21, 5:25
 };

@@ -85,7 +85,7 @@ export default function WhiteStats() {
             </select>
           </div>
           <div>
-            <div className="input-label">突破等级 (0-6)</div>
+            <div className="input-label">突破等级 (0-6) (原皮满破+1, 开花+1)</div>
             <select className="input-field text-sm" value={breakLevel}
               onChange={e => setBreakLevel(parseInt(e.target.value))}>
               {[0,1,2,3,4,5,6].map(n => <option key={n} value={n}>Lv{n}</option>)}
