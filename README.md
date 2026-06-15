@@ -1,8 +1,7 @@
 # HBR Toolbox — 绯染天空 / Heaven Burns Red 伤害计算器
 
   
-
-基于游戏电子表格还原的 Web 版全能计算工具箱，支持伤害计算、白值计算、OD/破坏/打分、遭遇战出分、受击伤害等。
+Web 版全能红烧天堂计算工具箱，支持伤害计算、白值计算、OD/破坏/打分、遭遇战出分、受击伤害等。
 
 ### 本项目绝大多数代码由deepseek-v4-pro编写, 且为作者第一个项目, 如有bug和建议请多多提issue
 
@@ -12,13 +11,7 @@
 
   
 
-| 平台 | 地址 |
-
-|------|------|
-
-| **Vercel** | [hbr-calc-web.vercel.app](https://hbr-calc-web.vercel.app) |
-
-| **GitHub Pages** | [roywu0922.github.io/hbr_calc_web](https://roywu0922.github.io/hbr_calc_web) |
+**GitHub Pages**: [roywu0922.github.io/hbr_calc_web](https://roywu0922.github.io/hbr_calc_web)
 
   
 
@@ -34,9 +27,9 @@
 
 - **被动 & 装备**：被动加攻/减防/爆伤区 + HP 耳环、戒指、项链
 
-- **OD 计算**（Copy-OD 法）：原始 hit、附加 hit、耳环系数、OD 率、目标数
+- **OD 计算**：原始 hit、附加 hit、耳环系数、OD 率、目标数
 
-- **破坏计算**（dmg calc 法）：技能 DR、敌人 DR、4 种连击、破坏耳环/项链、加权破坏率 + 逐 Hit 明细
+- **破坏计算**：技能 DR、敌人 DR、4 种连击、破坏耳环/项链、加权破坏率 + 逐 Hit 明细
 
 - **打分预估**：难度/回合/词条/盾分，自动计算总分
 
@@ -64,7 +57,7 @@
 
 - **便捷打分**：直接输入总伤害估算打分
 
-- **遭遇战出分**（encounter.xlsx）：5 阶段伤害 × 分段线性打分 + 回合分衰减 × 词条
+- **遭遇战出分**：5 阶段伤害 × 分段线性打分 + 回合分衰减 × 词条
 
 - **受击伤害计算**：体力/精神/偏向 → 技能强度插值 → 加防乘区（印记/项链/被动） → 均伤 & 浮动范围
 

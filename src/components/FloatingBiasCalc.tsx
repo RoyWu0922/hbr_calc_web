@@ -25,6 +25,7 @@ const N = 6;
 
 export default function FloatingBiasCalc() {
   const [minimized, setMinimized] = useState(true);
+  const [inputOpen, setInputOpen] = useState(false);
   const [names, setNames] = useState<string[]>(Array(N).fill(''));
   const [chars, setChars] = useState<CharStats[]>(
     Array.from({ length: N }, () => ({ pow: 0, spr: 0, int: 0, luk: 0 })),
@@ -70,37 +71,43 @@ export default function FloatingBiasCalc() {
     );
   }
 
-  const colW = 76; // column width for each character
+  const colW = 64; // column width for each character
 
   return (
     <div
       className="fixed bg-bg-card border border-white/10 rounded-xl shadow-2xl z-50"
-      style={{ left: pos.x, top: pos.y, width: 64 + N * colW + 16, maxHeight: '90vh', overflow: 'auto' }}
+      style={{ left: pos.x, top: pos.y, width: 48 + N * colW + 4, maxHeight: '90vh', overflow: 'auto' }}
     >
       {/* Title bar (draggable) */}
       <div
-        className="flex items-center justify-between px-3 py-2 cursor-grab active:cursor-grabbing select-none border-b border-white/10"
+        className="flex items-center justify-between px-2 py-1 cursor-grab active:cursor-grabbing select-none border-b border-white/10"
         onMouseDown={onMouseDown}
       >
-        <span className="text-sm font-semibold" style={{ color: 'var(--app-text-primary)' }}>属性记录/计算</span>
+        <span className="text-xs font-semibold" style={{ color: 'var(--app-text-primary)' }}>属性记录/计算</span>
         <button
-          className="text-text-muted hover:text-text-secondary text-xs leading-none px-1"
+          className="text-text-muted hover:text-text-secondary text-xs leading-none px-0.5"
           onClick={() => setMinimized(true)}
           title="最小化"
         >—</button>
       </div>
 
       {/* Content */}
-      <div className="p-2 text-[10px]">
-        <table className="w-full">
+      <div className="p-1.5 text-[7px]">
+        {/* Input toggle */}
+        <div className="flex items-center justify-between mb-1 cursor-pointer select-none" onClick={() => setInputOpen(!inputOpen)}>
+          <span className="text-text-muted">属性输入</span>
+          <span className="text-text-muted text-[9px] transition-transform" style={{ transform: inputOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </div>
+        {inputOpen && (
+        <table className="w-full mb-1">
           <tbody>
             {/* 角色 (name) row */}
             <tr>
-              <td className="py-0.5 font-medium text-text-muted text-right pr-2">角色</td>
+              <td className="py-0 font-medium text-text-muted text-right pr-1">角色</td>
               {names.map((n, i) => (
-                <td key={i} className="py-0.5 px-0.5">
+                <td key={i} className="py-0 px-0.5">
                   <input
-                    className="input-field text-[10px] py-1 text-center"
+                    className="input-field text-[7px] px-1 py-0 text-center"
                     placeholder={`${i + 1}`}
                     value={n}
                     onChange={e => setNames(prev => { const nx = [...prev]; nx[i] = e.target.value; return nx; })}
@@ -111,11 +118,11 @@ export default function FloatingBiasCalc() {
             {/* Stat rows: 力, 灵, 智, 运 */}
             {STATS.map(key => (
               <tr key={key}>
-                <td className="py-0.5 font-medium text-text-muted text-right pr-2">{STAT_LABELS[key]}</td>
+                <td className="py-0 font-medium text-text-muted text-right pr-1">{STAT_LABELS[key]}</td>
                 {chars.map((c, i) => (
-                  <td key={i} className="py-0.5 px-0.5">
+                  <td key={i} className="py-0 px-0.5">
                     <input
-                      className="input-field text-[10px] py-1 text-center"
+                      className="input-field text-[7px] px-1 py-0 text-center"
                       type="number"
                       value={c[key] || ''}
                       onChange={e => updateStat(i, key, parseFloat(e.target.value) || 0)}
@@ -126,13 +133,14 @@ export default function FloatingBiasCalc() {
             ))}
           </tbody>
         </table>
+        )}
 
         {/* Bias totals */}
-        <div className="mt-2 pt-2 border-t divider">
+        <div className="border-t divider pt-1">
           <table className="w-full">
             <thead>
               <tr>
-                <th style={{ width: 56 }}></th>
+                <th style={{ width: 36 }}></th>
                 {names.map((n, i) => (
                   <th key={i} className="text-center font-normal">{n || `#${i + 1}`}</th>
                 ))}
@@ -141,11 +149,11 @@ export default function FloatingBiasCalc() {
             <tbody>
               {BIAS_KEYS.map(key => (
                 <tr key={key}>
-                  <td className="py-0.5 font-medium text-text-muted text-right pr-2">{BIAS_LABELS[key]}</td>
+                  <td className="py-0 font-medium text-text-muted text-right pr-1">{BIAS_LABELS[key]}</td>
                   {chars.map((c, i) => {
                     const b = computeBiases(c);
                     return (
-                      <td key={i} className="text-center font-mono text-accent font-semibold py-0.5">
+                      <td key={i} className="text-center font-mono text-accent font-semibold py-0">
                         {b[key].toFixed(1)}
                       </td>
                     );

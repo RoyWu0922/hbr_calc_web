@@ -20,7 +20,7 @@ export const BUFF_SKILLS: SkillDef[] = [
   { name: '胜利之弧-心眼', max: 120, border: 143 },
   { name: '泪雨', max: 160, border: 256 },
   { name: '蓄力珠', max: 30, border: 200 },
-  { name: '指挥', max: 15, border: 0 },
+  { name: '指挥(别改)', max: 15, border: 0 },
   { name: '圣女-加攻', max: 180, border: 147 },
   { name: '圣女-心眼', max: 120, border: 147 },
   { name: '加速', max: 90, border: 232 },

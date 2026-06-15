@@ -122,9 +122,9 @@ export function calcBuffPowerDetail(buff: BuffSkill): BuffPowerDetail {
     orbPower = maxPower * orb * 0.04;
   }
 
-  // Over-diff power
+  // Over-diff power (指挥无超差倍率)
   let overDiffPower = 0;
-  if (combinedAttr > border) {
+  if (buff.name !== '指挥(别改)' && combinedAttr > border) {
     overDiffPower = (combinedAttr - border) * (1+skillLevel*0.02-0.02) * maxPower * 2 / 10000;
   }
 
@@ -606,7 +606,7 @@ export interface IncomingDamageInput {
   spr: number;              // 精神
   biasType: 'hp' | 'dp';   // 偏向类型
   enemyBorder: number;      // 敌方边界
-  enemyPerc: number;        // 敌方伤害率 (%)
+  enemyPerc: number;        // 敌方伤害率 %
   skillMin: number;         // 技能最小强度
   skillMax: number;         // 技能最大强度
   skillDiff: number;        // 技能差值 a

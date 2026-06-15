@@ -9,6 +9,16 @@ import { BreakParams } from '../../types';
 function fmt(n: number): string { return Math.round(n).toLocaleString('zh-CN'); }
 function fmtDec(n: number, d = 2): string { return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d }); }
 
+// Collapse toggle for card headers
+function CollapseHeader({ title, open, setOpen }: { title: React.ReactNode; open: boolean; setOpen: (v: boolean) => void }) {
+  return (
+    <div className="card-header flex justify-between items-center cursor-pointer select-none" onClick={() => setOpen(!open)}>
+      <span>{title}</span>
+      <span className="text-text-muted text-lg transition-transform" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+    </div>
+  );
+}
+
 export default function ExtraFeatures() {
   return (
     <div className="space-y-6">
@@ -64,39 +74,39 @@ function ODCalculator() {
   return (
     <div className="card">
       <div className="card-header">便捷OD计算</div>
-      <div className="grid grid-cols-3 gap-3 mb-3">
-        <Field label="原始hit数" value={origHit} onChange={setOrigHit} />
-        <Field label="附加连击数" value={addHit} onChange={setAddHit} />
-        <Field label="固定OD%" value={fixedOD} onChange={setFixedOD} />
-      </div>
-      <div className="grid grid-cols-3 gap-3 mb-3">
-        <Field label="目标数" value={targets} onChange={setTargets} />
-        <div>
-          <div className="input-label">耳环系数</div>
-          <select className="input-field text-xs py-1.5" value={earring}
-            onChange={e => setEarring(parseInt(e.target.value))}>
-            <option value={0}>0</option>
-            <option value={10}>10</option>
-            <option value={12}>12</option>
-            <option value={15}>15</option>
-          </select>
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <Field label="原始hit数" value={origHit} onChange={setOrigHit} />
+          <Field label="附加连击数" value={addHit} onChange={setAddHit} />
+          <Field label="固定OD%" value={fixedOD} onChange={setFixedOD} />
         </div>
-        <Field label="目标OD率" value={odRate} onChange={setOdRate} step={0.01} />
-      </div>
-      <div className="grid grid-cols-3 gap-3 items-end mb-3">
-        <div>
-          <div className="input-label flex items-center gap-0.5">额外od上升量% <OdRiseTip /></div>
-          <input className="input-field text-xs py-1.5" type="text" inputMode="decimal" step={0.01}
-            value={odRise} onChange={e => setOdRise(parseFloat(e.target.value) || 0)} />
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <Field label="目标数" value={targets} onChange={setTargets} />
+          <div>
+            <div className="input-label">耳环系数</div>
+            <select className="input-field text-xs py-1.5" value={earring}
+              onChange={e => setEarring(parseInt(e.target.value))}>
+              <option value={0}>0</option>
+              <option value={10}>10</option>
+              <option value={12}>12</option>
+              <option value={15}>15</option>
+            </select>
+          </div>
+          <Field label="目标OD率" value={odRate} onChange={setOdRate} step={0.01} />
         </div>
-        <Toggle label="耐性" value={resist} onChange={setResist} />
-        <Toggle label="普攻" value={normalAtk} onChange={setNormalAtk} />
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <StatBox label="实际OD上升量" value={fmtDec(r.j, 4)} />
-        <StatBox label="实际OD%" value={(r.n * 100).toFixed(2) + '%'} />
-        <StatBox label="实际hit数(参考)" value={fmtDec(r.actualHits)} />
-      </div>
+        <div className="grid grid-cols-3 gap-3 items-end mb-3">
+          <div>
+            <div className="input-label flex items-center gap-0.5">额外od上升量% <OdRiseTip /></div>
+            <input className="input-field text-xs py-1.5" type="text" inputMode="decimal" step={0.01}
+              value={odRise} onChange={e => setOdRise(parseFloat(e.target.value) || 0)} />
+          </div>
+          <Toggle label="耐性" value={resist} onChange={setResist} />
+          <Toggle label="普攻" value={normalAtk} onChange={setNormalAtk} />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <StatBox label="实际OD上升量" value={fmtDec(r.j, 4)} />
+          <StatBox label="实际OD%" value={(r.n * 100).toFixed(2) + '%'} />
+          <StatBox label="实际hit数(参考)" value={fmtDec(r.actualHits)} />
+        </div>
     </div>
   );
 }
@@ -120,7 +130,7 @@ function BreakCalculator() {
 
   const breakParams: BreakParams = useMemo(() => ({
     skillDR, enemyDR, origHits,
-    earring, necklace, otherDR,
+    earring, necklace, otherDR: otherDR / 100,
     superChain, bigChain, midChain, smallChain,
     maxDR: maxDR !== undefined ? maxDR / 100 : undefined,
     initDR: initDR / 100,
@@ -134,9 +144,9 @@ function BreakCalculator() {
       <div className="card-header">加权破坏计算 <span className="text-text-muted ml-2 font-normal text-xs"></span></div>
       {/* Row 1: enemy DR, max DR, init DR */}
       <div className="grid grid-cols-3 gap-3 mb-3">
-        <Field label="敌人DR(%)" value={enemyDR} onChange={setEnemyDR} step={0.01} />
-        <Field label="敌人最大破坏率(%)" value={maxDR ?? 0} onChange={v => setMaxDR(v || undefined)} step={1} />
-        <Field label="敌人初始破坏率(%)" value={initDR} onChange={setInitDR} step={1} />
+        <Field label="敌人DR%" value={enemyDR} onChange={setEnemyDR} step={0.01} />
+        <Field label="敌人最大破坏率%" value={maxDR ?? 0} onChange={v => setMaxDR(v || undefined)} step={1} />
+        <Field label="敌人初始破坏率%" value={initDR} onChange={setInitDR} step={1} />
       </div>
       {/* Row 2: skill DR, original hits */}
       <div className="grid grid-cols-2 gap-3 mb-3">
@@ -152,7 +162,7 @@ function BreakCalculator() {
       </div>
       {/* Row 4: other DR, earring, necklace */}
       <div className="flex gap-4 items-end mb-3">
-        <div className="w-40"><Field label="其他破坏率增量" value={otherDR} onChange={setOtherDR} step={0.01} /></div>
+        <div className="w-40"><Field label="其他破坏率增量%" value={otherDR} onChange={setOtherDR} step={0.1} /></div>
         <Toggle label="破坏耳环" value={!!earring} onChange={v => setEarring(v ? 1 : 0)} />
         <Toggle label="恒星战项链" value={!!necklace} onChange={v => setNecklace(v ? 1 : 0)} />
       </div>
@@ -204,6 +214,7 @@ function QuickScoreCard() {
   const [hasShield, setHasShield] = useState(true);
   const [modifier, setModifier] = useState(1.35);
   const [thresholdOverride, setThresholdOverride] = useState<number | undefined>(undefined);
+  const [open, setOpen] = useState(false);
 
   const result = useMemo(() => {
     if (!totalDmg) return null;
@@ -215,7 +226,8 @@ function QuickScoreCard() {
 
   return (
     <div className="card border-gold/20">
-      <div className="card-header">便捷打分计算（直接输入伤害）<ImageInfoTip src={saPic} alt="打分计算说明" /></div>
+      <CollapseHeader title={<span>便捷打分计算（直接输入伤害）<ImageInfoTip src={saPic} alt="打分计算说明" /></span>} open={open} setOpen={setOpen} />
+      {open && (<>
       <div className="flex gap-3 mb-3 items-end flex-wrap">
         <Field label="总伤" value={totalDmg} onChange={v => setTotalDmg(v)} />
         <Field label="伤害系数" value={damageCoeff} onChange={v => setDamageCoeff(v)} step={0.001} />
@@ -249,6 +261,7 @@ function QuickScoreCard() {
           <StatBox label="总分" value={fmt(result.totalScore)} highlight />
         </div>
       )}
+      </>)}
     </div>
   );
 }
@@ -266,6 +279,7 @@ function IncomingDamageCalc() {
   const [mark, setMark] = useState(false);
   const [necklace, setNecklace] = useState(false);
   const [passiveDef, setPassiveDef] = useState(0);
+  const [open, setOpen] = useState(false);
 
   const result = useMemo(() => calcIncomingDamage({
     vit, spr, biasType, enemyBorder, enemyPerc: enemyPerc / 100, skillMin, skillMax, skillDiff, mark, necklace, passiveDef,
@@ -275,9 +289,9 @@ function IncomingDamageCalc() {
 
   return (
     <div className="card">
-      <div className="card-header">受击伤害计算 <ImageInfoTip src={defensePic} alt="受击伤害说明" /></div>
-
-      {/* Stats */}
+      <CollapseHeader title={<span>受击伤害计算 <ImageInfoTip src={defensePic} alt="受击伤害说明" /></span>} open={open} setOpen={setOpen} />
+      {open && (<>
+        {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-3">
         <Field label="体力" value={vit} onChange={setVit} />
         <Field label="精神" value={spr} onChange={setSpr} />
@@ -315,7 +329,7 @@ function IncomingDamageCalc() {
       <div className="flex gap-4 items-end mb-4">
         <Toggle label="属性印记 (10%)" value={mark} onChange={setMark} />
         <Toggle label="加防项链 (10%)" value={necklace} onChange={setNecklace} />
-        <div className="w-32"><Field label="其它加防(%)" value={passiveDef} onChange={setPassiveDef} /></div>
+        <div className="w-32"><Field label="其它加防%" value={passiveDef} onChange={setPassiveDef} /></div>
       </div>
 
       {/* Results */}
@@ -332,6 +346,7 @@ function IncomingDamageCalc() {
           <StatBox label="上限 (1.1×)" value={fmt(result.maxDmg)}  />
         </div>
       </div>
+      </>)}
     </div>
   );
 }
@@ -347,6 +362,7 @@ function EncounterCalc() {
   const [turns, setTurns] = useState(5);
   const [difficultyScore, setDifficultyScore] = useState(65000);
   const [modifier, setModifier] = useState(1.3);
+  const [open, setOpen] = useState(false);
 
   const result = useMemo(() => calcEncounterScore({
     damages: [d1, d2, d3, d4, d5],
@@ -355,8 +371,9 @@ function EncounterCalc() {
 
   return (
     <div className="card border-gold/20">
-      <div className="card-header">遭遇战出分计算 <span className="text-text-muted font-normal text-xs">(数据来源: 我的心情复杂 遭遇战出分计算)</span></div>
-      <div className="text-xs text-text-muted mb-3">每阶段各自计算伤害分然后求和，回合分按难度和回合数衰减</div>
+      <CollapseHeader title={<span>遭遇战出分计算 <span className="text-text-muted font-normal text-xs">(数据来源: 我的心情复杂 遭遇战出分计算)</span></span>} open={open} setOpen={setOpen} />
+      {open && (<>
+        <div className="text-xs text-text-muted mb-3">每阶段各自计算伤害分然后求和，回合分按难度和回合数衰减</div>
 
       {/* 5 round damages */}
       <div className="grid grid-cols-5 gap-3 mb-3">
@@ -404,6 +421,7 @@ function EncounterCalc() {
           <StatBox label="出分" value={result.finalScore.toLocaleString('zh-CN')} highlight />
         </div>
       </div>
+      </>)}
     </div>
   );
 }

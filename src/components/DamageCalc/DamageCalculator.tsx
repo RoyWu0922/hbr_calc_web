@@ -272,7 +272,7 @@ export default function DamageCalculator({ initialData }: Props) {
       <CollapsibleSection title="其它乘区" defaultOpen>
         <div className="grid grid-cols-4 gap-3">
           <Field label="连击 (例: 3特大=(1+3*0.5)=2.5)" value={chainMul} onChange={setChainMul} step={0.01} />
-          <Field label="破坏率(%)" value={breakMul} onChange={setBreakMul} step={1} />
+          <Field label="破坏率%" value={breakMul} onChange={setBreakMul} step={1} />
           <div>
             <div className="input-label">OD</div>
             <select className="input-field" value={odMul} onChange={e => setOdMul(parseFloat(e.target.value))}>
@@ -521,11 +521,11 @@ function BonusSection({ bonus, setBonus, equipment, setEquipment, skill, updateS
 }) {
   return (
     <div className="grid grid-cols-4 gap-4">
-      <PassiveBlock title={<span>被动加攻区(%) <InfoTip id="passiveAtk" /></span>} entries={bonus.passiveAtkEntries} total={atkSum} totalClass="text-heal"
+      <PassiveBlock title={<span>被动加攻区% <InfoTip id="passiveAtk" /></span>} entries={bonus.passiveAtkEntries} total={atkSum} totalClass="text-heal"
         onUpdate={e => setBonus({ ...bonus, passiveAtkEntries: e })} placeholder="加攻被动名" />
-      <PassiveBlock title="被动减防区(%)" entries={bonus.passiveDefEntries} total={defSum} totalClass="text-accent"
+      <PassiveBlock title="被动减防区%" entries={bonus.passiveDefEntries} total={defSum} totalClass="text-accent"
         onUpdate={e => setBonus({ ...bonus, passiveDefEntries: e })} placeholder="减防被动名" />
-      <PassiveBlock title="爆伤区(%)" entries={bonus.critDmgExtraEntries} total={critSum} totalClass="text-gold"
+      <PassiveBlock title="爆伤区%" entries={bonus.critDmgExtraEntries} total={critSum} totalClass="text-gold"
         onUpdate={e => setBonus({ ...bonus, critDmgExtraEntries: e })} placeholder="爆伤项名" />
       <div className="stat-box-left">
         <div className="card-header text-xs mb-2">装备区</div>

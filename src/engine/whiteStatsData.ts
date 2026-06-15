@@ -397,16 +397,16 @@ export interface EquipPreset {
 }
 export const EQUIP_PRESETS: EquipPreset[] = [
   { name: "裸装", pow: 0, dex: 0, tough: 0, spr: 0, wis: 0, luck: 0 },
-  { name: "减防最优配装", pow: 114, dex: 101, tough: 104, spr: 104, wis: 212, luck: 107 },
-  { name: "脆弱最优配装", pow: 114, dex: 101, tough: 104, spr: 104, wis: 157, luck: 162 },
-  { name: "[对HP+]最优配装", pow: 207, dex: 102, tough: 105, spr: 105, wis: 118, luck: 108 },
-  { name: "[对DP+]最优配装", pow: 102, dex: 207, tough: 105, spr: 105, wis: 118, luck: 108 },
-  { name: "无偏向攻击最优配装", pow: 191, dex: 122, tough: 105, spr: 105, wis: 118, luck: 108 },
-  { name: "智力依存最优配装", pow: 114, dex: 101, tough: 104, spr: 104, wis: 212, luck: 107 },
-  { name: "体力依存最优配装", pow: 115, dex: 102, tough: 188, spr: 116, wis: 118, luck: 108 },
-  { name: "精神max最优配装", pow: 115, dex: 102, tough: 131, spr: 176, wis: 118, luck: 108 },
-  { name: "减防最优，但红晶片用完了", pow: 114, dex: 101, tough: 104, spr: 104, wis: 204, luck: 107 },
-  { name: "脆弱最优，但红晶片用完了", pow: 114, dex: 101, tough: 104, spr: 104, wis: 149, luck: 162 },
+  { name: "减防最优配装", pow: 109, dex: 96, tough: 99, spr: 99, wis: 207, luck: 102 },
+  { name: "脆弱最优配装", pow: 109, dex: 96, tough: 99, spr: 99, wis: 152, luck: 157 },
+  { name: "[对HP+]最优配装", pow: 202, dex: 97, tough: 100, spr: 100, wis: 113, luck: 103 },
+  { name: "[对DP+]最优配装", pow: 97, dex: 202, tough: 100, spr: 100, wis: 113, luck: 103 },
+  { name: "无偏向攻击最优配装", pow: 186, dex: 117, tough: 100, spr: 100, wis: 113, luck: 103 },
+  { name: "智力依存最优配装", pow: 109, dex: 96, tough: 99, spr: 99, wis: 207, luck: 102 },
+  { name: "体力依存最优配装", pow: 110, dex: 97, tough: 183, spr: 111, wis: 113, luck: 103 },
+  { name: "精神max最优配装", pow: 110, dex: 97, tough: 126, spr: 171, wis: 113, luck: 103 },
+  { name: "减防最优，但红晶片用完了", pow: 109, dex: 96, tough: 99, spr: 99, wis: 199, luck: 102 },
+  { name: "脆弱最优，但红晶片用完了", pow: 109, dex: 96, tough: 99, spr: 99, wis: 144, luck: 157 },
 ];
 
 export interface BiasType {

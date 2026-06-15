@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { CHAR_GROWTH, EQUIP_PRESETS, BIAS_TYPES, BADGE_BONUS, WEAPON_BONUS } from '../../engine/whiteStatsData';
 import { calcWhiteStats, type WhiteStatsInput } from '../../engine/whiteStats';
 import CollapsibleSection from '../CollapsibleSection';
+import { getWhiteStatsHistory, saveWhiteStatsEntry, deleteWhiteStatsEntry, type WhiteStatsEntry } from '../../utils/whiteStatsStorage';
 
 function fmt(n: number): string { return Math.round(n).toLocaleString('zh-CN'); }
 
@@ -36,14 +37,60 @@ export default function WhiteStats() {
 
   const result = useMemo(() => calcWhiteStats(input), [input]);
 
+  // History
+  const [history, setHistory] = useState<WhiteStatsEntry[]>([]);
+  useEffect(() => { getWhiteStatsHistory().then(setHistory); }, []);
+
+  const handleSave = async () => {
+    const char = CHAR_GROWTH.find(c => c.shortId === shortId);
+    const label = char ? `${shortId} — ${char.name}` : `ID: ${shortId}`;
+    await saveWhiteStatsEntry({
+      timestamp: Date.now(), label,
+      input: { ...input },
+      totalStats: { ...result.totalStats },
+      resonanceEff: { ...result.resonanceEff },
+    });
+    setHistory(await getWhiteStatsHistory());
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('确定删除这条记录？')) return;
+    await deleteWhiteStatsEntry(id);
+    setHistory(await getWhiteStatsHistory());
+  };
+
+  const handleLoad = (entry: WhiteStatsEntry) => {
+    const inp = entry.input;
+    setShortId(inp.shortId);
+    setLevel(inp.level);
+    setBadgeLevel(inp.badgeLevel);
+    setRebirth(inp.rebirth);
+    setBiasType(inp.biasType);
+    setBreakLevel(inp.breakLevel);
+    setMissingPower(inp.missingPower);
+    setMissingDex(inp.missingDex);
+    setMissingSpr(inp.missingSpr);
+    setMissingPowerDex(inp.missingPowerDex);
+    setBaseFix(inp.baseFix);
+    setEquipPreset(inp.equipPreset);
+    setWeaponLevel(inp.weaponLevel);
+    setScoreBuff(inp.scoreBuff);
+    setNecklaceLuck(inp.necklaceLuck);
+    setSupport(inp.support);
+  };
+
   const char = CHAR_GROWTH.find(c => c.shortId === shortId);
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div>
-        <h2 className="text-xl font-bold">白值计算</h2>
-        <p className="text-sm text-text-muted">数据来源: 凛冬_ 白值计算器2026.6.5版</p>
-      </div>
+    <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">白值计算</h2>
+            <p className="text-sm text-text-muted">数据来源: 凛冬_ 白值计算器2026.6.5版</p>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={handleSave}>保存到历史</button>
+        </div>
 
       {/* 角色选择 */}
       <CollapsibleSection title="角色选择" defaultOpen>
@@ -117,7 +164,17 @@ export default function WhiteStats() {
       <CollapsibleSection title="配装 & 专武" defaultOpen>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
-            <div className="input-label">配装预设</div>
+            <div className="input-label flex items-center gap-0.5">
+              配装预设(不包括专武)
+              <span className="relative inline-flex align-middle group">
+                <span className="text-text-muted group-hover:text-text-secondary text-[10px]"
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', border: '1px solid var(--app-checkbox-border)', fontWeight: 700, cursor: 'help' }}>?</span>
+                <div className="absolute z-30 bottom-full mb-1 left-1/2 -translate-x-1/2 bg-bg-card border border-white/10 rounded-lg p-2 shadow-xl whitespace-pre-line text-[10px] hidden group-hover:block" style={{ minWidth: 240, color: 'var(--app-text-secondary)' }}>
+                  除「对DP+最优配装」外，戒指默认为力量偏向
+                  除「脆弱最优配装」及「脆弱最优，但红晶片用完了」外，戒指额外词条默认为智力
+                </div>
+              </span>
+            </div>
             <select className="input-field text-sm" value={equipPreset}
               onChange={e => setEquipPreset(e.target.value)}>
               {EQUIP_PRESETS.map(p => (
@@ -146,7 +203,7 @@ export default function WhiteStats() {
             </select>
           </div>
           <div>
-            <div className="input-label">坠链运气加成</div>
+            <div className="input-label">坠链运气加成(选择裸装时失效)</div>
             <select className="input-field text-sm" value={necklaceLuck}
               onChange={e => setNecklaceLuck(parseInt(e.target.value))}>
               <option value={0}>0</option>
@@ -156,36 +213,36 @@ export default function WhiteStats() {
         </div>
         <div className="text-xs text-text-muted mb-2">支援修正</div>
         <div className="grid grid-cols-6 gap-3">
-          <Field label="Pow" value={support.pow} onChange={v => setSupport(f => ({ ...f, pow: v }))} />
-          <Field label="Dex" value={support.dex} onChange={v => setSupport(f => ({ ...f, dex: v }))} />
-          <Field label="Tough" value={support.tough} onChange={v => setSupport(f => ({ ...f, tough: v }))} />
-          <Field label="Spr" value={support.spr} onChange={v => setSupport(f => ({ ...f, spr: v }))} />
-          <Field label="Wis" value={support.wis} onChange={v => setSupport(f => ({ ...f, wis: v }))} />
-          <Field label="Luck" value={support.luck} onChange={v => setSupport(f => ({ ...f, luck: v }))} />
+          <Field label="Pow(力量)" value={support.pow} onChange={v => setSupport(f => ({ ...f, pow: v }))} />
+          <Field label="Dex(灵巧)" value={support.dex} onChange={v => setSupport(f => ({ ...f, dex: v }))} />
+          <Field label="Tough(体力)" value={support.tough} onChange={v => setSupport(f => ({ ...f, tough: v }))} />
+          <Field label="Spr(精神)" value={support.spr} onChange={v => setSupport(f => ({ ...f, spr: v }))} />
+          <Field label="Wis(智慧)" value={support.wis} onChange={v => setSupport(f => ({ ...f, wis: v }))} />
+          <Field label="Luck(运气)" value={support.luck} onChange={v => setSupport(f => ({ ...f, luck: v }))} />
         </div>
       </CollapsibleSection>
 
       {/* Output1: 基础状态值 */}
       <CollapsibleSection title="Output1 — 基础状态值" defaultOpen>
         <div className="grid grid-cols-6 gap-3">
-          <StatBox label="Power" value={fmt(result.baseStats.pow)} />
-          <StatBox label="Dexterity" value={fmt(result.baseStats.dex)} />
-          <StatBox label="Toughness" value={fmt(result.baseStats.tough)} />
-          <StatBox label="Spirit" value={fmt(result.baseStats.spr)} />
-          <StatBox label="Wisdom" value={fmt(result.baseStats.wis)} />
-          <StatBox label="Luck" value={fmt(result.baseStats.luck)} />
+          <StatBox label="Power(力量)" value={fmt(result.baseStats.pow)} />
+          <StatBox label="Dexterity(灵巧)" value={fmt(result.baseStats.dex)} />
+          <StatBox label="Toughness(体力)" value={fmt(result.baseStats.tough)} />
+          <StatBox label="Spirit(精神)" value={fmt(result.baseStats.spr)} />
+          <StatBox label="Wisdom(智慧)" value={fmt(result.baseStats.wis)} />
+          <StatBox label="Luck(运气)" value={fmt(result.baseStats.luck)} />
         </div>
       </CollapsibleSection>
 
       {/* Output2: 合计状态值 */}
       <CollapsibleSection title="Output2 — 合计状态值" defaultOpen>
         <div className="grid grid-cols-6 gap-3 mb-2">
-          <StatBox label="Power" value={fmt(result.totalStats.pow)} highlight />
-          <StatBox label="Dexterity" value={fmt(result.totalStats.dex)} highlight />
-          <StatBox label="Toughness" value={fmt(result.totalStats.tough)} highlight />
-          <StatBox label="Spirit" value={fmt(result.totalStats.spr)} highlight />
-          <StatBox label="Wisdom" value={fmt(result.totalStats.wis)} highlight />
-          <StatBox label="Luck" value={fmt(result.totalStats.luck)} highlight />
+          <StatBox label="Power(力量)" value={fmt(result.totalStats.pow)} highlight />
+          <StatBox label="Dexterity(灵巧)" value={fmt(result.totalStats.dex)} highlight />
+          <StatBox label="Toughness(体力)" value={fmt(result.totalStats.tough)} highlight />
+          <StatBox label="Spirit(精神)" value={fmt(result.totalStats.spr)} highlight />
+          <StatBox label="Wisdom(智慧)" value={fmt(result.totalStats.wis)} highlight />
+          <StatBox label="Luck(运气)" value={fmt(result.totalStats.luck)} highlight />
         </div>
         <div className="text-xs text-text-muted">
           倍率: {BIAS_TYPES.find(b => b.id === biasType)?.label}偏向 |
@@ -226,6 +283,52 @@ export default function WhiteStats() {
       <div className="text-xs text-text-muted">
         ID={char?.fullId} ({shortId}) | {char?.name} | Lv{level} | 转生{rebirth} |
         徽章{badgeLevel} | {BIAS_TYPES.find(b => b.id === biasType)?.label}偏向 | 突破{breakLevel}
+      </div>
+      </div>
+
+      {/* History panel */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--app-text-primary)' }}>历史记录</h3>
+        {history.length === 0 ? (
+          <p className="text-xs text-text-muted">暂无保存记录</p>
+        ) : (
+          <div className="space-y-2 max-h-[80vh] overflow-y-auto">
+            {history.map(entry => (
+              <div key={entry.id} className="card !p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium" style={{ color: 'var(--app-text-primary)' }}>{entry.label}</span>
+                  <span className="text-[10px] text-text-muted">{new Date(entry.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                {/* Stat header + 2 rows of 6 columns */}
+                <div className="text-[10px] mb-1.5">
+                  <div className="grid grid-cols-6 gap-0.5 text-center text-text-muted mb-0.5">
+                    <div>力</div><div>灵</div><div>体</div><div>精</div><div>智</div><div>运</div>
+                  </div>
+                  <div className="grid grid-cols-6 gap-0.5 text-center font-mono mb-0.5">
+                    <div>{fmt(entry.totalStats.pow)}</div>
+                    <div>{fmt(entry.totalStats.dex)}</div>
+                    <div>{fmt(entry.totalStats.tough)}</div>
+                    <div>{fmt(entry.totalStats.spr)}</div>
+                    <div>{fmt(entry.totalStats.wis)}</div>
+                    <div>{fmt(entry.totalStats.luck)}</div>
+                  </div>
+                  <div className="grid grid-cols-6 gap-0.5 text-center font-mono text-text-muted">
+                    <div>{fmt(entry.resonanceEff.pow)}</div>
+                    <div>{fmt(entry.resonanceEff.dex)}</div>
+                    <div>{fmt(entry.resonanceEff.tough)}</div>
+                    <div>{fmt(entry.resonanceEff.spr)}</div>
+                    <div>{fmt(entry.resonanceEff.wis)}</div>
+                    <div>{fmt(entry.resonanceEff.luck)}</div>
+                  </div>
+                </div>
+                <div className="flex gap-1.5">
+                  <button className="btn btn-primary btn-xs" onClick={() => handleLoad(entry)}>读取</button>
+                  <button className="btn btn-danger btn-xs" onClick={() => entry.id && handleDelete(entry.id)}>删除</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

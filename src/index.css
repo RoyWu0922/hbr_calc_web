@@ -173,6 +173,29 @@ input[type="number"] { -moz-appearance: textfield; }
   color: var(--app-text-primary);
 }
 
+/* Sub-tab: underline style */
+.sub-tab {
+  @apply px-3 py-2 text-sm font-medium transition-all cursor-pointer border-0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--app-text-secondary);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+.sub-tab.active {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--app-text-primary);
+  border-bottom-color: var(--color-accent);
+}
+.sub-tab:not(.active):hover {
+  background: transparent;
+  color: var(--app-text-primary);
+  border-bottom-color: var(--app-glass-border);
+}
+
 /* ─── Cards ────────────────────────────────────────────── */
 .card {
   @apply rounded-xl p-5;
