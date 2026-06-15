@@ -12,6 +12,7 @@ import { saveUserDefaults, loadUserDefaults, clearUserDefaults, UserDefaults } f
 import { encodeShareData, decodeShareData } from '../../utils/shareUrl';
 import DamageResult from './DamageResult';
 import ImageInfoTip from '../ImageInfoTip';
+import FloatingBiasCalc from '../FloatingBiasCalc';
 import saPic from '/SA_pic.png';
 
 const defaultSkill: SkillInput = {
@@ -297,6 +298,7 @@ export default function DamageCalculator({ initialData }: Props) {
       {result && (
         <DamageResult result={result} skill={skill} floatVal={floatVal} />
       )}
+      <FloatingBiasCalc />
     </div>
   );
 }
