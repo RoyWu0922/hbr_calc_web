@@ -323,7 +323,7 @@ function IncomingDamageCalc() {
         <div className="grid grid-cols-2 gap-3 mb-2">
           <div className="text-xs text-text-muted">技能强度: <span className="text-accent font-mono">{result.skillPower.toFixed(2)}</span></div>
           <div className="text-xs text-text-muted">税前伤害: <span className="text-accent font-mono">{result.preTaxDmg.toFixed(2)}</span></div>
-          <div className="text-xs text-text-muted">偏值 x: <span className="font-mono">{result.biasValue.toFixed(1)}</span></div>
+          <div className="text-xs text-text-muted">敌人白值: <span className="font-mono">{result.biasValue.toFixed(1)}</span></div>
           <div className="text-xs text-text-muted">加防乘区: <span className="font-mono">{result.defMultiplier.toFixed(4)}</span></div>
         </div>
         <div className="grid grid-cols-3 gap-3">
