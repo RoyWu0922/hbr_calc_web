@@ -45,7 +45,7 @@ export const DEBUFF_SKILLS: DebuffSkillDef[] = [
   { name: '惠 脆弱', max: 60, min: 42, border: 132 },
   { name: '惠 永脆', max: 40, min: 30, border: 126 },
   { name: '重力子', max: 45, min: 30, border: 200 },
-  { name: '国土-降防', max: 30, min: 20, border: 137 },
+  { name: '国士-降防', max: 30, min: 20, border: 137 },
   { name: '追风', max: 45, min: 30, border: 143 },
   { name: '骇客-脆弱', max: 60, min: 42, border: 149 },
   { name: '光晕-永减', max: 30, min: 20, border: 143 },
@@ -59,10 +59,11 @@ export const WEAKNESS_SKILLS: DebuffSkillDef[] = [
   { name: '今宵', max: 60, min: 45, border: 138 },
   { name: '放学', max: 60, min: 45, border: 140 },
   { name: '无限光晕', max: 60, min: 45, border: 143 },
-  { name: '国土无双', max: 60, min: 45, border: 137 },
+  { name: '国士无双', max: 60, min: 45, border: 137 },
   { name: '纯洁之吻', max: 60, min: 45, border: 141 },
   { name: '再炸一波', max: 60, min: 45, border: 150 },
   { name: '混沌诡骗师', max: 60, min: 45, border: 153 },
+  { name: '大球恐慌亂烘烘', max: 60, min: 45, border: 147 },
 ];
 
 // ─── Score Reference Tables ──────────────────────────────────

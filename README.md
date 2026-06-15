@@ -154,7 +154,7 @@ npm run build # 构建到 dist/
 - 伤害计算器&遭遇战分数计算器: [我的心情复杂(b站主页)](https://space.bilibili.com/252297123)
 - od计算器: [不会打牌的qeit(b站主页)](https://space.bilibili.com/269335316)
 - 白值计算器: [凛冬_(b站主页)](https://space.bilibili.com/73493230)
-- 破坏计算器: [PrSGrnium(b站主页)]
+- 破坏计算器: [ProSGrnium(b站主页)](https://space.bilibili.com/325104293)
   
 
 ## License
