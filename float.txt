@@ -1,0 +1,104 @@
+Clear["Global`*"]
+
+
+
+(*定义计算概率的函数*)
+UpProb[hit_List, up_Real] := 
+ Module[{T, dList, integrand, t, result}, T = Total[hit];
+  dList = 0.1*hit;
+  integrand = 
+   Sin[t*up*T]/t*
+    Product[Sin[dList[[i]]*t]/(dList[[i]]*t), {i, Length[hit]}];
+  (*计算积分，处理可能的数值误差*)
+  result = 
+   1/2 - 1/Pi*
+      NIntegrate[integrand, {t, 0, Infinity}, 
+       Method -> "DoubleExponentialOscillatory", MaxRecursion -> 100, 
+       PrecisionGoal -> 8, WorkingPrecision -> 20] // Quiet;
+  (*消除微小的正数积分误差*)result = Clip[Chop[result, 10^-7], {0, 1}]; 
+  Return[result];]
+(*定义绘制概率-上浮比例曲线的函数，以百分数显示*)
+PlotUpProbPercent[hit_List] := 
+ Module[{upValues, probValues, T, percentValues, xTicks, yTicks}, 
+  T = Total[hit];
+  (*生成 up 值序列，从-0.1 到 0.1*)upValues = Subdivide[-0.1, 0.1, 1000];
+  (*计算每个 up 值对应的概率*)
+  probValues = 
+   ParallelTable[{up, UpProb[hit, up]}, {up, upValues}, 
+    Method -> "CoarsestGrained"];
+  (*将概率转换为百分数*)percentValues = {#[[1]], 100*#[[2]]} & /@ probValues;
+  (*X 轴刻度*)
+  xTicks = 
+   Table[{x, Row[{Round[x*100], "%"}]}, {x, -0.1, 0.1, 0.02}];
+  (*Y 轴刻度*)yTicks = Table[{y, Row[{y, "%"}]}, {y, 0, 100, 10}];
+  (*绘制曲线，使用百分数格式*)
+  ListLinePlot[percentValues, PlotRange -> {{-0.1, 0.1}, {0, 100}}, 
+   AxesLabel -> {"上浮比例", "概率"}, PlotLabel -> "概率随上浮比例变化曲线", 
+   GridLines -> {Range[-0.1, 0.1, 0.02], Range[0, 100, 10]}, 
+   GridLinesStyle -> Directive[Gray, Dashed], ImageSize -> Large, 
+   Ticks -> {xTicks, yTicks}]]
+(*定义绘制概率-上浮比例曲线的函数，以对数刻度显示 up\[GreaterEqual]0 的部分*)
+PlotUpProbLogPercent[hit_List] := 
+ Module[{upValues, probValues, T, percentValues, filteredValues, 
+   xTicks, yTicks}, T = Total[hit];
+  (*生成 up 值序列，从 0 到 0.1*)upValues = Subdivide[0, 0.1, 1000];
+  (*计算每个 up 值对应的概率*)
+  probValues = 
+   ParallelTable[{up, UpProb[hit, up]}, {up, upValues}, 
+    Method -> "CoarsestGrained"];
+  (*将概率转换为百分数*)
+  percentValues = {#[[1]], Max[10^-5, 100*#[[2]]]} & /@ probValues;
+  (*过滤掉负的 up 值*)
+  filteredValues = Select[percentValues, #[[1]] >= 0 &];
+  (*X 轴刻度*)
+  xTicks = Table[{x, Row[{Round[x*100], "%"}]}, {x, 0, 0.1, 0.02}];
+  (*Y 轴对数刻度*)
+  yTicks = {#, Row[{N@#, "%"}]} & /@ {10^-5, 10^-4, 10^-3, 0.01, 0.1, 
+     1, 10, 100};
+  (*使用对数刻度绘制 up\[GreaterEqual]0 的部分*)
+  ListLogPlot[filteredValues, PlotRange -> {{0, 0.1}, {10^-5, 100}}, 
+   AxesLabel -> {"上浮比例", "概率"}, 
+   PlotLabel -> "概率随上浮比例变化曲线 (up \[GreaterEqual] 0, 对数刻度)", 
+   GridLines -> {Range[0, 0.1, 0.01], {10^-5, 10^-4, 10^-3, 0.01, 0.1,
+       1, 10, 100}}, GridLinesStyle -> Directive[Gray, Dashed], 
+   ImageSize -> Large, Ticks -> {xTicks, yTicks}, Joined -> True, 
+   PlotStyle -> {Blue, Thickness[0.005]}]]
+
+(*定义绘制概率密度函数的函数*)
+PlotPDF[hit_List] := 
+ Module[{upValues, cdfValues, pdfValues, T, h, xTicks, yTicks}, 
+  T = Total[hit];
+  (*生成 up 值序列，从-0.1 到 0.1*)
+  upValues = Subdivide[-0.1, 0.1, 200];(*计算每个 up 值对应的 CDF 值*)
+  cdfValues = 
+   ParallelTable[{up, 1 - UpProb[hit, up]},(*CDF=
+    1-生存函数*){up, upValues}, Method -> "CoarsestGrained"];
+  (*对 CDF 进行数值微分以获得 PDF*)h = upValues[[2]] - upValues[[1]]; 
+  pdfValues = 
+   Table[{upValues[[i]], 
+     If[i == 1, (cdfValues[[i + 1, 2]] - cdfValues[[i, 2]])/h, 
+      If[i == Length[
+         upValues], (cdfValues[[i, 2]] - cdfValues[[i - 1, 2]])/
+        h, (cdfValues[[i + 1, 2]] - cdfValues[[i - 1, 2]])/(2*
+          h)]]}, {i, 1, Length[upValues]}];
+  (*X 轴刻度*)
+  xTicks = 
+   Table[{x, Row[{Round[x*100], "%"}]}, {x, -0.1, 0.1, 0.02}];
+  (*Y 轴刻度*)
+  yTicks = 
+   Function[{ymin, 
+     ymax}, {#, Row[{NumberForm[N[#], {Infinity, 1}], "%"}]} & /@ 
+     FindDivisions[{ymin, ymax}, 8]];
+  (*绘制 PDF*)
+  ListLinePlot[pdfValues, PlotRange -> {{-0.1, 0.1}, All}, 
+   AxesLabel -> {"上浮比例 up", "概率密度"}, PlotLabel -> "概率密度函数 (PDF)", 
+   GridLines -> {Range[-0.1, 0.1, 0.02], Automatic}, 
+   GridLinesStyle -> Directive[Gray, Dashed], ImageSize -> Large, 
+   Ticks -> {xTicks, yTicks}]]
+
+
+
+(*使用示例*)
+dist = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.3, 0.5, 0.5, 0.5};
+UpProb[dist, 0.04]
+PlotUpProbPercent[dist]
