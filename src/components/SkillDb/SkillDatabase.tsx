@@ -97,8 +97,16 @@ export default function SkillDatabase() {
     if (!addName.trim()) return;
     const isBuiltin = builtinData.some(s => s.name === (editingName || ''));
     if (editingName && isBuiltin) {
-      // Editing built-in → always override
-      overrideBuiltinSkill(tab, editingName, { max: addMax, min: isBuff ? undefined : addMin, border: addBorder });
+      if (editingName !== addName.trim()) {
+        // Renamed built-in → create as custom with new name
+        const newSkill: any = isBuff
+          ? { name: addName.trim(), max: addMax, border: addBorder, _custom: true }
+          : { name: addName.trim(), max: addMax, min: addMin, border: addBorder, _custom: true };
+        addCustomSkill(tab, newSkill);
+      } else {
+        // Same name → override values
+        overrideBuiltinSkill(tab, editingName, { max: addMax, min: isBuff ? undefined : addMin, border: addBorder });
+      }
     } else if (editingName) {
       // Editing custom skill
       if (editingName !== addName.trim()) {
