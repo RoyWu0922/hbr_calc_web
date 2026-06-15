@@ -386,8 +386,8 @@ export function calcBreakDetail(params: BreakParams): BreakResult {
   // E15: 理论DR增量 = skillDR * (1+ΣchainMult) * drMultiplier  (不含enemyDR, unrounded earringBonus)
   const theoreticalDRInc = skillDR * (1 + totalChainMult) * drMultiplierSummary;
 
-  // E16: 理论破坏率增量 = E15 * enemyDR
-  const theoreticalBreakInc = theoreticalDRInc * enemyDR;
+  // E16: 理论破坏率增量 = E15 * enemyDR / 100
+  const theoreticalBreakInc = theoreticalDRInc * enemyDR / 100;
 
   // E17: 实际最终破坏率 = IF(maxDR blank, initDR+E16, MIN(maxDR, initDR+E16))
   const actualFinalDR = maxDR === undefined

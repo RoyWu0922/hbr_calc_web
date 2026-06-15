@@ -108,7 +108,7 @@ export function calcWhiteStats(input: WhiteStatsInput): WhiteStatsOutput {
     return {
       withGear: scaled + input.resonance + support + equip
         + (isNaked ? 0 : weaponBonus) + input.scoreBuff,
-      noGear: scaled + support + input.scoreBuff,
+      noGear: scaled,
     };
   }
 

@@ -42,7 +42,7 @@ function ODCalculator() {
   const [targets, setTargets] = useState(1);
   const [earring, setEarring] = useState(0);
   const [odRise, setOdRise] = useState(0);
-  const [odRate, setOdRate] = useState(1);
+  const [odRate, setOdRate] = useState(100);
   const [resist, setResist] = useState(false);
   const [normalAtk, setNormalAtk] = useState(false);
 
@@ -62,7 +62,7 @@ function ODCalculator() {
     } else {
       const part1 = Math.floor(fixedOD * j * 100) / 100;
       const j25 = Math.floor(j * 2.5 * 100) / 100;
-      const part2 = (origHit + addHit) * (resist ? 0 : 1) * Math.floor(j25 * odRate * 100) / 100 * targets;
+      const part2 = (origHit + addHit) * (resist ? 0 : 1) * Math.floor(j25 * odRate) / 100 * targets;
       n = (part1 + part2) / 100;
     }
     const actualHits = n * 40;
@@ -82,7 +82,7 @@ function ODCalculator() {
         <div className="grid grid-cols-3 gap-3 mb-3">
           <Field label="目标数" value={targets} onChange={setTargets} />
           <div>
-            <div className="input-label">耳环系数</div>
+            <div className="input-label">耳环系数%</div>
             <select className="input-field text-xs py-1.5" value={earring}
               onChange={e => setEarring(parseInt(e.target.value))}>
               <option value={0}>0</option>
@@ -91,7 +91,7 @@ function ODCalculator() {
               <option value={15}>15</option>
             </select>
           </div>
-          <Field label="目标OD率" value={odRate} onChange={setOdRate} step={0.01} />
+          <Field label="目标OD率%" value={odRate} onChange={setOdRate} step={0.5} />
         </div>
         <div className="grid grid-cols-3 gap-3 items-end mb-3">
           <div>
@@ -176,13 +176,14 @@ function BreakCalculator() {
         </div>
       </div>
       <div className="text-xs text-text-muted mb-1">耳环加成: {result.earringBonus.toFixed(3)} | DR乘数: {result.drMultiplier.toFixed(3)}</div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
         <StatBox label="理论DR增量" value={fmtDec(result.theoreticalDRInc, 4)} />
-        <StatBox label="理论破坏率增量" value={fmtDec(result.theoreticalBreakInc, 4)} />
-        <StatBox label="实际最终破坏率" value={fmtDec(result.actualFinalDR, 4)} />
-        <StatBox label="平均破坏率" value={fmtDec(result.averageDR, 4)} />
+        <StatBox label="理论破坏率增量" value={fmtDec(result.theoreticalBreakInc, 4) + '%'} />
+        <StatBox label="实际最终破坏率" value={(result.actualFinalDR * 100).toFixed(2) + '%'} />
       </div>
-      <StatBox label="加权破坏" value={fmtDec(result.weightedBreak, 4)} highlight />
+      <div className="mb-3">
+        <StatBox label="平均破坏率" value={(result.averageDR * 100).toFixed(2) + '%'} highlight />
+      </div>
       {/* Detail table */}
       <details className="mt-3 text-xs">
         <summary className="cursor-pointer text-text-muted hover:text-text-secondary">展开Hit明细</summary>
