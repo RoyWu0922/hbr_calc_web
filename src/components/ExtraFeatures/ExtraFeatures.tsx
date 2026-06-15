@@ -256,7 +256,7 @@ function EncounterCalc() {
 
   return (
     <div className="card border-gold/20">
-      <div className="card-header">遭遇战出分计算 <span className="text-text-muted font-normal text-xs">(数据来源: 我的心情复杂 遭遇战出分计算.xlsx)</span></div>
+      <div className="card-header">遭遇战出分计算 <span className="text-text-muted font-normal text-xs">(数据来源: 我的心情复杂 遭遇战出分计算)</span></div>
       <div className="text-xs text-text-muted mb-3">每阶段各自计算伤害分然后求和，回合分按难度和回合数衰减</div>
 
       {/* 5 round damages */}
