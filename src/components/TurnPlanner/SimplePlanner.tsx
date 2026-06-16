@@ -1,5 +1,6 @@
 export default function SimplePlannerPage() {
-  const url = 'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(location.origin + '/TL.xlsx');
+  const src = location.origin + import.meta.env.BASE_URL + 'TL.xlsx';
+  const url = 'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(src);
   return (
     <div className="space-y-3" style={{ height: 'calc(100vh - 80px)' }}>
       <div className="flex items-center justify-between">
