@@ -243,7 +243,9 @@ export function buildHitWeights(
 ): number[] {
   const weights: number[] = [];
   if (customBodyWeights && customBodyWeights.length > 0) {
-    for (const w of customBodyWeights) weights.push(w);
+    const sum = customBodyWeights.reduce((a, b) => a + b, 0);
+    const scale = hitCount / sum;
+    for (const w of customBodyWeights) weights.push(w * scale);
   } else {
     for (let i = 0; i < hitCount; i++) weights.push(1.0);
   }
