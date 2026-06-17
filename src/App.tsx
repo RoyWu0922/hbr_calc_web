@@ -102,9 +102,9 @@ export default function App() {
           <div style={{ display: primaryTab === 'damage' && subTab === 'skills' ? 'block' : 'none' }}>
             <SkillDatabase />
           </div>
-          <div style={{ display: primaryTab === 'damage' && subTab === 'history' ? 'block' : 'none' }}>
+          {primaryTab === 'damage' && subTab === 'history' && (
             <HistoryPage onLoad={(entry) => { setHistoryToLoad(entry); setSubTab('calculator'); setPrimaryTab('damage'); }} />
-          </div>
+          )}
           <div style={{ display: primaryTab === 'white' ? 'block' : 'none' }}>
             <WhiteStats />
           </div>

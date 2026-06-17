@@ -30,7 +30,7 @@ function emptyWeakness(): WeaknessSkill { return { name: '', maxPower: 0, minPow
 function emptyBonusEntry(): BonusEntry { return { name: '', value: 0 }; }
 
 const defaultEquipment: Equipment = { ring: false, hpEarring: false, silverNecklace: false };
-const defaultBonus: BonusArea = { passiveAtkEntries: [], passiveDefEntries: [], critDmgBase: 0, critDmgBonus: 0, critDmgExtraEntries: [] };
+const defaultBonus: BonusArea = { passiveAtkEntries: [], passiveDefEntries: [], critDmgBase: 0, critDmgBonus: 0, critDmgExtraEntries: [{ name: '基础暴击', value: 100 }, { name: '暴击', value: 50 }] };
 const defaultOD: ODParams = { origHit: 0, addHit: 0, fixedOD: 0, earringCoeff: 0 };
 const defaultBreak: BreakParams = { skillDR: 0, enemyDR: 0, origHits: 0, earring: 0, necklace: 0, otherDR: 0, superChain: 0, bigChain: 0, midChain: 0, smallChain: 0, maxDR: undefined, initDR: undefined, dists: [] };
 const defaultScore: ScoreParams = { difficulty: 40, turns: 2, hasShield: true, damageCoeff: 0.01, modifier: 1.35 };
