@@ -93,17 +93,11 @@ Web 版全能红烧天堂计算工具箱，支持伤害计算、白值计算、O
   
 
 | 类别 | 技术 |
-
 |------|------|
-
 | 框架 | React 19 + TypeScript |
-
 | 构建 | Vite 8 |
-
 | 样式 | Tailwind CSS 4 |
-
 | 存储 | IndexedDB (idb) + localStorage |
-
 | 部署 | GitHub Pages |
 
   
