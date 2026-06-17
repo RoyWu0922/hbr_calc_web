@@ -40,12 +40,10 @@ function ODCalculator() {
   const [addHit, setAddHit] = useState(0);
   const [fixedOD, setFixedOD] = useState(0);
   const [targets, setTargets] = useState(1);
-  const [earring, setEarring] = useState(0);
+  const [earring, setEarring] = useState(15);
   const [odRise, setOdRise] = useState(0);
   const [odRate, setOdRate] = useState(100);
   const [resist, setResist] = useState(false);
-  const [normalAtk, setNormalAtk] = useState(false);
-
   const calc = () => {
     // J: actual OD gain coefficient
     let j: number;
@@ -53,18 +51,13 @@ function ODCalculator() {
     else if (origHit === 0) j = 0;
     else if (earring === 0) j = 0;
     else j = ((origHit - 1) / 9 * (earring - 5) + 5);
-    j = j / 100 * (normalAtk ? 0 : 1) + 1 + odRise / 100;
+    j = j / 100 + 1 + odRise / 100;
 
     // N: actual OD%
-    let n: number;
-    if (normalAtk) {
-      n = (0.075 + addHit * 2.5 / 100) * j * (resist ? 0 : 1);
-    } else {
-      const part1 = Math.floor(fixedOD * j * 100) / 100;
-      const j25 = Math.floor(j * 2.5 * 100) / 100;
-      const part2 = (origHit + addHit) * (resist ? 0 : 1) * Math.floor(j25 * odRate) / 100 * targets;
-      n = (part1 + part2) / 100;
-    }
+    const part1 = Math.floor(fixedOD * j * 100) / 100;
+    const j25 = Math.floor(j * 2.5 * 100) / 100;
+    const part2 = (origHit + addHit) * (resist ? 0 : 1) * Math.floor(j25 * odRate) / 100 * targets;
+    const n = (part1 + part2) / 100;
     const actualHits = n * 40;
     return { j, n, actualHits };
   };
@@ -100,7 +93,6 @@ function ODCalculator() {
               value={odRise} onChange={e => setOdRise(parseFloat(e.target.value) || 0)} />
           </div>
           <Toggle label="耐性" value={resist} onChange={setResist} />
-          <Toggle label="普攻" value={normalAtk} onChange={setNormalAtk} />
         </div>
         <div className="grid grid-cols-3 gap-3">
           <StatBox label="实际OD上升量" value={fmtDec(r.j, 4)} />
