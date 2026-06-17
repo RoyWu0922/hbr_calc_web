@@ -265,7 +265,7 @@ export const AS_BONUSES: Record<string, Bonus6> = {
   "06": { pow: 0, dex: 3, tough: 0, spr: 2, wis: 5, luck: 2 },
   "07": { pow: 5, dex: 3, tough: 2, spr: 2, wis: 1, luck: 2 },
   "08": { pow: 3, dex: 2, tough: 2, spr: 0, wis: 0, luck: 0 },
-  "09": { pow: 1, dex: 2, tough: 2, spr: 2, wis: 3, luck: 0 },
+  "09": { pow: 0, dex: 2, tough: 2, spr: 2, wis: 3, luck: 0 },
   "10": { pow: 1, dex: 1, tough: 2, spr: 0, wis: 2, luck: 2 },
   "11": { pow: 3, dex: 2, tough: 2, spr: 2, wis: 3, luck: 0 },
   "12": { pow: 3, dex: 3, tough: 2, spr: 0, wis: 0, luck: 2 },
@@ -393,7 +393,7 @@ export interface EquipPreset {
 }
 export const EQUIP_PRESETS: EquipPreset[] = [
   { name: "裸装", pow: 0, dex: 0, tough: 0, spr: 0, wis: 0, luck: 0 },
-  { name: "减防最优配装", pow: 109, dex: 96, tough: 99, spr: 99, wis: 207, luck: 102 },
+  { name: "减防最优配装", pow: 96, dex: 109, tough: 99, spr: 99, wis: 207, luck: 102 },
   { name: "脆弱最优配装", pow: 109, dex: 96, tough: 99, spr: 99, wis: 152, luck: 157 },
   { name: "[对HP+]最优配装", pow: 202, dex: 97, tough: 100, spr: 100, wis: 113, luck: 103 },
   { name: "[对DP+]最优配装", pow: 97, dex: 202, tough: 100, spr: 100, wis: 113, luck: 103 },
