@@ -61,7 +61,7 @@ Web 版全能红烧天堂计算工具箱，支持伤害计算、白值计算、O
 
 - **受击伤害计算**：体力/精神/偏向 → 技能强度插值 → 加防乘区（印记/项链/被动） → 均伤 & 浮动范围
 
-
+### 排轴表正在缓慢开发中
 
   
 
@@ -102,7 +102,7 @@ Web 版全能红烧天堂计算工具箱，支持伤害计算、白值计算、O
 
 | 存储 | IndexedDB (idb) + localStorage |
 
-| 部署 | Vercel / GitHub Pages |
+| 部署 | GitHub Pages |
 
   
 
@@ -151,12 +151,13 @@ npm run build # 构建到 dist/
   
 - Ac1dlc — [GitHub](https://github.com/RoyWu0922) | [B站](https://space.bilibili.com/511146986)
 
-数据&表格贡献：
+感谢：
 - 数据库: [hbr.quest](https://hbr.quest)
 - 伤害计算器&遭遇战分数计算器: [我的心情复杂(b站主页)](https://space.bilibili.com/252297123)
 - od计算器: [不会打牌的qeit(b站主页)](https://space.bilibili.com/269335316)
 - 白值计算器: [凛冬_(b站主页)](https://space.bilibili.com/73493230)
 - 破坏计算器&浮动计算器: [ProSGrnium(b站主页)](https://space.bilibili.com/325104293)
+- 额外支持: [Zjyium(b站主页)](https://space.bilibili.com/3546725866276984)
   
 
 ## License
