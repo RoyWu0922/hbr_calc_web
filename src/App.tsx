@@ -4,12 +4,11 @@ import HistoryPage from './components/History/HistoryPage';
 import SkillDatabase from './components/SkillDb/SkillDatabase';
 import ExtraFeatures from './components/ExtraFeatures/ExtraFeatures';
 import WhiteStats from './components/WhiteStats/WhiteStats';
-import TurnPlannerPage from './components/TurnPlanner/TurnPlanner';
 import { useTheme } from './utils/theme';
 import { decodeShareData } from './utils/shareUrl';
 import { CalcHistoryEntry, DamageResultData } from './types';
 
-type PrimaryTab = 'damage' | 'white' | 'extra' | 'planner';
+type PrimaryTab = 'damage' | 'white' | 'extra';
 type SubTab = 'calculator' | 'skills' | 'history';
 const SUB_TABS: { key: SubTab; label: string }[] = [
   { key: 'calculator', label: '伤害计算' },
@@ -71,7 +70,6 @@ export default function App() {
               <button onClick={() => switchPrimary('damage')} className={`nav-tab ${primaryTab === 'damage' ? 'active' : ''}`}>伤害计算</button>
               <button onClick={() => switchPrimary('white')} className={`nav-tab ${primaryTab === 'white' ? 'active' : ''}`}>白值计算</button>
               <button onClick={() => switchPrimary('extra')} className={`nav-tab ${primaryTab === 'extra' ? 'active' : ''}`}>额外功能</button>
-              <button onClick={() => switchPrimary('planner')} className={`nav-tab ${primaryTab === 'planner' ? 'active' : ''}`}>排轴(开发中)</button>
             </nav>
             {primaryTab === 'damage' && (
               <div className="flex gap-0 ml-2 border-l border-white/10 pl-3">
@@ -112,9 +110,6 @@ export default function App() {
           </div>
           <div style={{ display: primaryTab === 'extra' ? 'block' : 'none' }}>
             <ExtraFeatures />
-          </div>
-          <div style={{ display: primaryTab === 'planner' ? 'block' : 'none' }}>
-            <TurnPlannerPage />
           </div>
         </main>
 
