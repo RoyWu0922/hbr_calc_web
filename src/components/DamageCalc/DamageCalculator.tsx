@@ -191,7 +191,7 @@ export default function DamageCalculator({ initialData }: Props) {
   const atkSum = calcPassiveAtkSum(bonus);
   const defSum = calcPassiveDefSum(bonus);
   const critSum = bonus.critDmgExtraEntries.reduce((s, e) => s + e.value, 0);
-  const earringBonus = equipment.hpEarring ? Math.max(0, 15 - skill.hitCount * 10 / 9 + 10 / 9) : 0;
+  const earringBonus = equipment.hpEarring ? (skill.hitCount >= 10 ? 5 : Math.max(5, 15 - skill.hitCount * 10 / 9 + 10 / 9)) : 0;
 
   return (
     <div className="space-y-6">
