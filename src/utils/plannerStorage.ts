@@ -17,7 +17,7 @@ interface HBRCalcDB extends DBSchema {
   };
   planner_saves: {
     key: number;
-    value: { id?: number; label: string; timestamp: number; state: TurnPlannerState };
+    value: { id?: number; label: string; timestamp: number; state: TurnPlannerState; score: number; turns: number };
     indexes: { timestamp: number };
   };
 }
