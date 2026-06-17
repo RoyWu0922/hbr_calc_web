@@ -138,8 +138,51 @@ export interface ScoreParams {
 }
 
 // ─── Turn Planner ───────────────────────────────────────────
+export interface TurnPlannerChar {
+  name: string;
+  sp: number;           // 当前SP（随回合推进而更新，存在idb里）
+}
+
+export interface FrontAction {
+  charIndex: number;    // 0-5, which character is acting
+  action: string;       // action label (e.g. "增强", "大招")
+  spCost: number;
+  spGain: number;
+  odGain: number;
+  dr: number;
+}
+
+export type TurnType = 'normal' | 'extra';
+export type ODMode = 120 | 300;
+
+export interface PlannerTurn {
+  roundLabel: string;               // "1", "2", "前置OD1", "后置OD2", "追加" etc.
+  turnType: TurnType;
+  frontActions: [FrontAction, FrontAction, FrontAction];
+  backSPGain: [number, number, number];
+  jailOD: number;        // 牢房 (column W in TL.xlsx)
+  passiveOD: number;     // 被动OD (column X)
+  bossDR: number;        // BOSS DR this turn (column AB)
+}
+
+export interface TurnPlannerState {
+  odMode: ODMode;
+  defaultPassiveOD: number;  // 全局被动OD（每回合固定附加）
+  characters: [TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar];
+  turns: PlannerTurn[];
+}
+
+export interface ComputedTurnResult {
+  sp: number[];           // SP for each of 6 chars after this turn
+  odAssist: number;       // Raw OD before cap (column Y)
+  odCapped: number;       // Capped OD (column Z)
+  cumulativeDR: number;   // Cumulative DR applied to boss
+  remainingDR: number;    // Remaining boss DR
+}
+
+// Legacy types kept for backward compatibility
 export interface TurnAction {
-  charIndex: number; // 0-5
+  charIndex: number;
   charName: string;
   spCost: number;
   spGain: number;
@@ -149,9 +192,9 @@ export interface TurnAction {
 
 export interface TurnRow {
   turnNumber: number;
-  actions: (TurnAction | null)[]; // up to 6 actions
-  passiveOD: number; // 被动OD
-  label?: string; // 前置OD1, 后置OD1 etc.
+  actions: (TurnAction | null)[];
+  passiveOD: number;
+  label?: string;
 }
 
 // ─── Calculation Result ─────────────────────────────────────

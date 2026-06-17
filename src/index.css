@@ -373,3 +373,43 @@ input[type="checkbox"]:checked {
   background: var(--app-btn-secondary-hover-bg);
   color: var(--app-text-primary);
 }
+
+/* ─── Planner Table ─────────────────────────────────────── */
+.planner-table {
+  width: max-content;
+  min-width: 100%;
+  font-size: 0.625rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.planner-table th {
+  font-size: 0.5625rem;
+  padding: 0.125rem 0.25rem;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--app-text-muted);
+}
+.planner-table td {
+  padding: 0.0625rem 0.125rem;
+  border-top: 1px solid var(--app-table-border);
+  white-space: nowrap;
+}
+.planner-table .input-field {
+  padding: 0 0.0625rem;
+}
+.planner-table .input-field[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.planner-table .input-field[type="number"]::-webkit-inner-spin-button,
+.planner-table .input-field[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+.planner-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+[data-theme="light"] .planner-table tr:hover td {
+  background: rgba(0, 0, 0, 0.02);
+}
