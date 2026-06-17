@@ -5,15 +5,12 @@ import SkillDatabase from './components/SkillDb/SkillDatabase';
 import ExtraFeatures from './components/ExtraFeatures/ExtraFeatures';
 import WhiteStats from './components/WhiteStats/WhiteStats';
 import TurnPlannerPage from './components/TurnPlanner/TurnPlanner';
-import SimplePlannerPage from './components/TurnPlanner/SimplePlanner';
 import { useTheme } from './utils/theme';
 import { decodeShareData } from './utils/shareUrl';
 import { CalcHistoryEntry, DamageResultData } from './types';
 
 type PrimaryTab = 'damage' | 'white' | 'extra' | 'planner';
 type SubTab = 'calculator' | 'skills' | 'history';
-type PlannerSubTab = 'timeline' | 'simple';
-
 const SUB_TABS: { key: SubTab; label: string }[] = [
   { key: 'calculator', label: '伤害计算' },
   { key: 'skills', label: '技能库' },
@@ -23,7 +20,6 @@ const SUB_TABS: { key: SubTab; label: string }[] = [
 export default function App() {
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('damage');
   const [subTab, setSubTab] = useState<SubTab>('calculator');
-  const [plannerSubTab, setPlannerSubTab] = useState<PlannerSubTab>('timeline');
   const [historyToLoad, setHistoryToLoad] = useState<CalcHistoryEntry | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -75,19 +71,13 @@ export default function App() {
               <button onClick={() => switchPrimary('damage')} className={`nav-tab ${primaryTab === 'damage' ? 'active' : ''}`}>伤害计算</button>
               <button onClick={() => switchPrimary('white')} className={`nav-tab ${primaryTab === 'white' ? 'active' : ''}`}>白值计算</button>
               <button onClick={() => switchPrimary('extra')} className={`nav-tab ${primaryTab === 'extra' ? 'active' : ''}`}>额外功能</button>
-              <button onClick={() => switchPrimary('planner')} className={`nav-tab ${primaryTab === 'planner' ? 'active' : ''}`}>排轴</button>
+              <button onClick={() => switchPrimary('planner')} className={`nav-tab ${primaryTab === 'planner' ? 'active' : ''}`}>排轴(开发中)</button>
             </nav>
             {primaryTab === 'damage' && (
               <div className="flex gap-0 ml-2 border-l border-white/10 pl-3">
                 {SUB_TABS.map(t => (
                   <button key={t.key} onClick={() => setSubTab(t.key)} className={`sub-tab text-xs ${subTab === t.key ? 'active' : ''}`}>{t.label}</button>
                 ))}
-              </div>
-            )}
-            {primaryTab === 'planner' && (
-              <div className="flex gap-0 ml-2 border-l border-white/10 pl-3">
-                <button onClick={() => setPlannerSubTab('timeline')} className={`sub-tab text-xs ${plannerSubTab === 'timeline' ? 'active' : ''}`}>排轴</button>
-                <button onClick={() => setPlannerSubTab('simple')} className={`sub-tab text-xs ${plannerSubTab === 'simple' ? 'active' : ''}`}>简轴</button>
               </div>
             )}
             <div className="flex-1" />
@@ -123,11 +113,8 @@ export default function App() {
           <div style={{ display: primaryTab === 'extra' ? 'block' : 'none' }}>
             <ExtraFeatures />
           </div>
-          <div style={{ display: primaryTab === 'planner' && plannerSubTab === 'timeline' ? 'block' : 'none' }}>
+          <div style={{ display: primaryTab === 'planner' ? 'block' : 'none' }}>
             <TurnPlannerPage />
-          </div>
-          <div style={{ display: primaryTab === 'planner' && plannerSubTab === 'simple' ? 'block' : 'none' }}>
-            <SimplePlannerPage />
           </div>
         </main>
 
