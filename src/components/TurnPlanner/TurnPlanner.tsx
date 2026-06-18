@@ -112,8 +112,8 @@ function ODPanel() {
       {open && (
       <div
         ref={panelRef}
-        className="fixed z-40 w-[320px] max-h-[80vh] overflow-y-auto glass rounded-xl shadow-2xl"
-        style={{ left: pos.x, top: pos.y }}
+        className="fixed z-50 w-[320px] max-h-[80vh] overflow-y-auto rounded-xl shadow-2xl"
+        style={{ left: pos.x, top: pos.y, background: 'var(--app-bg-card)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
       >
         {/* Drag handle */}
         <div
@@ -136,7 +136,7 @@ function ODPanel() {
               <div className="grid grid-cols-3 gap-1.5">
                 <div>
                   <div className="text-[9px] text-text-muted">目标数</div>
-                  <input className={OD_NUM} type="number" value={shared.targets || ''}
+                  <input className={OD_NUM} type="number" placeholder="1" value={shared.targets || ''}
                     onChange={e => setShared(s => ({ ...s, targets: parseInt(e.target.value) || 0 }))} />
                 </div>
                 <div>
@@ -179,11 +179,11 @@ function ODPanel() {
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-text-muted w-4 flex-shrink-0">#{i + 1}</span>
                     <div className="flex-1 grid grid-cols-[1fr_1fr_1fr_2fr]">
-                      <input className={OD_NUM} type="number" value={row.origHit || ''}
+                      <input className={OD_NUM} type="number" placeholder="0" value={row.origHit || ''}
                         onChange={e => updateRow(i, r => ({ ...r, origHit: parseInt(e.target.value) || 0 }))} />
-                      <input className={OD_NUM} type="number" value={row.addHit || ''}
+                      <input className={OD_NUM} type="number" placeholder="0" value={row.addHit || ''}
                         onChange={e => updateRow(i, r => ({ ...r, addHit: parseInt(e.target.value) || 0 }))} />
-                      <input className={OD_NUM} type="number" step="0.1" value={row.fixedOD || ''}
+                      <input className={OD_NUM} type="number" step="0.1" placeholder="0" value={row.fixedOD || ''}
                         onChange={e => updateRow(i, r => ({ ...r, fixedOD: parseFloat(e.target.value) || 0 }))} />
                       <div className="flex items-center">
                         <label className="cursor-pointer select-none pl-1">
@@ -503,7 +503,7 @@ function DetailTable({
                   {/* 当前OD (rowSpan=2) */}
                   <td className={`text-center font-mono font-bold text-xs relative ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`} rowSpan={2}>
                     {fmtFloat(curResult?.odCapped ?? 0, 2)}
-                    <button className="absolute -right-5 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
+                    <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
                       onClick={() => removeTurn(ti)} title="删除">✕</button>
                   </td>
                 </tr>
@@ -566,17 +566,18 @@ const SIMPLE_SLOT_COLORS = [
 
 function SimpleTable({
   state, computed, score, setScore, turnsCount, setTurnsCount, onTitleChange,
+  title, setTitle, author, setAuthor, notes, setNotes,
 }: {
   state: TurnPlannerState;
   computed: ComputedTurnResult[];
   score: number; setScore: (v: number) => void;
   turnsCount: number; setTurnsCount: (v: number) => void;
   onTitleChange: (t: string) => void;
+  title: string; setTitle: (v: string) => void;
+  author: string; setAuthor: (v: string) => void;
+  notes: string; setNotes: (v: string) => void;
 }) {
   const { characters, turns } = state;
-  const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
-  const [notes, setNotes] = useState('');
 
   const shareAxle = () => {
     const data = { title, author, score, turns: turnsCount, notes, state };
@@ -673,7 +674,7 @@ function SimpleTable({
         </div>
 
         {/* Right: Timeline table */}
-        <div className="card overflow-x-auto !p-0" style={{ width: '60%' }}>
+        <div className="card overflow-x-auto !p-0 mx-auto" style={{ width: '48%' }}>
           <table className="planner-table simple-timeline">
             <colgroup>
               <col style={{ width: 52 }} />
@@ -885,6 +886,9 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
   const [axleScore, setAxleScore] = useState(0);
   const [axleTurns, setAxleTurns] = useState(0);
   const [axleTitle, setAxleTitle] = useState('');
+  const [simpleTitle, setSimpleTitle] = useState('');
+  const [simpleAuthor, setSimpleAuthor] = useState('');
+  const [simpleNotes, setSimpleNotes] = useState('');
   const [state, setState] = useState<TurnPlannerState>(() => {
     const s = createDefaultState();
     return { ...s, turns: syncNormalLabels(s.turns) };
@@ -922,8 +926,8 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">排轴</h2>
             <div className="flex gap-0 items-center">
-              <button onClick={() => setSubTab('detail')} className={`sub-tab text-xs ${subTab === 'detail' ? 'active' : ''}`}>排轴详表</button>
-              <button onClick={() => setSubTab('simple')} className={`sub-tab text-xs ${subTab === 'simple' ? 'active' : ''}`}>排轴简表</button>
+              <button onClick={() => setSubTab('detail')} className={`sub-tab text-xs ${subTab === 'detail' ? 'active' : ''}`}>排轴</button>
+              <button onClick={() => setSubTab('simple')} className={`sub-tab text-xs ${subTab === 'simple' ? 'active' : ''}`}>简轴</button>
               <button className="btn btn-secondary btn-xs ml-1 px-2" title="重置" onClick={() => {
                 if (confirm('确定重置排轴？所有未保存的内容将丢失。')) {
                   setState({ ...createDefaultState(), turns: syncNormalLabels(createDefaultState().turns) });
@@ -947,7 +951,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             </div>
           </div>
           {subTab === 'detail' ? <DetailTable state={state} setState={setState} computed={computed} /> :
-           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} onTitleChange={setAxleTitle} />}
+           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} onTitleChange={setAxleTitle} title={simpleTitle} setTitle={setSimpleTitle} author={simpleAuthor} setAuthor={setSimpleAuthor} notes={simpleNotes} setNotes={setSimpleNotes} />}
         </>
       )}
       <ODPanel />

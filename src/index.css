@@ -472,10 +472,14 @@ input[type="checkbox"]:checked {
   margin: 0;
 }
 
-/* simple timeline — taller rows */
+/* simple timeline — taller rows + outer border */
 .simple-timeline td {
-  padding-top: 0.2rem;
-  padding-bottom: 0.2rem;
+  padding-top: 0.24rem;
+  padding-bottom: 0.24rem;
+}
+.simple-timeline {
+  border: 1px solid var(--app-card-border);
+  border-radius: 0.75rem;
 }
 
 /* spacer row — no gridlines */
