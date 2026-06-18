@@ -44,16 +44,16 @@
   /* Planner table — spreadsheet aesthetic */
   --planner-grid-border: rgba(255, 255, 255, 0.1);
   --planner-header-bg: rgba(255, 255, 255, 0.06);
-  --planner-col-front: rgba(99, 102, 241, 0.06);
-  --planner-col-back: rgba(148, 163, 184, 0.05);
-  --planner-col-od: rgba(245, 158, 11, 0.05);
+  --planner-col-front: rgba(129, 140, 248, 0.08);
+  --planner-col-back: rgba(148, 163, 184, 0.06);
+  --planner-col-od: rgba(251, 191, 36, 0.08);
   --planner-input-border: rgba(255, 255, 255, 0.1);
   --planner-row-hover: rgba(255, 255, 255, 0.03);
 
   /* Simple table slot colors */
-  --simple-slot1: rgba(251, 146, 60, 0.08);
-  --simple-slot2: rgba(99, 102, 241, 0.08);
-  --simple-slot3: rgba(250, 204, 21, 0.08);
+  --simple-slot1: rgba(251, 146, 60, 0.1);
+  --simple-slot2: rgba(129, 140, 248, 0.1);
+  --simple-slot3: rgba(52, 211, 153, 0.08);
 }
 
 [data-theme="light"] {
@@ -99,16 +99,16 @@
   /* Planner table — spreadsheet aesthetic */
   --planner-grid-border: rgba(0, 0, 0, 0.1);
   --planner-header-bg: rgba(0, 0, 0, 0.04);
-  --planner-col-front: rgba(99, 102, 241, 0.04);
-  --planner-col-back: rgba(100, 116, 139, 0.04);
-  --planner-col-od: rgba(245, 158, 11, 0.04);
+  --planner-col-front: rgba(129, 140, 248, 0.06);
+  --planner-col-back: rgba(148, 163, 184, 0.04);
+  --planner-col-od: rgba(251, 191, 36, 0.06);
   --planner-input-border: rgba(0, 0, 0, 0.15);
   --planner-row-hover: rgba(0, 0, 0, 0.03);
 
   /* Simple table slot colors */
-  --simple-slot1: rgba(251, 146, 60, 0.1);
-  --simple-slot2: rgba(99, 102, 241, 0.1);
-  --simple-slot3: rgba(250, 204, 21, 0.1);
+  --simple-slot1: rgba(251, 146, 60, 0.08);
+  --simple-slot2: rgba(129, 140, 248, 0.08);
+  --simple-slot3: rgba(52, 211, 153, 0.06);
 }
 
 @theme {
@@ -480,6 +480,8 @@ input[type="checkbox"]:checked {
 .simple-timeline {
   border: 1px solid var(--app-card-border);
   border-radius: 0.75rem;
+  width: 100% !important;
+  table-layout: fixed;
 }
 
 /* spacer row — no gridlines */

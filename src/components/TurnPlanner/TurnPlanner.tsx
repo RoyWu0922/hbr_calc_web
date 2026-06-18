@@ -5,6 +5,174 @@ import { loadPlannerState, savePlannerState, saveAxle, getSavedAxles, updateAxle
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
 
+// ─── Planner Style Presets ─────────────────────────────────────
+type PlannerStyleName = '默认' | '晨雾绿' | '樱花拿铁' | '海盐薰衣草' | '抹茶奶昔' | '晚樱浅烟' | '云杉晨曦' | '柑橘薄荷' | '莓果奶昔' | '热带椰风' | '向日葵蓝天' | '蜜桃乌龙' | '浆果薰衣草' | '霓虹日落' | '热带果汁' | '撞色波普' | '电光彩虹' | '糖果撞色' | '赛博朋克';
+
+// prettier-ignore
+const PLANNER_STYLES: Record<PlannerStyleName, Record<string, string>> = {
+  '默认': {
+    '--planner-col-front': 'rgba(129, 140, 248, 0.08)',
+    '--planner-col-back': 'rgba(148, 163, 184, 0.06)',
+    '--planner-col-od': 'rgba(251, 191, 36, 0.08)',
+    '--simple-slot1': 'rgba(251, 146, 60, 0.1)',
+    '--simple-slot2': 'rgba(129, 140, 248, 0.1)',
+    '--simple-slot3': 'rgba(52, 211, 153, 0.08)',
+  },
+  '晨雾绿': {
+    '--planner-col-front': 'rgba(167, 213, 176, 0.1)',
+    '--planner-col-back': 'rgba(200, 210, 200, 0.06)',
+    '--planner-col-od': 'rgba(188, 210, 160, 0.08)',
+    '--simple-slot1': 'rgba(167, 213, 176, 0.12)',
+    '--simple-slot2': 'rgba(176, 196, 212, 0.1)',
+    '--simple-slot3': 'rgba(200, 210, 188, 0.08)',
+  },
+  '樱花拿铁': {
+    '--planner-col-front': 'rgba(244, 194, 194, 0.1)',
+    '--planner-col-back': 'rgba(200, 190, 185, 0.06)',
+    '--planner-col-od': 'rgba(240, 210, 195, 0.08)',
+    '--simple-slot1': 'rgba(244, 194, 194, 0.12)',
+    '--simple-slot2': 'rgba(210, 195, 210, 0.1)',
+    '--simple-slot3': 'rgba(235, 215, 200, 0.08)',
+  },
+  '海盐薰衣草': {
+    '--planner-col-front': 'rgba(200, 190, 225, 0.1)',
+    '--planner-col-back': 'rgba(185, 200, 215, 0.06)',
+    '--planner-col-od': 'rgba(240, 220, 230, 0.08)',
+    '--simple-slot1': 'rgba(200, 190, 225, 0.12)',
+    '--simple-slot2': 'rgba(185, 210, 210, 0.1)',
+    '--simple-slot3': 'rgba(215, 205, 220, 0.08)',
+  },
+  '抹茶奶昔': {
+    '--planner-col-front': 'rgba(168, 194, 152, 0.1)',
+    '--planner-col-back': 'rgba(200, 195, 180, 0.06)',
+    '--planner-col-od': 'rgba(210, 200, 170, 0.08)',
+    '--simple-slot1': 'rgba(168, 194, 152, 0.12)',
+    '--simple-slot2': 'rgba(190, 200, 175, 0.1)',
+    '--simple-slot3': 'rgba(205, 195, 175, 0.08)',
+  },
+  '晚樱浅烟': {
+    '--planner-col-front': 'rgba(230, 195, 200, 0.1)',
+    '--planner-col-back': 'rgba(200, 195, 210, 0.06)',
+    '--planner-col-od': 'rgba(235, 210, 215, 0.08)',
+    '--simple-slot1': 'rgba(230, 195, 200, 0.12)',
+    '--simple-slot2': 'rgba(200, 200, 215, 0.1)',
+    '--simple-slot3': 'rgba(220, 205, 200, 0.08)',
+  },
+  '云杉晨曦': {
+    '--planner-col-front': 'rgba(175, 195, 195, 0.1)',
+    '--planner-col-back': 'rgba(195, 195, 190, 0.06)',
+    '--planner-col-od': 'rgba(210, 200, 200, 0.08)',
+    '--simple-slot1': 'rgba(175, 195, 195, 0.12)',
+    '--simple-slot2': 'rgba(210, 200, 215, 0.1)',
+    '--simple-slot3': 'rgba(195, 205, 195, 0.08)',
+  },
+  '柑橘薄荷': {
+    '--planner-col-front': 'rgba(251, 146, 60, 0.12)',
+    '--planner-col-back': 'rgba(134, 239, 172, 0.08)',
+    '--planner-col-od': 'rgba(250, 204, 21, 0.1)',
+    '--simple-slot1': 'rgba(251, 146, 60, 0.14)',
+    '--simple-slot2': 'rgba(56, 189, 248, 0.12)',
+    '--simple-slot3': 'rgba(134, 239, 172, 0.1)',
+  },
+  '莓果奶昔': {
+    '--planner-col-front': 'rgba(251, 113, 133, 0.12)',
+    '--planner-col-back': 'rgba(216, 180, 254, 0.08)',
+    '--planner-col-od': 'rgba(244, 114, 182, 0.1)',
+    '--simple-slot1': 'rgba(251, 113, 133, 0.14)',
+    '--simple-slot2': 'rgba(216, 180, 254, 0.12)',
+    '--simple-slot3': 'rgba(134, 239, 172, 0.1)',
+  },
+  '热带椰风': {
+    '--planner-col-front': 'rgba(251, 146, 60, 0.12)',
+    '--planner-col-back': 'rgba(56, 189, 248, 0.08)',
+    '--planner-col-od': 'rgba(250, 204, 21, 0.1)',
+    '--simple-slot1': 'rgba(253, 126, 20, 0.14)',
+    '--simple-slot2': 'rgba(134, 239, 172, 0.12)',
+    '--simple-slot3': 'rgba(56, 189, 248, 0.1)',
+  },
+  '向日葵蓝天': {
+    '--planner-col-front': 'rgba(250, 204, 21, 0.12)',
+    '--planner-col-back': 'rgba(56, 189, 248, 0.08)',
+    '--planner-col-od': 'rgba(251, 146, 60, 0.1)',
+    '--simple-slot1': 'rgba(250, 204, 21, 0.14)',
+    '--simple-slot2': 'rgba(56, 189, 248, 0.12)',
+    '--simple-slot3': 'rgba(134, 239, 172, 0.1)',
+  },
+  '蜜桃乌龙': {
+    '--planner-col-front': 'rgba(251, 161, 101, 0.12)',
+    '--planner-col-back': 'rgba(180, 130, 80, 0.08)',
+    '--planner-col-od': 'rgba(210, 180, 140, 0.1)',
+    '--simple-slot1': 'rgba(251, 161, 101, 0.14)',
+    '--simple-slot2': 'rgba(134, 239, 172, 0.1)',
+    '--simple-slot3': 'rgba(56, 189, 248, 0.08)',
+  },
+  '浆果薰衣草': {
+    '--planner-col-front': 'rgba(192, 38, 211, 0.12)',
+    '--planner-col-back': 'rgba(168, 85, 247, 0.08)',
+    '--planner-col-od': 'rgba(250, 204, 21, 0.1)',
+    '--simple-slot1': 'rgba(192, 38, 211, 0.14)',
+    '--simple-slot2': 'rgba(168, 85, 247, 0.12)',
+    '--simple-slot3': 'rgba(250, 204, 21, 0.1)',
+  },
+  '霓虹日落': {
+    '--planner-col-front': 'rgba(255, 107, 53, 0.14)',
+    '--planner-col-back': 'rgba(58, 12, 163, 0.08)',
+    '--planner-col-od': 'rgba(255, 214, 10, 0.12)',
+    '--simple-slot1': 'rgba(247, 37, 133, 0.14)',
+    '--simple-slot2': 'rgba(6, 214, 160, 0.12)',
+    '--simple-slot3': 'rgba(255, 107, 53, 0.12)',
+  },
+  '热带果汁': {
+    '--planner-col-front': 'rgba(255, 51, 102, 0.14)',
+    '--planner-col-back': 'rgba(0, 180, 216, 0.08)',
+    '--planner-col-od': 'rgba(255, 195, 0, 0.12)',
+    '--simple-slot1': 'rgba(46, 204, 113, 0.14)',
+    '--simple-slot2': 'rgba(157, 78, 221, 0.12)',
+    '--simple-slot3': 'rgba(255, 51, 102, 0.1)',
+  },
+  '撞色波普': {
+    '--planner-col-front': 'rgba(230, 57, 70, 0.14)',
+    '--planner-col-back': 'rgba(29, 53, 87, 0.08)',
+    '--planner-col-od': 'rgba(244, 211, 94, 0.12)',
+    '--simple-slot1': 'rgba(42, 157, 143, 0.14)',
+    '--simple-slot2': 'rgba(244, 162, 97, 0.12)',
+    '--simple-slot3': 'rgba(230, 57, 70, 0.1)',
+  },
+  '电光彩虹': {
+    '--planner-col-front': 'rgba(255, 0, 110, 0.14)',
+    '--planner-col-back': 'rgba(131, 56, 236, 0.08)',
+    '--planner-col-od': 'rgba(255, 190, 11, 0.12)',
+    '--simple-slot1': 'rgba(251, 86, 7, 0.14)',
+    '--simple-slot2': 'rgba(58, 134, 255, 0.12)',
+    '--simple-slot3': 'rgba(255, 0, 110, 0.1)',
+  },
+  '糖果撞色': {
+    '--planner-col-front': 'rgba(239, 35, 60, 0.14)',
+    '--planner-col-back': 'rgba(76, 201, 240, 0.08)',
+    '--planner-col-od': 'rgba(255, 214, 10, 0.12)',
+    '--simple-slot1': 'rgba(6, 214, 160, 0.14)',
+    '--simple-slot2': 'rgba(201, 24, 74, 0.12)',
+    '--simple-slot3': 'rgba(239, 35, 60, 0.1)',
+  },
+  '赛博朋克': {
+    '--planner-col-front': 'rgba(242, 34, 255, 0.14)',
+    '--planner-col-back': 'rgba(106, 0, 244, 0.08)',
+    '--planner-col-od': 'rgba(204, 255, 0, 0.12)',
+    '--simple-slot1': 'rgba(0, 245, 255, 0.14)',
+    '--simple-slot2': 'rgba(255, 84, 0, 0.12)',
+    '--simple-slot3': 'rgba(242, 34, 255, 0.1)',
+  },
+};
+
+function usePlannerStyle() {
+  const [style, setStyle] = useState<PlannerStyleName>(() => {
+    const saved = localStorage.getItem('planner-style');
+    return (saved && saved in PLANNER_STYLES) ? saved as PlannerStyleName : '默认';
+  });
+  const setAndSave = (s: PlannerStyleName) => { setStyle(s); localStorage.setItem('planner-style', s); };
+  return { style, setStyle: setAndSave, vars: PLANNER_STYLES[style] };
+}
+
 // ─── Floating OD Panel ────────────────────────────────────────
 interface ODShared {
   targets: number;
@@ -350,7 +518,7 @@ function DetailTable({
 
       <table className="planner-table">
         <colgroup>
-          <col style={{ width: 52 }} />
+          <col style={{ width: 48 }} />
           {[1,2,3].map(n => <Fragment key={n}>
             <col className="planner-col-front planner-col-group-start" style={{ width: 45 }} />
             <col className="planner-col-front" style={{ width: 30 }} />
@@ -370,7 +538,7 @@ function DetailTable({
             {[1, 2, 3].map(n => <th key={n} colSpan={4} className="text-center">前{n}</th>)}
             {[1, 2, 3].map(n => <th key={`b${n}`} colSpan={2} className="text-center">后{n}</th>)}
             <th>被动OD</th>
-            <th>OD</th>
+            <th>总计OD</th>
           </tr>
         </thead>
         <tbody>
@@ -421,14 +589,13 @@ function DetailTable({
             if (!isOD && !isExtra) normalCounter++;
             const typeKey = getTurnTypeKey(turn);
             const rowBgA = isOD ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
-            const rowBgB = isOD ? 'rgba(239,68,68,0.03)' : isExtra ? 'rgba(34,197,94,0.02)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
             const backChars = [0, 1, 2, 3, 4, 5].filter(i => !frontIdxSet.has(i));
 
             return (
               <Fragment key={ti}>
                 {/* Row A: 角色 + 行动 */}
-                <tr style={{ background: rowBgA }}>
+                <tr>
                   <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${isOD ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
                     style={{ background: rowBgA || undefined }} rowSpan={2}>
                     <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer"
@@ -509,7 +676,7 @@ function DetailTable({
                 </tr>
 
                 {/* Row B: SP | 消耗 | 获得 | OD */}
-                <tr style={{ background: rowBgB }}>
+                <tr>
                   {turn.frontActions.map((fa, ai) => {
                     const curSP = prevResult?.sp[fa.charIndex] ?? (fa.charIndex >= 0 ? characters[fa.charIndex].sp : 0);
                     return (
@@ -675,16 +842,16 @@ function SimpleTable({
 
         {/* Right: Timeline table */}
         <div className="card overflow-x-auto !p-0 mx-auto" style={{ width: '48%' }}>
-          <table className="planner-table simple-timeline">
+          <table className="planner-table simple-timeline" style={{ tableLayout: 'fixed', width: '100%' }}>
             <colgroup>
-              <col style={{ width: 52 }} />
-              <col style={{ width: 64, background: SIMPLE_SLOT_COLORS[0] }} />
-              <col style={{ background: SIMPLE_SLOT_COLORS[0] }} />
-              <col style={{ width: 64, background: SIMPLE_SLOT_COLORS[1] }} />
-              <col style={{ background: SIMPLE_SLOT_COLORS[1] }} />
-              <col style={{ width: 64, background: SIMPLE_SLOT_COLORS[2] }} />
-              <col style={{ background: SIMPLE_SLOT_COLORS[2] }} />
-              <col style={{ width: 72 }} />
+              <col style={{ width: 56 }} />
+              <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[0] }} />
+              <col style={{ width: 100, background: SIMPLE_SLOT_COLORS[0] }} />
+              <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[1] }} />
+              <col style={{ width: 100, background: SIMPLE_SLOT_COLORS[1] }} />
+              <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[2] }} />
+              <col style={{ width: 100, background: SIMPLE_SLOT_COLORS[2] }} />
+              <col style={{ width: 64 }} />
             </colgroup>
             {/* Meta header rows */}
             <thead>
@@ -722,8 +889,9 @@ function SimpleTable({
                 }));
 
                 return (
-                  <tr key={ti} style={{ background: rowBg }}>
-                    <td className={`font-bold text-xs ${isOD ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}>
+                  <tr key={ti}>
+                    <td className={`font-bold text-xs ${isOD ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
+                      style={{ background: rowBg || undefined }}>
                       {turn.roundLabel}
                     </td>
                     {actionPairs.map((pair, ai) => (
@@ -885,6 +1053,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
   const [subTab, setSubTab] = useState<PlannerSubTab>('detail');
   const [axleScore, setAxleScore] = useState(0);
   const [axleTurns, setAxleTurns] = useState(0);
+  const { style, setStyle, vars: styleVars } = usePlannerStyle();
   const [axleTitle, setAxleTitle] = useState('');
   const [simpleTitle, setSimpleTitle] = useState('');
   const [simpleAuthor, setSimpleAuthor] = useState('');
@@ -918,7 +1087,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
   if (!loaded) return <div className="text-text-muted p-8 text-center">加载中...</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={styleVars as React.CSSProperties}>
       {mode === 'saved' ? (
         <SavedAxles state={state} onLoad={s => { setState(s); onSwitchToEditor(); }} />
       ) : (
@@ -928,6 +1097,9 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             <div className="flex gap-0 items-center">
               <button onClick={() => setSubTab('detail')} className={`sub-tab text-xs ${subTab === 'detail' ? 'active' : ''}`}>排轴</button>
               <button onClick={() => setSubTab('simple')} className={`sub-tab text-xs ${subTab === 'simple' ? 'active' : ''}`}>简轴</button>
+              <select className="input-field text-xs py-0.5 w-20 ml-1" value={style} onChange={e => setStyle(e.target.value as PlannerStyleName)}>
+                {Object.keys(PLANNER_STYLES).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
               <button className="btn btn-secondary btn-xs ml-1 px-2" title="重置" onClick={() => {
                 if (confirm('确定重置排轴？所有未保存的内容将丢失。')) {
                   setState({ ...createDefaultState(), turns: syncNormalLabels(createDefaultState().turns) });
