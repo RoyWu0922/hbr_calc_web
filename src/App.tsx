@@ -57,11 +57,8 @@ export default function App() {
   }, []);
 
   const switchPrimary = useCallback((tab: PrimaryTab) => {
-    if (primaryTab === 'damage' && tab !== 'damage') {
-      if (!confirm('切换到其他页面会离开伤害计算，是否继续？\n（伤害计算的内容会保留在当前标签页中）')) return;
-    }
     setPrimaryTab(tab);
-  }, [primaryTab]);
+  }, []);
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--app-bg)' }}>
