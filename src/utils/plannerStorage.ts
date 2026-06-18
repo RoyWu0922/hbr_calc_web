@@ -192,6 +192,11 @@ export async function duplicateAxle(id: number): Promise<number> {
   return db.add('planner_saves', copy) as Promise<number>;
 }
 
+export async function clearAllAxles(): Promise<void> {
+  const db = await getDB();
+  await db.clear('planner_saves');
+}
+
 export async function deleteAxle(id: number): Promise<void> {
   const db = await getDB();
   await db.delete('planner_saves', id);

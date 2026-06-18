@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { TurnPlannerState, PlannerTurn, FrontAction, ODMode, ComputedTurnResult } from '../../types';
 import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner';
-import { loadPlannerState, savePlannerState, saveAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, type SavedAxle } from '../../utils/plannerStorage';
+import { loadPlannerState, savePlannerState, saveAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, clearAllAxles, type SavedAxle } from '../../utils/plannerStorage';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
 
@@ -565,12 +565,13 @@ const SIMPLE_SLOT_COLORS = [
 ] as const;
 
 function SimpleTable({
-  state, computed, score, setScore, turnsCount, setTurnsCount,
+  state, computed, score, setScore, turnsCount, setTurnsCount, onTitleChange,
 }: {
   state: TurnPlannerState;
   computed: ComputedTurnResult[];
   score: number; setScore: (v: number) => void;
   turnsCount: number; setTurnsCount: (v: number) => void;
+  onTitleChange: (t: string) => void;
 }) {
   const { characters, turns } = state;
   const [title, setTitle] = useState('');
@@ -642,7 +643,7 @@ function SimpleTable({
         <div className="card space-y-2 text-sm flex-shrink-0" style={{ width: 400 }}>
           <div>
             <div className="input-label">标题</div>
-            <input className="input-field text-xs py-1.5" placeholder="第xx期打分 xx队 无限od流" value={title} onChange={e => setTitle(e.target.value)} />
+            <input className="input-field text-xs py-1.5" placeholder="第xx期打分 xx队 无限od流" value={title} onChange={e => { setTitle(e.target.value); onTitleChange(e.target.value); }} />
           </div>
           <div>
             <div className="input-label">轴作者</div>
@@ -824,6 +825,14 @@ function SavedAxles({
             <button onClick={() => setSortBy('score')} className={`px-1.5 py-0.5 rounded ${sortBy === 'score' ? 'bg-accent/20 text-accent' : 'text-text-muted'}`}>分数</button>
             <button onClick={() => setSortBy('turns')} className={`px-1.5 py-0.5 rounded ${sortBy === 'turns' ? 'bg-accent/20 text-accent' : 'text-text-muted'}`}>回合</button>
           </div>
+          <div className="flex-1" />
+          {entries.length > 0 && (
+            <button className="btn btn-danger btn-xs" onClick={async () => {
+              if (!confirm('确定清空所有保存的轴？此操作不可恢复。')) return;
+              await clearAllAxles();
+              await load();
+            }}>清空</button>
+          )}
         </div>
         {entries.length === 0 ? (
           <div className="text-text-muted text-sm text-center py-8">暂无保存</div>
@@ -851,9 +860,15 @@ function SavedAxles({
                     {entry.turns > 0 && <span className="ml-3">回合 {entry.turns}</span>}
                   </div>
                 </div>
-                <button className="btn btn-primary btn-xs" onClick={() => onLoad(entry.state)}>加载</button>
-                <button className="btn btn-secondary btn-xs" onClick={() => entry.id != null && handleCopy(entry.id)}>复制</button>
-                <button className="btn btn-danger btn-xs" onClick={() => entry.id != null && handleDelete(entry.id)}>删除</button>
+                <button className="btn btn-primary btn-xs px-2" onClick={() => onLoad(entry.state)} title="加载">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button className="btn btn-secondary btn-xs px-2" onClick={() => entry.id != null && handleCopy(entry.id)} title="复制">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+                <button className="btn btn-danger btn-xs px-2" onClick={() => entry.id != null && handleDelete(entry.id)} title="删除">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
               </div>
             ))}
           </div>
@@ -869,6 +884,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
   const [subTab, setSubTab] = useState<PlannerSubTab>('detail');
   const [axleScore, setAxleScore] = useState(0);
   const [axleTurns, setAxleTurns] = useState(0);
+  const [axleTitle, setAxleTitle] = useState('');
   const [state, setState] = useState<TurnPlannerState>(() => {
     const s = createDefaultState();
     return { ...s, turns: syncNormalLabels(s.turns) };
@@ -918,7 +934,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
                 </svg>
               </button>
               <button className="btn btn-primary btn-xs ml-1 px-2" title="保存到记录" onClick={async () => {
-                const label = new Date().toLocaleString('zh-CN');
+                const label = axleTitle.trim() || new Date().toLocaleString('zh-CN');
                 await saveAxle(label, state, axleScore, axleTurns);
                 alert('已保存');
               }}>
@@ -931,7 +947,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             </div>
           </div>
           {subTab === 'detail' ? <DetailTable state={state} setState={setState} computed={computed} /> :
-           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} />}
+           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} onTitleChange={setAxleTitle} />}
         </>
       )}
       <ODPanel />
