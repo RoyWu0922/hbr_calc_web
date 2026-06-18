@@ -40,6 +40,20 @@
   --app-toggle-border: rgba(255, 255, 255, 0.2);
   --app-stat-bg: rgba(255, 255, 255, 0.05);
   --app-stat-border: rgba(255, 255, 255, 0.05);
+
+  /* Planner table — spreadsheet aesthetic */
+  --planner-grid-border: rgba(255, 255, 255, 0.1);
+  --planner-header-bg: rgba(255, 255, 255, 0.06);
+  --planner-col-front: rgba(99, 102, 241, 0.06);
+  --planner-col-back: rgba(148, 163, 184, 0.05);
+  --planner-col-od: rgba(245, 158, 11, 0.05);
+  --planner-input-border: rgba(255, 255, 255, 0.1);
+  --planner-row-hover: rgba(255, 255, 255, 0.03);
+
+  /* Simple table slot colors */
+  --simple-slot1: rgba(251, 146, 60, 0.08);
+  --simple-slot2: rgba(99, 102, 241, 0.08);
+  --simple-slot3: rgba(250, 204, 21, 0.08);
 }
 
 [data-theme="light"] {
@@ -81,6 +95,20 @@
   --app-toggle-border: rgba(0, 0, 0, 0.15);
   --app-stat-bg: rgba(0, 0, 0, 0.03);
   --app-stat-border: rgba(0, 0, 0, 0.04);
+
+  /* Planner table — spreadsheet aesthetic */
+  --planner-grid-border: rgba(0, 0, 0, 0.1);
+  --planner-header-bg: rgba(0, 0, 0, 0.04);
+  --planner-col-front: rgba(99, 102, 241, 0.04);
+  --planner-col-back: rgba(100, 116, 139, 0.04);
+  --planner-col-od: rgba(245, 158, 11, 0.04);
+  --planner-input-border: rgba(0, 0, 0, 0.15);
+  --planner-row-hover: rgba(0, 0, 0, 0.03);
+
+  /* Simple table slot colors */
+  --simple-slot1: rgba(251, 146, 60, 0.1);
+  --simple-slot2: rgba(99, 102, 241, 0.1);
+  --simple-slot3: rgba(250, 204, 21, 0.1);
 }
 
 @theme {
@@ -379,23 +407,59 @@ input[type="checkbox"]:checked {
   width: max-content;
   min-width: 100%;
   font-size: 0.625rem;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
 }
-.planner-table th {
+
+/* header */
+.planner-table thead th {
   font-size: 0.5625rem;
   padding: 0.125rem 0.25rem;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--app-text-muted);
+  text-align: center;
+  vertical-align: middle;
+  border: 1px solid var(--planner-grid-border);
+  background: var(--planner-header-bg);
 }
+.planner-table thead th.bg-bg-card {
+  background-color: var(--app-bg-card);
+}
+
+/* body cells */
 .planner-table td {
   padding: 0.0625rem 0.125rem;
-  border-top: 1px solid var(--app-table-border);
   white-space: nowrap;
+  text-align: center;
+  vertical-align: middle;
+  border: 1px solid var(--planner-grid-border);
 }
+
+/* thicker left border at start of each character group */
+.planner-col-group-start {
+  border-left: 2px solid var(--planner-grid-border);
+}
+
+/* column-based backgrounds (via <col> elements) */
+.planner-col-front { background: var(--planner-col-front); }
+.planner-col-back  { background: var(--planner-col-back); }
+.planner-col-od    { background: var(--planner-col-od); }
+
+/* flat inputs inside table — no glass morphism */
 .planner-table .input-field {
   padding: 0 0.0625rem;
+  background-color: transparent;
+  background-image: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 0;
+  box-shadow: none;
+  border: 1px solid var(--planner-input-border);
+}
+.planner-table .input-field:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: none;
+  outline: none;
 }
 .planner-table .input-field[type="number"] {
   -moz-appearance: textfield;
@@ -407,9 +471,23 @@ input[type="checkbox"]:checked {
   appearance: none;
   margin: 0;
 }
-.planner-table tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+
+/* simple timeline — taller rows */
+.simple-timeline td {
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
 }
-[data-theme="light"] .planner-table tr:hover td {
-  background: rgba(0, 0, 0, 0.02);
+
+/* spacer row — no gridlines */
+.planner-spacer td {
+  border: none;
+  height: 6px;
+}
+
+/* row hover */
+.planner-table tbody tr:hover td {
+  background: var(--planner-row-hover);
+}
+[data-theme="light"] .planner-table tbody tr:hover td {
+  background: var(--planner-row-hover);
 }

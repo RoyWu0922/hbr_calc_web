@@ -160,11 +160,12 @@ npm run build # 构建到 dist/
 
 感谢：
 - 数据库: [hbr.quest](https://hbr.quest)
-- 伤害计算器&遭遇战分数计算器: [我的心情复杂(b站主页)](https://space.bilibili.com/252297123)
-- od计算器: [不会打牌的qeit(b站主页)](https://space.bilibili.com/269335316)
-- 白值计算器: [凛冬_(b站主页)](https://space.bilibili.com/73493230)
-- 破坏计算器&浮动计算器: [ProSGrnium(b站主页)](https://space.bilibili.com/325104293)
-- 额外支持: [Zjyium(b站主页)](https://space.bilibili.com/3546725866276984)
+- 伤害计算器&遭遇战分数计算器: 我的心情复杂 [b站主页](https://space.bilibili.com/252297123)
+- od计算器: 不会打牌的qeit [b站主页](https://space.bilibili.com/269335316)
+- 白值计算器: 凛冬_ [b站主页](https://space.bilibili.com/73493230)
+- 破坏计算器&浮动计算器: ProSGrnium [b站主页](https://space.bilibili.com/325104293)
+- 轴表样式&公式: 梢P紫苑寺 [b站主页](https://space.bilibili.com/4084625)
+- 额外支持:Zjyium [b站主页](https://space.bilibili.com/3546725866276984)
   
 
 ## License

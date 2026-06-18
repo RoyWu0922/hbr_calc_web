@@ -5,6 +5,217 @@ import { loadPlannerState, savePlannerState, saveAxle, getSavedAxles, updateAxle
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
 
+// ─── Floating OD Panel ────────────────────────────────────────
+interface ODShared {
+  targets: number;
+  odRate: number;
+  odRise: number;
+}
+
+interface ODRow {
+  origHit: number;
+  addHit: number;
+  earring: boolean;
+  fixedOD: number;
+}
+
+function calcODRow(row: ODRow, shared: ODShared) {
+  const { origHit, addHit, earring, fixedOD } = row;
+  const { targets, odRate, odRise } = shared;
+  const earringVal = earring ? 15 : 0;
+
+  // J: actual OD gain coefficient (Copy-OD method)
+  let j: number;
+  if (origHit > 9) j = earringVal;
+  else if (origHit === 0) j = 0;
+  else if (earringVal === 0) j = 0;
+  else j = ((origHit - 1) / 9 * (earringVal - 5) + 5);
+  j = j / 100 + 1 + odRise / 100;
+
+  const part1 = Math.floor(fixedOD * j * 100) / 100;
+  const j25 = Math.floor(j * 2.5 * 100) / 100;
+  const part2 = (origHit + addHit) * Math.floor(j25 * odRate) / 100 * targets;
+  const n = (part1 + part2) / 100;
+  const actualHits = n * 40;
+  return { n, actualHits };
+}
+
+const OD_NUM = 'bg-transparent border-0 text-center text-[10px] py-0.5 w-full';
+
+function ODPanel() {
+  const [open, setOpen] = useState(false);
+  const [shared, setShared] = useState<ODShared>({ targets: 1, odRate: 100, odRise: 0 });
+  const [rows, setRows] = useState<ODRow[]>([
+    { origHit: 0, addHit: 0, earring: true, fixedOD: 0 },
+  ]);
+  const [showHit, setShowHit] = useState(false);
+  const [pos, setPos] = useState(() => ({
+    x: window.innerWidth - 340,
+    y: Math.max(0, window.innerHeight / 2 - 250),
+  }));
+  const dragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 });
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    dragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current) return;
+      setPos({
+        x: Math.max(0, Math.min(window.innerWidth - 340, dragStart.current.px + ev.clientX - dragStart.current.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 60, dragStart.current.py + ev.clientY - dragStart.current.y)),
+      });
+    };
+    const onUp = () => { dragging.current = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const toggleShowHit = () => setShowHit(prev => !prev);
+
+  const addRow = () => setRows(prev => [...prev, { origHit: 0, addHit: 0, earring: true, fixedOD: 0 }]);
+  const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
+
+  const updateRow = (i: number, fn: (r: ODRow) => ODRow) => {
+    setRows(prev => prev.map((r, idx) => idx === i ? fn(r) : r));
+  };
+
+  const [sharedOpen, setSharedOpen] = useState(true);
+
+  return (
+    <>
+      {/* Always-visible tab at right edge */}
+      <div
+        className="fixed z-50 flex"
+        style={{ right: 0, top: '40%' }}
+      >
+        {!open ? (
+          <button
+            className="bg-bg-card border border-white/10 border-r-0 rounded-l-lg px-1.5 py-3 text-[11px] text-text-muted hover:text-text-primary transition-colors"
+            style={{ writingMode: 'vertical-rl' }}
+            onClick={() => setOpen(true)}
+          >
+            OD计算
+          </button>
+        ) : (
+          <button
+            className="bg-bg-card border border-white/10 rounded-l-lg px-1 py-3 text-[10px] text-text-muted hover:text-text-primary transition-colors"
+            onClick={() => setOpen(false)}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Draggable panel */}
+      {open && (
+      <div
+        ref={panelRef}
+        className="fixed z-40 w-[320px] max-h-[80vh] overflow-y-auto glass rounded-xl shadow-2xl"
+        style={{ left: pos.x, top: pos.y }}
+      >
+        {/* Drag handle */}
+        <div
+          className="flex items-center justify-between px-3 py-2 cursor-grab active:cursor-grabbing border-b border-white/10 select-none"
+          onMouseDown={onMouseDown}
+        >
+          <span className="text-xs font-bold">OD 计算</span>
+          <button className="text-text-muted hover:text-text-primary text-xs" onClick={() => setOpen(false)}>✕</button>
+        </div>
+
+        <div className="p-2.5 space-y-2">
+          {/* Shared properties — collapsible */}
+          <div className="glass-strong rounded-lg !p-2 space-y-1.5">
+            <div className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => setSharedOpen(o => !o)}>
+              <span className="text-[10px] font-medium text-text-muted">全局属性</span>
+              <span className="text-sm text-text-muted">{sharedOpen ? '▾' : '▸'}</span>
+            </div>
+            {sharedOpen && (
+              <div className="grid grid-cols-3 gap-1.5">
+                <div>
+                  <div className="text-[9px] text-text-muted">目标数</div>
+                  <input className={OD_NUM} type="number" value={shared.targets || ''}
+                    onChange={e => setShared(s => ({ ...s, targets: parseInt(e.target.value) || 0 }))} />
+                </div>
+                <div>
+                  <div className="text-[9px] text-text-muted">目标OD率%</div>
+                  <input className={OD_NUM} type="number" step="0.5" value={shared.odRate || ''}
+                    onChange={e => setShared(s => ({ ...s, odRate: parseFloat(e.target.value) || 0 }))} />
+                </div>
+                <div>
+                  <div className="text-[9px] text-text-muted">OD上升量%</div>
+                  <input className={OD_NUM} type="number" step="0.01" value={shared.odRise || ''}
+                    onChange={e => setShared(s => ({ ...s, odRise: parseFloat(e.target.value) || 0 }))} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Column header row */}
+          <div className="flex items-center gap-1 px-1 text-[9px] text-text-muted text-center">
+            <span className="w-4 flex-shrink-0"></span>
+            <span className="flex-1 grid grid-cols-[1fr_1fr_1fr_2fr]">
+              <span>技能hit</span>
+              <span>附加hit</span>
+              <span>固定OD</span>
+              <span className="flex justify-between whitespace-nowrap pl-2">
+                <span>耳环</span>
+                <span className="cursor-pointer hover:text-text-primary" onClick={toggleShowHit}>
+                  {showHit ? 'hit数' : '百分比%'}
+                </span>
+              </span>
+            </span>
+            <span className="flex-shrink-0" style={{ width: 16 }}></span>
+          </div>
+
+          {/* OD rows */}
+          <div className="space-y-1">
+            {rows.map((row, i) => {
+              const r = calcODRow(row, shared);
+              return (
+                <div key={i} className="glass-strong rounded-lg !p-1.5">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-text-muted w-4 flex-shrink-0">#{i + 1}</span>
+                    <div className="flex-1 grid grid-cols-[1fr_1fr_1fr_2fr]">
+                      <input className={OD_NUM} type="number" value={row.origHit || ''}
+                        onChange={e => updateRow(i, r => ({ ...r, origHit: parseInt(e.target.value) || 0 }))} />
+                      <input className={OD_NUM} type="number" value={row.addHit || ''}
+                        onChange={e => updateRow(i, r => ({ ...r, addHit: parseInt(e.target.value) || 0 }))} />
+                      <input className={OD_NUM} type="number" step="0.1" value={row.fixedOD || ''}
+                        onChange={e => updateRow(i, r => ({ ...r, fixedOD: parseFloat(e.target.value) || 0 }))} />
+                      <div className="flex items-center">
+                        <label className="cursor-pointer select-none pl-1">
+                          <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${row.earring ? 'bg-accent border-accent' : 'toggle-off'}`}
+                            onClick={() => updateRow(i, r => ({ ...r, earring: !r.earring }))}>
+                            {row.earring && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </div>
+                        </label>
+                        <span className="text-accent font-bold cursor-pointer select-none text-[10px] border border-white/10 rounded px-1.5 py-0.5 text-center min-w-[48px] ml-auto"
+                          onClick={toggleShowHit}>
+                          {showHit
+                            ? `${r.actualHits.toFixed(3)}`
+                            : `${(r.n * 100).toFixed(2)}%`}
+                        </span>
+                      </div>
+                    </div>
+                    <button className="text-red-400/60 hover:text-red-400 text-xs flex-shrink-0"
+                      onClick={() => removeRow(i)}>✕</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <button className="btn btn-secondary btn-xs w-full" onClick={addRow}>+ 添加行</button>
+        </div>
+      </div>
+      )}
+    </>
+  );
+}
+
 function fmt(n: number): string {
   if (!isFinite(n)) return '—';
   return Math.round(n).toLocaleString('zh-CN');
@@ -140,17 +351,26 @@ function DetailTable({
       <table className="planner-table">
         <colgroup>
           <col style={{ width: 52 }} />
-          {[1,2,3].map(n => <Fragment key={n}><col style={{ width: 45 }} /><col style={{ width: 30 }} /><col style={{ width: 30 }} /><col style={{ width: 30 }} /></Fragment>)}
-          {[1,2,3].map(n => <Fragment key={`b${n}`}><col style={{ width: 36 }} /><col style={{ width: 30 }} /></Fragment>)}
-          <col style={{ width: 42 }} /><col style={{ width: 32 }} />
+          {[1,2,3].map(n => <Fragment key={n}>
+            <col className="planner-col-front planner-col-group-start" style={{ width: 45 }} />
+            <col className="planner-col-front" style={{ width: 30 }} />
+            <col className="planner-col-front" style={{ width: 30 }} />
+            <col className="planner-col-front" style={{ width: 30 }} />
+          </Fragment>)}
+          {[1,2,3].map(n => <Fragment key={`b${n}`}>
+            <col className="planner-col-back planner-col-group-start" style={{ width: 36 }} />
+            <col className="planner-col-back" style={{ width: 30 }} />
+          </Fragment>)}
+          <col className="planner-col-od planner-col-group-start" style={{ width: 42 }} />
+          <col className="planner-col-od" style={{ width: 32 }} />
         </colgroup>
         <thead>
           <tr>
             <th className="sticky left-0 bg-bg-card z-10">#</th>
-            {[1, 2, 3].map(n => <th key={n} colSpan={4} className="text-center border-l border-white/10">前{n}</th>)}
-            {[1, 2, 3].map(n => <th key={`b${n}`} colSpan={2} className="text-center border-l border-white/10">后{n}</th>)}
-            <th className="border-l border-white/10">被动OD</th>
-            <th className="border-l border-white/10">OD</th>
+            {[1, 2, 3].map(n => <th key={n} colSpan={4} className="text-center">前{n}</th>)}
+            {[1, 2, 3].map(n => <th key={`b${n}`} colSpan={2} className="text-center">后{n}</th>)}
+            <th>被动OD</th>
+            <th>OD</th>
           </tr>
         </thead>
         <tbody>
@@ -169,14 +389,14 @@ function DetailTable({
               </td>
             ))}
             <td>
-              <input className={TINY_NUM} type="number" step="0.1"
+              <input className={TINY_NUM} style={{ border: 'none' }} type="number" step="0.1"
                 value={state.defaultPassiveOD || ''} placeholder="被动" title="全局被动OD"
                 onChange={e => setState({ ...state, defaultPassiveOD: parseFloat(e.target.value) || 0 })} />
             </td>
             <td></td>
           </tr>
           {/* Gap + column labels */}
-          <tr style={{ height: 6 }}><td colSpan={99}></td></tr>
+          <tr className="planner-spacer"><td colSpan={99}></td></tr>
           <tr className="text-text-muted">
             <td className="text-[8px] text-center sticky left-0 bg-bg-card z-10"></td>
             {[1, 2, 3].map(n => <Fragment key={n}>
@@ -200,8 +420,8 @@ function DetailTable({
             const curResult = computed[ti];
             if (!isOD && !isExtra) normalCounter++;
             const typeKey = getTurnTypeKey(turn);
-            const rowBgA = isOD ? 'rgba(239,68,68,0.08)' : isExtra ? 'rgba(34,197,94,0.06)' : '';
-            const rowBgB = isOD ? 'rgba(239,68,68,0.04)' : isExtra ? 'rgba(34,197,94,0.03)' : '';
+            const rowBgA = isOD ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
+            const rowBgB = isOD ? 'rgba(239,68,68,0.03)' : isExtra ? 'rgba(34,197,94,0.02)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
             const backChars = [0, 1, 2, 3, 4, 5].filter(i => !frontIdxSet.has(i));
 
@@ -209,9 +429,10 @@ function DetailTable({
               <Fragment key={ti}>
                 {/* Row A: 角色 + 行动 */}
                 <tr style={{ background: rowBgA }}>
-                  <td className={`text-center sticky left-0 z-10 font-bold text-[9px] ${isOD ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
+                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${isOD ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
                     style={{ background: rowBgA || undefined }} rowSpan={2}>
-                    <select className="input-field text-[8px] py-0.5 w-full"
+                    <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer"
+                      style={{ color: 'inherit', fontSize: 'inherit' }}
                       value={typeKey} onChange={e => updateTurnType(ti, e.target.value, normalCounter)}>
                       <option value="normal">普通</option>
                       <option value="extra">追加</option>
@@ -222,8 +443,6 @@ function DetailTable({
                       <option value="od2post">后OD2</option>
                       <option value="od3post">后OD3</option>
                     </select>
-                    <button className="text-red-400/60 hover:text-red-400 text-[9px] leading-none block mx-auto"
-                      onClick={() => removeTurn(ti)} title="删除">X</button>
                   </td>
 
                   {/* Front 3 — Row A */}
@@ -263,7 +482,7 @@ function DetailTable({
                           {ci >= 0 ? characters[ci].name || ci + 1 : null}
                         </td>
                         <td rowSpan={2}>
-                          <input className={TINY_NUM} type="number" value={turn.backSPGain[bi] || ''} placeholder="0"
+                          <input className={TINY_NUM} style={{ border: 'none' }} type="number" value={turn.backSPGain[bi] || ''} placeholder="0"
                             onChange={e => updateTurn(ti, t => {
                               const bg = [...t.backSPGain] as typeof t.backSPGain;
                               bg[bi] = parseFloat(e.target.value) || 0;
@@ -276,14 +495,16 @@ function DetailTable({
 
                   {/* ±OD (rowSpan=2) */}
                   <td rowSpan={2}>
-                    <input className={TINY_NUM} type="number" step="0.1"
+                    <input className={TINY_NUM} style={{ border: 'none' }} type="number" step="0.1"
                       value={(turn.jailOD + turn.passiveOD) || ''} placeholder="0" title="额外OD"
                       onChange={e => updateTurn(ti, t => ({ ...t, jailOD: parseFloat(e.target.value) || 0, passiveOD: 0 }))} />
                   </td>
 
                   {/* 当前OD (rowSpan=2) */}
-                  <td className={`text-center font-mono font-bold text-xs ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`} rowSpan={2}>
+                  <td className={`text-center font-mono font-bold text-xs relative ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`} rowSpan={2}>
                     {fmtFloat(curResult?.odCapped ?? 0, 2)}
+                    <button className="absolute -right-5 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
+                      onClick={() => removeTurn(ti)} title="删除">✕</button>
                   </td>
                 </tr>
 
@@ -337,6 +558,12 @@ function DetailTable({
 
 // ─── Simple Table ─────────────────────────────────────────────
 
+const SIMPLE_SLOT_COLORS = [
+  'var(--simple-slot1)',
+  'var(--simple-slot2)',
+  'var(--simple-slot3)',
+] as const;
+
 function SimpleTable({
   state, computed, score, setScore, turnsCount, setTurnsCount,
 }: {
@@ -350,6 +577,36 @@ function SimpleTable({
   const [author, setAuthor] = useState('');
   const [notes, setNotes] = useState('');
 
+  const shareAxle = () => {
+    const data = { title, author, score, turns: turnsCount, notes, state };
+    const json = JSON.stringify(data);
+    const binary = Array.from(new TextEncoder().encode(json)).map(b => String.fromCharCode(b)).join('');
+    const encoded = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    navigator.clipboard.writeText(encoded).then(() => alert('分享码已复制到剪贴板')).catch(() => alert('复制失败'));
+  };
+
+  const importAxle = () => {
+    const encoded = prompt('粘贴分享码:');
+    if (!encoded) return;
+    try {
+      let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+      while (base64.length % 4) base64 += '=';
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const json = new TextDecoder().decode(bytes);
+      const data = JSON.parse(json);
+      if (data.title !== undefined) setTitle(data.title);
+      if (data.author !== undefined) setAuthor(data.author);
+      if (data.turns !== undefined) setTurnsCount(data.turns);
+      if (data.notes !== undefined) setNotes(data.notes);
+      if (data.score !== undefined) setScore(data.score);
+      alert('导入成功！注意：队伍数据需在详表中编辑');
+    } catch {
+      alert('分享码无效');
+    }
+  };
+
   // Front/back team composition: scan all turns for characters that appear in front
   const frontSet = new Set<number>();
   for (const turn of turns) {
@@ -357,7 +614,6 @@ function SimpleTable({
       if (fa.charIndex >= 0) frontSet.add(fa.charIndex);
     }
   }
-  // Default: chars 0-2 front, 3-5 back (matches detail table column layout)
   const frontIndices = frontSet.size > 0
     ? [...frontSet].sort((a, b) => a - b)
     : [0, 1, 2];
@@ -367,76 +623,122 @@ function SimpleTable({
 
   return (
     <div className="space-y-4">
-      {/* Meta card */}
-      <div className="card space-y-1.5 text-sm">
-        <div className="flex gap-6 items-center">
-          <span>标题 <input className="input-field text-sm inline w-64" placeholder="第xx期打分 xx队 无限od流" value={title} onChange={e => setTitle(e.target.value)} /></span>
-          <span>轴作者 <input className="input-field text-sm inline w-24" placeholder="作者" value={author} onChange={e => setAuthor(e.target.value)} /></span>
-          <span>分数 <input className="input-field text-sm inline w-16" type="number" value={score || ''} placeholder="0" onChange={e => setScore(parseInt(e.target.value) || 0)} /></span>
-          <span>回合 <input className="input-field text-sm inline w-14" type="number" value={turnsCount || ''} placeholder="0" onChange={e => setTurnsCount(parseInt(e.target.value) || 0)} /></span>
-        </div>
-        <div>
-          队伍组成  前: <span className="font-bold">{frontNames || '—'}</span> | 后: <span className="font-bold">{backNames || '—'}</span>
-        </div>
-        <div>
-          备注 <input className="input-field text-sm inline w-full" placeholder="耳环、突破要求等" value={notes} onChange={e => setNotes(e.target.value)} />
-        </div>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-bold">排轴简表</span>
+        <button className="btn btn-secondary btn-xs px-2" onClick={shareAxle} title="分享">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </button>
+        <button className="btn btn-secondary btn-xs px-2" onClick={importAxle} title="导入">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
       </div>
+      <div className="flex gap-4 items-start">
+        {/* Left: Meta inputs */}
+        <div className="card space-y-2 text-sm flex-shrink-0" style={{ width: 400 }}>
+          <div>
+            <div className="input-label">标题</div>
+            <input className="input-field text-xs py-1.5" placeholder="第xx期打分 xx队 无限od流" value={title} onChange={e => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <div className="input-label">轴作者</div>
+            <input className="input-field text-xs py-1.5" placeholder="作者" value={author} onChange={e => setAuthor(e.target.value)} />
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <div className="input-label">分数</div>
+              <input className="input-field text-xs py-1.5" type="number" value={score || ''} placeholder="0" onChange={e => setScore(parseInt(e.target.value) || 0)} />
+            </div>
+            <div className="flex-1">
+              <div className="input-label">回合</div>
+              <input className="input-field text-xs py-1.5" type="number" value={turnsCount || ''} placeholder="0" onChange={e => setTurnsCount(parseInt(e.target.value) || 0)} />
+            </div>
+          </div>
+          <div>
+            <div className="input-label">队伍组成</div>
+            <div className="text-xs">
+              前: <span className="font-bold">{frontNames || '—'}</span><br/>
+              后: <span className="font-bold">{backNames || '—'}</span>
+            </div>
+          </div>
+          <div>
+            <div className="input-label">备注</div>
+            <textarea className="input-field text-xs py-1.5 w-full" rows={3} placeholder="耳环、突破要求等" value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+        </div>
 
-      {/* Timeline table */}
-      <div className="card overflow-x-auto">
-        <table className="planner-table">
-          <colgroup>
-            <col style={{ width: 52 }} />
-            <col />
-            <col style={{ width: 68 }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>回合</th>
-              <th>行动轴</th>
-              <th className="text-right pr-2">当前OD</th>
-            </tr>
-          </thead>
-          <tbody>
-            {turns.map((turn, ti) => {
-              const isOD = isODRound(turn.roundLabel);
-              const isExtra = isExtraRound(turn.roundLabel);
-              const result = computed[ti];
-              const rowBg = isOD ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
-
-              // Build action cells with separate name/action for vertical alignment
-              const actionPairs = turn.frontActions
-                .filter(a => a.charIndex >= 0)
-                .map(a => ({
-                  name: characters[a.charIndex].name || `C${a.charIndex + 1}`,
-                  act: a.action || '—',
-                }));
-              while (actionPairs.length < 3) actionPairs.push({ name: '', act: '' });
-
-              return (
-                <tr key={ti} style={{ background: rowBg }}>
-                  <td className={`font-bold text-sm ${isOD ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}>
-                    {turn.roundLabel}
-                  </td>
-                  <td className="text-base">
-                    <div className="flex gap-5">
-                      {actionPairs.map((pair, ai) => (
-                        <span key={ai} className="flex gap-1.5 flex-1">
-                          <span className="font-medium text-right" style={{ minWidth: 32 }}>{pair.name}</span>
-                          <span className="text-text-muted">{pair.act}</span>
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className={`font-mono font-bold text-sm text-right pr-2 ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                    {fmtFloat(result?.odCapped ?? 0, 2)}
-                  </td>
+        {/* Right: Timeline table */}
+        <div className="card overflow-x-auto !p-0" style={{ width: '60%' }}>
+          <table className="planner-table simple-timeline">
+            <colgroup>
+              <col style={{ width: 52 }} />
+              <col style={{ width: 64, background: SIMPLE_SLOT_COLORS[0] }} />
+              <col style={{ background: SIMPLE_SLOT_COLORS[0] }} />
+              <col style={{ width: 64, background: SIMPLE_SLOT_COLORS[1] }} />
+              <col style={{ background: SIMPLE_SLOT_COLORS[1] }} />
+              <col style={{ width: 64, background: SIMPLE_SLOT_COLORS[2] }} />
+              <col style={{ background: SIMPLE_SLOT_COLORS[2] }} />
+              <col style={{ width: 72 }} />
+            </colgroup>
+            {/* Meta header rows */}
+            <thead>
+              <tr>
+                <td colSpan={8} className="font-bold text-xs text-center px-2" style={{ borderBottom: 'none' }}>【{title || '标题'}】 — 作者: {author || '—'}</td>
+              </tr>
+              <tr>
+                <td colSpan={8} className="text-[10px] text-left px-2" style={{ borderBottom: 'none' }}>
+                  前: <span className="font-bold">{frontNames || '—'}</span> | 后: <span className="font-bold">{backNames || '—'}</span>
+                </td>
+              </tr>
+              {notes && (
+                <tr>
+                  <td colSpan={8} className="text-[10px] text-left px-2" style={{ borderBottom: 'none', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}> {notes}</td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+              <tr>
+                <th>回合</th>
+                <th colSpan={2} className="text-center">行动槽1</th>
+                <th colSpan={2} className="text-center">行动槽2</th>
+                <th colSpan={2} className="text-center">行动槽3</th>
+                <th>当前OD</th>
+              </tr>
+            </thead>
+            <tbody>
+              {turns.map((turn, ti) => {
+                const isOD = isODRound(turn.roundLabel);
+                const isExtra = isExtraRound(turn.roundLabel);
+                const result = computed[ti];
+                const rowBg = isOD ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
+
+                const actionPairs = turn.frontActions.map(a => ({
+                  name: a.charIndex >= 0 ? (characters[a.charIndex].name || `C${a.charIndex + 1}`) : '',
+                  act: a.action || '',
+                }));
+
+                return (
+                  <tr key={ti} style={{ background: rowBg }}>
+                    <td className={`font-bold text-xs ${isOD ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}>
+                      {turn.roundLabel}
+                    </td>
+                    {actionPairs.map((pair, ai) => (
+                      <Fragment key={ai}>
+                        <td className="font-medium text-xs text-right pr-1">{pair.name}</td>
+                        <td className="text-xs text-left pl-1 text-text-muted">{pair.act}</td>
+                      </Fragment>
+                    ))}
+                    <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
+                      {fmtFloat(result?.odCapped ?? 0, 2)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -606,17 +908,33 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             <div className="flex gap-0 items-center">
               <button onClick={() => setSubTab('detail')} className={`sub-tab text-xs ${subTab === 'detail' ? 'active' : ''}`}>排轴详表</button>
               <button onClick={() => setSubTab('simple')} className={`sub-tab text-xs ${subTab === 'simple' ? 'active' : ''}`}>排轴简表</button>
-              <button className="btn btn-primary btn-xs ml-3" onClick={async () => {
+              <button className="btn btn-secondary btn-xs ml-1 px-2" title="重置" onClick={() => {
+                if (confirm('确定重置排轴？所有未保存的内容将丢失。')) {
+                  setState({ ...createDefaultState(), turns: syncNormalLabels(createDefaultState().turns) });
+                }
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+              </button>
+              <button className="btn btn-primary btn-xs ml-1 px-2" title="保存到记录" onClick={async () => {
                 const label = new Date().toLocaleString('zh-CN');
                 await saveAxle(label, state, axleScore, axleTurns);
                 alert('已保存');
-              }}>保存到记录</button>
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17 21 17 13 7 13 7 21"/>
+                  <polyline points="7 3 7 8 15 8"/>
+                </svg>
+              </button>
             </div>
           </div>
           {subTab === 'detail' ? <DetailTable state={state} setState={setState} computed={computed} /> :
            <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} />}
         </>
       )}
+      <ODPanel />
     </div>
   );
 }

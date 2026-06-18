@@ -97,7 +97,7 @@ function ODCalculator() {
         <div className="grid grid-cols-3 gap-3">
           <StatBox label="实际OD上升量" value={fmtDec(r.j, 4)} />
           <StatBox label="实际OD%" value={(r.n * 100).toFixed(2) + '%'} />
-          <StatBox label="实际hit数(参考)" value={fmtDec(r.actualHits)} />
+          <StatBox label="实际hit数(参考)" value={fmtDec(r.actualHits, 3)} />
         </div>
     </div>
   );
