@@ -185,10 +185,11 @@ interface ODRow {
   addHit: number;
   earring: boolean;
   fixedOD: number;
+  extraODRise: number;
 }
 
 function calcODRow(row: ODRow, shared: ODShared) {
-  const { origHit, addHit, earring, fixedOD } = row;
+  const { origHit, addHit, earring, fixedOD, extraODRise } = row;
   const { targets, odRate, odRise } = shared;
   const earringVal = earring ? 15 : 0;
 
@@ -198,7 +199,7 @@ function calcODRow(row: ODRow, shared: ODShared) {
   else if (origHit === 0) j = 0;
   else if (earringVal === 0) j = 0;
   else j = ((origHit - 1) / 9 * (earringVal - 5) + 5);
-  j = j / 100 + 1 + odRise / 100;
+  j = j / 100 + 1 + (odRise + extraODRise) / 100;
 
   const part1 = Math.floor(fixedOD * j * 100) / 100;
   const j25 = Math.floor(j * 2.5 * 100) / 100;
@@ -214,9 +215,10 @@ function ODPanel() {
   const [open, setOpen] = useState(false);
   const [shared, setShared] = useState<ODShared>({ targets: 1, odRate: 100, odRise: 0 });
   const [rows, setRows] = useState<ODRow[]>([
-    { origHit: 0, addHit: 0, earring: true, fixedOD: 0 },
+    { origHit: 0, addHit: 0, earring: true, fixedOD: 0, extraODRise: 0 },
   ]);
   const [showHit, setShowHit] = useState(false);
+  const [showExtraOD, setShowExtraOD] = useState<Record<number, boolean>>({});
   const [pos, setPos] = useState(() => ({
     x: window.innerWidth - 340,
     y: Math.max(0, window.innerHeight / 2 - 250),
@@ -242,7 +244,7 @@ function ODPanel() {
 
   const toggleShowHit = () => setShowHit(prev => !prev);
 
-  const addRow = () => setRows(prev => [...prev, { origHit: 0, addHit: 0, earring: true, fixedOD: 0 }]);
+  const addRow = () => setRows(prev => [...prev, { origHit: 0, addHit: 0, earring: true, fixedOD: 0, extraODRise: 0 }]);
   const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
 
   const updateRow = (i: number, fn: (r: ODRow) => ODRow) => {
@@ -360,6 +362,11 @@ function ODPanel() {
                             {row.earring && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </div>
                         </label>
+                        <button className="text-xs text-text-muted hover:text-text-primary ml-0.5 leading-none px-0.5"
+                          onClick={() => setShowExtraOD(p => ({ ...p, [i]: !p[i] }))}
+                          title="额外OD上升量">
+                          {showExtraOD[i] ? '▾' : '▸'}
+                        </button>
                         <span className="text-accent font-bold cursor-pointer select-none text-[10px] border border-white/10 rounded px-1.5 py-0.5 text-center min-w-[48px] ml-auto"
                           onClick={toggleShowHit}>
                           {showHit
@@ -367,6 +374,14 @@ function ODPanel() {
                             : `${(r.n * 100).toFixed(2)}%`}
                         </span>
                       </div>
+                      {showExtraOD[i] && (
+                        <div className="mt-1 flex items-center gap-1">
+                          <span className="text-[9px] text-text-muted flex-shrink-0">额外OD上升量%</span>
+                          <input className="bg-transparent border border-white/10 rounded text-center text-[10px] py-0.5" style={{ width: 48 }} type="number" step="0.01" placeholder="0"
+                            value={row.extraODRise || ''}
+                            onChange={e => updateRow(i, r => ({ ...r, extraODRise: parseFloat(e.target.value) || 0 }))} />
+                        </div>
+                      )}
                     </div>
                     <button className="text-red-400/60 hover:text-red-400 text-xs flex-shrink-0"
                       onClick={() => removeRow(i)}>✕</button>
