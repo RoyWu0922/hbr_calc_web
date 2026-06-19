@@ -626,12 +626,12 @@ function DetailTable({
                       <option value="normal">{normalLabel}</option>
                       <option value="extra">追加</option>
                       <option value="odin">OD内</option>
-                      <option value="od1pre">前OD1</option>
-                      <option value="od2pre">前OD2</option>
-                      <option value="od3pre">前OD3</option>
-                      <option value="od1post">后OD1</option>
-                      <option value="od2post">后OD2</option>
-                      <option value="od3post">后OD3</option>
+                      <option value="od1pre">前置OD1</option>
+                      <option value="od2pre">前置OD2</option>
+                      <option value="od3pre">前置OD3</option>
+                      <option value="od1post">后置OD1</option>
+                      <option value="od2post">后置OD2</option>
+                      <option value="od3post">后置OD3</option>
                     </select>
                   </td>
 

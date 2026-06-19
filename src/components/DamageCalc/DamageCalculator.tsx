@@ -378,7 +378,7 @@ function SkillParamsSection({ skill, updateSkill, result }: {
         <Field label="宝珠" value={skill.orb} onChange={v => updateSkill('orb', v)} />
         <Field label="偏向(例: 月哥王ub打hp=2)" value={skill.deviation} onChange={v => updateSkill('deviation', v)} step={0.1} />
         <Field label="Token" value={skill.token} onChange={v => updateSkill('token', v)} step={0.1} />
-        <Field label="特殊（例: 冰奏=1.25）" value={skill.special} onChange={v => updateSkill('special', v)} step={0.01} />
+        <Field label="特殊（例: 冰奏1.25, 雷吹雪1.75）" value={skill.special} onChange={v => updateSkill('special', v)} step={0.01} />
       </div>
       {result && (
         <div className="pt-3 border-t divider">
