@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { TurnPlannerState, PlannerTurn, FrontAction, ODMode, ComputedTurnResult } from '../../types';
 import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner';
-import { loadPlannerState, savePlannerState, saveAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, clearAllAxles, type SavedAxle } from '../../utils/plannerStorage';
+import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, clearAllAxles, type SavedAxle } from '../../utils/plannerStorage';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
 
@@ -939,7 +939,7 @@ function SavedAxles({
   onLoad,
 }: {
   state: TurnPlannerState;
-  onLoad: (s: TurnPlannerState) => void;
+  onLoad: (s: TurnPlannerState, id: number) => void;
 }) {
   const [entries, setEntries] = useState<SavedAxle[]>([]);
   const [allEntries, setAllEntries] = useState<SavedAxle[]>([]);
@@ -1048,7 +1048,7 @@ function SavedAxles({
                     {entry.turns > 0 && <span className="ml-3">回合 {entry.turns}</span>}
                   </div>
                 </div>
-                <button className="btn btn-primary btn-xs px-2" onClick={() => onLoad(entry.state)} title="加载">
+                <button className="btn btn-primary btn-xs px-2" onClick={() => entry.id != null && onLoad(entry.state, entry.id)} title="加载">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
                 <button className="btn btn-secondary btn-xs px-2" onClick={() => entry.id != null && handleCopy(entry.id)} title="复制">
@@ -1073,6 +1073,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
   const [axleScore, setAxleScore] = useState(0);
   const [axleTurns, setAxleTurns] = useState(0);
   const { style, setStyle, vars: styleVars } = usePlannerStyle();
+  const [loadedAxleId, setLoadedAxleId] = useState<number | null>(null);
   const [axleTitle, setAxleTitle] = useState('');
   const [simpleTitle, setSimpleTitle] = useState('');
   const [simpleAuthor, setSimpleAuthor] = useState('');
@@ -1108,7 +1109,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
   return (
     <div className="space-y-4" style={styleVars as React.CSSProperties}>
       {mode === 'saved' ? (
-        <SavedAxles state={state} onLoad={s => { setState(s); onSwitchToEditor(); }} />
+        <SavedAxles state={state} onLoad={(s, id) => { setState(s); setLoadedAxleId(id); onSwitchToEditor(); }} />
       ) : (
         <>
           <div className="flex items-center justify-between">
@@ -1130,8 +1131,13 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
               </button>
               <button className="btn btn-primary btn-xs ml-1 px-2" title="保存到记录" onClick={async () => {
                 const label = axleTitle.trim() || new Date().toLocaleString('zh-CN');
-                await saveAxle(label, state, axleScore, axleTurns);
-                alert('已保存');
+                if (loadedAxleId != null) {
+                  await updateAxle(loadedAxleId, label, state, axleScore, axleTurns);
+                  alert('已更新');
+                } else {
+                  await saveAxle(label, state, axleScore, axleTurns);
+                  alert('已保存');
+                }
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>

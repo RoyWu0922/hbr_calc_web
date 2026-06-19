@@ -181,6 +181,18 @@ export async function updateAxleLabel(id: number, label: string): Promise<void> 
   await db.put('planner_saves', entry);
 }
 
+export async function updateAxle(id: number, label: string, state: TurnPlannerState, score: number, turns: number): Promise<void> {
+  const db = await getDB();
+  const entry = await db.get('planner_saves', id);
+  if (!entry) throw new Error('Not found');
+  entry.label = label;
+  entry.state = JSON.parse(JSON.stringify(state));
+  entry.score = score;
+  entry.turns = turns;
+  entry.timestamp = Date.now();
+  await db.put('planner_saves', entry);
+}
+
 export async function duplicateAxle(id: number): Promise<number> {
   const db = await getDB();
   const entry = await db.get('planner_saves', id);
