@@ -10,17 +10,19 @@ interface HBRCalcDB extends DBSchema {
 }
 
 const DB_NAME = 'hbr-calc-db';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 
 async function getDB() {
   return openDB<HBRCalcDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains('history')) {
-        const store = db.createObjectStore('history', {
-          keyPath: 'id',
-          autoIncrement: true,
-        });
-        store.createIndex('timestamp', 'timestamp');
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        if (!db.objectStoreNames.contains('history')) {
+          const store = db.createObjectStore('history', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+          store.createIndex('timestamp', 'timestamp');
+        }
       }
     },
   });

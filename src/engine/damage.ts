@@ -79,10 +79,10 @@ export function calcSkillPower(skill: SkillInput): {
 export function calcDeviations(stats: Stats, skill: SkillInput) {
   const { str, spr, int: int_, luk } = stats;
   // Using the same stat values for all rows (简化: 使用相同基础值)
-  const hpDev = str;     // (str*2 + spr)/3 weighted toward row 4
-  const dpDev = spr;     // (spr*2 + str)/3 weighted toward row 5
-  const intDev = int_;   // (int*2 + luk)/3
-  const lukDev = luk;    // (luk*2 + int)/3
+  const hpDev = (str * 2 + spr) / 3;
+  const dpDev = (spr * 2 + str) / 3;
+  const intDev = (int_ * 2 + luk) / 3;
+  const lukDev = (luk * 2 + int_) / 3;
   return { hpDeviation: hpDev, dpDeviation: dpDev, intDeviation: intDev, lukDeviation: lukDev };
 }
 
