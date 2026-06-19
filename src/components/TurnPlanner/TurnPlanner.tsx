@@ -602,6 +602,7 @@ function DetailTable({
             const prevResult = ti > 0 ? computed[ti - 1] : null;
             const curResult = computed[ti];
             if (!isOD && !isExtra) normalCounter++;
+            const normalLabel = (isOD || isExtra) ? normalCounter + 1 : normalCounter;
             const typeKey = getTurnTypeKey(turn);
             const rowBgA = isOD ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
@@ -616,7 +617,7 @@ function DetailTable({
                     <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer"
                       style={{ color: 'inherit', fontSize: 'inherit' }}
                       value={typeKey} onChange={e => updateTurnType(ti, e.target.value, normalCounter)}>
-                      <option value="normal">普通</option>
+                      <option value="normal">{normalLabel}</option>
                       <option value="extra">追加</option>
                       <option value="od1pre">前OD1</option>
                       <option value="od2pre">前OD2</option>
