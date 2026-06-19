@@ -803,7 +803,7 @@ const SIMPLE_SLOT_COLORS = [
 ] as const;
 
 function SimpleTable({
-  state, computed, score, setScore, turnsCount, setTurnsCount, onTitleChange,
+  state, computed, score, setScore, turnsCount, setTurnsCount, onTitleChange, onImportState,
   title, setTitle, author, setAuthor, notes, setNotes,
 }: {
   state: TurnPlannerState;
@@ -811,6 +811,7 @@ function SimpleTable({
   score: number; setScore: (v: number) => void;
   turnsCount: number; setTurnsCount: (v: number) => void;
   onTitleChange: (t: string) => void;
+  onImportState: (s: TurnPlannerState) => void;
   title: string; setTitle: (v: string) => void;
   author: string; setAuthor: (v: string) => void;
   notes: string; setNotes: (v: string) => void;
@@ -820,28 +821,29 @@ function SimpleTable({
   const shareAxle = () => {
     const data = { title, author, score, turns: turnsCount, notes, state };
     const json = JSON.stringify(data);
-    const binary = Array.from(new TextEncoder().encode(json)).map(b => String.fromCharCode(b)).join('');
-    const encoded = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    navigator.clipboard.writeText(encoded).then(() => alert('分享码已复制到剪贴板')).catch(() => alert('复制失败'));
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    navigator.clipboard.writeText(encoded).then(
+      () => alert('分享码已复制到剪贴板'),
+      () => {
+        const ok = prompt('复制失败，请手动复制:', encoded);
+        if (ok) navigator.clipboard.writeText(ok).catch(() => {});
+      },
+    );
   };
 
   const importAxle = () => {
     const encoded = prompt('粘贴分享码:');
     if (!encoded) return;
     try {
-      let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
-      while (base64.length % 4) base64 += '=';
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const json = new TextDecoder().decode(bytes);
+      const json = decodeURIComponent(escape(atob(encoded)));
       const data = JSON.parse(json);
       if (data.title !== undefined) setTitle(data.title);
       if (data.author !== undefined) setAuthor(data.author);
       if (data.turns !== undefined) setTurnsCount(data.turns);
       if (data.notes !== undefined) setNotes(data.notes);
       if (data.score !== undefined) setScore(data.score);
-      alert('导入成功！注意：队伍数据需在详表中编辑');
+      if (data.state?.turns?.length > 0) onImportState(data.state);
+      alert('导入成功！');
     } catch {
       alert('分享码无效');
     }
@@ -956,7 +958,7 @@ function SimpleTable({
                 }));
 
                 return (
-                  <tr key={ti}>
+                  <tr key={ti} className={ti % 2 === 0 ? 'alt-row' : ''}>
                     <td className={`font-bold text-xs ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
                       style={{ background: rowBg || undefined }}>
                       {turn.roundLabel}
@@ -1196,7 +1198,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             </div>
           </div>
           {subTab === 'detail' ? <DetailTable state={state} setState={setState} computed={computed} /> :
-           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} onTitleChange={setAxleTitle} title={simpleTitle} setTitle={setSimpleTitle} author={simpleAuthor} setAuthor={setSimpleAuthor} notes={simpleNotes} setNotes={setSimpleNotes} />}
+           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} onTitleChange={setAxleTitle} onImportState={s => setState({ ...s, turns: syncNormalLabels(s.turns) })} title={simpleTitle} setTitle={setSimpleTitle} author={simpleAuthor} setAuthor={setSimpleAuthor} notes={simpleNotes} setNotes={setSimpleNotes} />}
         </>
       )}
       <ODPanel />

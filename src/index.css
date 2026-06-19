@@ -483,7 +483,8 @@ input[type="checkbox"]:checked {
   width: 100% !important;
   table-layout: fixed;
 }
-.simple-timeline tbody tr:nth-child(even) td {
+/* alternating row class for simple-timeline */
+.simple-timeline tr.alt-row td {
   background: var(--planner-row-hover);
 }
 
@@ -491,11 +492,12 @@ input[type="checkbox"]:checked {
 .planner-spacer td {
   border: none;
   height: 6px;
+  background: none !important;
 }
 
 /* alternating turn pairs in detail table (skip entry/spacer/labels, then every 4 rows) */
-.planner-table tbody tr:nth-child(n+4):nth-child(4n) td,
-.planner-table tbody tr:nth-child(n+4):nth-child(4n+1) td {
+.planner-table:not(.simple-timeline) tbody tr:nth-child(n+4):nth-child(4n) td,
+.planner-table:not(.simple-timeline) tbody tr:nth-child(n+4):nth-child(4n+1) td {
   background: var(--planner-row-hover);
 }
 
