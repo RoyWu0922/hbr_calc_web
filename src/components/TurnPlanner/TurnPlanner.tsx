@@ -6,7 +6,7 @@ import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
 
 // ─── Planner Style Presets ─────────────────────────────────────
-type PlannerStyleName = '默认' | '晨雾绿' | '樱花拿铁' | '海盐薰衣草' | '抹茶奶昔' | '晚樱浅烟' | '云杉晨曦' | '柑橘薄荷' | '莓果奶昔' | '热带椰风' | '向日葵蓝天' | '蜜桃乌龙' | '浆果薰衣草' | '霓虹日落' | '热带果汁' | '撞色波普' | '电光彩虹' | '糖果撞色' | '赛博朋克';
+type PlannerStyleName = '默认' | '晨雾绿' | '樱花拿铁' | '海盐薰衣草' | '抹茶奶昔' | '晚樱浅烟' | '云杉晨曦' | '柑橘薄荷' | '莓果奶昔' | '热带椰风' | '向日葵蓝天' | '蜜桃乌龙' | '浆果薰衣草' | '霓虹日落' | '热带果汁' | '撞色波普' | '电光彩虹' | '糖果撞色' | '赛博朋克' | '马卡龙霓虹' | '复古迪斯科' | '极光彩带' | '火焰冰川' | '水果拼盘' | '未来都市';
 
 // prettier-ignore
 const PLANNER_STYLES: Record<PlannerStyleName, Record<string, string>> = {
@@ -161,6 +161,54 @@ const PLANNER_STYLES: Record<PlannerStyleName, Record<string, string>> = {
     '--simple-slot1': 'rgba(0, 245, 255, 0.14)',
     '--simple-slot2': 'rgba(255, 84, 0, 0.12)',
     '--simple-slot3': 'rgba(242, 34, 255, 0.1)',
+  },
+  '马卡龙霓虹': {
+    '--planner-col-front': 'rgba(255, 77, 109, 0.14)',
+    '--planner-col-back': 'rgba(78, 168, 222, 0.08)',
+    '--planner-col-od': 'rgba(255, 166, 43, 0.12)',
+    '--simple-slot1': 'rgba(255, 77, 109, 0.14)',
+    '--simple-slot2': 'rgba(181, 230, 85, 0.12)',
+    '--simple-slot3': 'rgba(155, 93, 229, 0.1)',
+  },
+  '复古迪斯科': {
+    '--planner-col-front': 'rgba(214, 40, 40, 0.12)',
+    '--planner-col-back': 'rgba(88, 129, 87, 0.08)',
+    '--planner-col-od': 'rgba(252, 191, 73, 0.12)',
+    '--simple-slot1': 'rgba(214, 40, 40, 0.14)',
+    '--simple-slot2': 'rgba(39, 125, 161, 0.12)',
+    '--simple-slot3': 'rgba(188, 108, 37, 0.1)',
+  },
+  '极光彩带': {
+    '--planner-col-front': 'rgba(6, 214, 160, 0.14)',
+    '--planner-col-back': 'rgba(114, 9, 183, 0.08)',
+    '--planner-col-od': 'rgba(255, 234, 0, 0.12)',
+    '--simple-slot1': 'rgba(241, 91, 181, 0.14)',
+    '--simple-slot2': 'rgba(0, 187, 249, 0.12)',
+    '--simple-slot3': 'rgba(6, 214, 160, 0.1)',
+  },
+  '火焰冰川': {
+    '--planner-col-front': 'rgba(208, 0, 0, 0.12)',
+    '--planner-col-back': 'rgba(0, 119, 182, 0.08)',
+    '--planner-col-od': 'rgba(255, 186, 8, 0.12)',
+    '--simple-slot1': 'rgba(220, 47, 2, 0.14)',
+    '--simple-slot2': 'rgba(0, 180, 216, 0.12)',
+    '--simple-slot3': 'rgba(255, 186, 8, 0.1)',
+  },
+  '水果拼盘': {
+    '--planner-col-front': 'rgba(255, 10, 84, 0.14)',
+    '--planner-col-back': 'rgba(61, 90, 128, 0.08)',
+    '--planner-col-od': 'rgba(255, 238, 50, 0.12)',
+    '--simple-slot1': 'rgba(128, 185, 24, 0.14)',
+    '--simple-slot2': 'rgba(255, 159, 28, 0.12)',
+    '--simple-slot3': 'rgba(255, 10, 84, 0.1)',
+  },
+  '未来都市': {
+    '--planner-col-front': 'rgba(86, 11, 173, 0.14)',
+    '--planner-col-back': 'rgba(67, 97, 238, 0.08)',
+    '--planner-col-od': 'rgba(255, 214, 10, 0.12)',
+    '--simple-slot1': 'rgba(128, 255, 219, 0.14)',
+    '--simple-slot2': 'rgba(255, 22, 84, 0.12)',
+    '--simple-slot3': 'rgba(67, 97, 238, 0.1)',
   },
 };
 

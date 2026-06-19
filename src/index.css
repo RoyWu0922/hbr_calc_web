@@ -472,7 +472,7 @@ input[type="checkbox"]:checked {
   margin: 0;
 }
 
-/* simple timeline — taller rows + outer border */
+/* simple timeline — taller rows + outer border + alternating rows */
 .simple-timeline td {
   padding-top: 0.24rem;
   padding-bottom: 0.24rem;
@@ -483,11 +483,20 @@ input[type="checkbox"]:checked {
   width: 100% !important;
   table-layout: fixed;
 }
+.simple-timeline tbody tr:nth-child(even) td {
+  background: var(--planner-row-hover);
+}
 
 /* spacer row — no gridlines */
 .planner-spacer td {
   border: none;
   height: 6px;
+}
+
+/* alternating turn pairs in detail table (skip entry/spacer/labels, then every 4 rows) */
+.planner-table tbody tr:nth-child(n+4):nth-child(4n) td,
+.planner-table tbody tr:nth-child(n+4):nth-child(4n+1) td {
+  background: var(--planner-row-hover);
 }
 
 /* row hover */
