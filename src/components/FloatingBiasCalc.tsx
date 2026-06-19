@@ -14,10 +14,10 @@ interface CharStats {
 
 function computeBiases(s: CharStats): Record<string, number> {
   return {
-    hp:  (s.pow * 2 + s.spr * 1) / 3,
-    dp:  (s.pow * 1 + s.spr * 2) / 3,
-    int: s.int,
-    luk: s.luk,
+    hp:  (s.pow * 2 + s.spr) / 3,
+    dp:  (s.spr * 2 + s.pow) / 3,
+    int: (s.int * 2 + s.luk) / 3,
+    luk: (s.luk * 2 + s.int) / 3,
   };
 }
 
