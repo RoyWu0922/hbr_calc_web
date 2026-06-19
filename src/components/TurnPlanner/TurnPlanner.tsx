@@ -799,17 +799,9 @@ function SimpleTable({
     }
   };
 
-  // Front/back team composition: scan all turns for characters that appear in front
-  const frontSet = new Set<number>();
-  for (const turn of turns) {
-    for (const fa of turn.frontActions) {
-      if (fa.charIndex >= 0) frontSet.add(fa.charIndex);
-    }
-  }
-  const frontIndices = frontSet.size > 0
-    ? [...frontSet].sort((a, b) => a - b)
-    : [0, 1, 2];
-  const backIndices = [0,1,2,3,4,5].filter(i => !frontIndices.includes(i));
+  // Front/back: chars 0-2 = front, 3-5 = back (matches detail table layout)
+  const frontIndices = [0, 1, 2];
+  const backIndices = [3, 4, 5];
   const frontNames = frontIndices.map(i => characters[i].name || `C${i+1}`).join('  ');
   const backNames = backIndices.map(i => characters[i].name || `C${i+1}`).join('  ');
 
