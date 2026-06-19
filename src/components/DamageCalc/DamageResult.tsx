@@ -6,18 +6,20 @@ function fmtRaw(n: number): string {
   return Math.round(n).toLocaleString('zh-CN');
 }
 
-export default function DamageResult({ result, skill, floatVal }: {
+export default function DamageResult({ result, skill, floatVal,
+  superChainHits, setSuperChainHits, bigChainHits, setBigChainHits,
+  midChainHits, setMidChainHits, smallChainHits, setSmallChainHits,
+  bodyWeightStr, setBodyWeightStr,
+}: {
   result: DamageResultData; skill: SkillInput;
   floatVal: number;
+  superChainHits: number; setSuperChainHits: (v: number) => void;
+  bigChainHits: number; setBigChainHits: (v: number) => void;
+  midChainHits: number; setMidChainHits: (v: number) => void;
+  smallChainHits: number; setSmallChainHits: (v: number) => void;
+  bodyWeightStr: string; setBodyWeightStr: (v: string) => void;
 }) {
   // 打分由引擎 calculateAll 计算（已含 bonusDmg），UI 直接引用 result.score
-
-  // Chain hit state local to the float probability section
-  const [superC, setSuperC] = useState(0);
-  const [bigC, setBigC] = useState(0);
-  const [midC, setMidC] = useState(0);
-  const [smallC, setSmallC] = useState(0);
-  const [bodyWeightStr, setBodyWeightStr] = useState('');
 
   // Parse custom body weights from user input
   const customBodyWeights = useMemo(
@@ -27,10 +29,10 @@ export default function DamageResult({ result, skill, floatVal }: {
 
   // Float distribution — exact formula via characteristic function (float.txt)
   const bodyHitCount = customBodyWeights ? customBodyWeights.length : (skill.hitCount || 1);
-  const totalHits = bodyHitCount + superC + bigC + midC + smallC;
+  const totalHits = bodyHitCount + superChainHits + bigChainHits + midChainHits + smallChainHits;
   const hitWeights = useMemo(
-    () => buildHitWeights(skill.hitCount || 1, superC, bigC, midC, smallC, customBodyWeights),
-    [skill.hitCount, superC, bigC, midC, smallC, customBodyWeights]
+    () => buildHitWeights(skill.hitCount || 1, superChainHits, bigChainHits, midChainHits, smallChainHits, customBodyWeights),
+    [skill.hitCount, superChainHits, bigChainHits, midChainHits, smallChainHits, customBodyWeights]
   );
   const floatDist: FloatDistData = useMemo(
     () => computeFloatDistribution(hitWeights, 200),
@@ -65,8 +67,7 @@ export default function DamageResult({ result, skill, floatVal }: {
   const survivalPathD = useMemo(() => {
     if (floatDist.points.length === 0) return '';
     const pts = floatDist.points;
-    // Show survival scaled to same height as PDF
-    const sMax = 1; // survival max
+    const sMax = 1;
     const sy2 = (s: number) => T + (1 - s / sMax) * ph;
     let d = `M ${sx(pts[0].up)} ${sy2(pts[0].survival)}`;
     for (let i = 1; i < pts.length; i++) {
@@ -82,7 +83,6 @@ export default function DamageResult({ result, skill, floatVal }: {
     const vbx = ((e.clientX - rect.left) / svgW) * W;
     if (vbx < L || vbx > L + pw) { setHover(null); return; }
     const up = ix(vbx);
-    // Find nearest point in distribution
     let best = floatDist.points[0];
     let bestDist = Infinity;
     for (const p of floatDist.points) {
@@ -105,33 +105,22 @@ export default function DamageResult({ result, skill, floatVal }: {
               ? <span>本体权重 [{customBodyWeights.join(', ')}]</span>
               : <span>{skill.hitCount || 1}本体</span>
             }
-            {' + '}{superC}特大 + {bigC}大 + {midC}中 + {smallC}小 = {totalHits} hits
+            {' + '}{superChainHits}特大 + {bigChainHits}大 + {midChainHits}中 + {smallChainHits}小 = {totalHits} hits
             <span className="ml-1 text-[10px] opacity-60">（精确公式：特征函数法）</span>
           </div>
 
           <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 220 }}>
-            {/* X axis */}
             <line x1={L} y1={T + ph} x2={L + pw} y2={T + ph} stroke="var(--app-glass-border)" strokeWidth={1} />
-            {/* Center line (up=0) */}
             <line x1={sx(0)} y1={T} x2={sx(0)} y2={T + ph} stroke="rgba(245,158,11,0.3)" strokeWidth={1} strokeDasharray="4,2" />
-
-            {/* PDF filled area */}
             <path d={pdfPathD} fill="rgba(99,102,241,0.25)" stroke="rgba(99,102,241,0.7)" strokeWidth={1} />
-
-            {/* Survival curve overlay (thin, different color) */}
             <path d={survivalPathD} fill="none" stroke="rgba(245,158,11,0.5)" strokeWidth={1} strokeDasharray="2,2" />
-
-            {/* X-axis tick labels */}
             {[-0.1, -0.05, 0, 0.05, 0.1].map(x => (
               <text key={x} x={sx(x)} y={T + ph + 14} textAnchor="middle" fill="var(--app-text-muted)" fontSize={9}>
                 {x === 0 ? '0%' : `${Math.round(x * 100)}%`}
               </text>
             ))}
-
-            {/* Transparent interaction layer */}
             <rect x={L} y={T} width={pw} height={ph} fill="transparent"
               onMouseMove={handleMouseMove} onMouseLeave={() => setHover(null)} />
-
             {hover && (
               <>
                 <line x1={sx(hover.x)} y1={T} x2={sx(hover.x)} y2={T + ph} stroke="var(--app-text-secondary)" strokeWidth={1} />
@@ -164,19 +153,19 @@ export default function DamageResult({ result, skill, floatVal }: {
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <div className="text-[10px] text-text-muted mb-0.5">特大连击 (50%)</div>
-                <input className="input-field text-xs py-1" type="number" value={superC} onChange={e => setSuperC(parseInt(e.target.value) || 0)} />
+                <input className="input-field text-xs py-1" type="number" value={superChainHits} onChange={e => setSuperChainHits(parseInt(e.target.value) || 0)} />
               </div>
               <div>
                 <div className="text-[10px] text-text-muted mb-0.5">大连击 (25%)</div>
-                <input className="input-field text-xs py-1" type="number" value={bigC} onChange={e => setBigC(parseInt(e.target.value) || 0)} />
+                <input className="input-field text-xs py-1" type="number" value={bigChainHits} onChange={e => setBigChainHits(parseInt(e.target.value) || 0)} />
               </div>
               <div>
                 <div className="text-[10px] text-text-muted mb-0.5">中连击 (12%)</div>
-                <input className="input-field text-xs py-1" type="number" value={midC} onChange={e => setMidC(parseInt(e.target.value) || 0)} />
+                <input className="input-field text-xs py-1" type="number" value={midChainHits} onChange={e => setMidChainHits(parseInt(e.target.value) || 0)} />
               </div>
               <div>
                 <div className="text-[10px] text-text-muted mb-0.5">小连击 (6%)</div>
-                <input className="input-field text-xs py-1" type="number" value={smallC} onChange={e => setSmallC(parseInt(e.target.value) || 0)} />
+                <input className="input-field text-xs py-1" type="number" value={smallChainHits} onChange={e => setSmallChainHits(parseInt(e.target.value) || 0)} />
               </div>
             </div>
           </div>

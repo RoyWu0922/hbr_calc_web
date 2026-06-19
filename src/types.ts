@@ -282,5 +282,11 @@ export interface DamageInput {
   odMul: number;
   floatVal: number;
   bonusDmg: number;
-  damageValueOverride?: number; // for simple score calc (C62 area)
+  damageValueOverride?: number;
+  // Float probability distribution settings
+  superChainHits?: number;
+  bigChainHits?: number;
+  midChainHits?: number;
+  smallChainHits?: number;
+  bodyWeightStr?: string;
 }

@@ -18,6 +18,11 @@ export interface UserDefaults {
   odMul: number;
   floatVal: number;
   bonusDmg: number;
+  superChainHits?: number;
+  bigChainHits?: number;
+  midChainHits?: number;
+  smallChainHits?: number;
+  bodyWeightStr?: string;
 }
 
 const STORAGE_KEY = 'hbr_calc_user_defaults';

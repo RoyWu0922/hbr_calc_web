@@ -76,6 +76,11 @@ export default function DamageCalculator({ initialData }: Props) {
   const [odMul, setOdMul] = useState(init?.odMul ?? 1);
   const [floatVal, setFloatVal] = useState(init?.floatVal ?? 1);
   const [bonusDmg, setBonusDmg] = useState(init?.bonusDmg ?? 0);
+  const [superChainHits, setSuperChainHits] = useState(init?.superChainHits ?? 0);
+  const [bigChainHits, setBigChainHits] = useState(init?.bigChainHits ?? 0);
+  const [midChainHits, setMidChainHits] = useState(init?.midChainHits ?? 0);
+  const [smallChainHits, setSmallChainHits] = useState(init?.smallChainHits ?? 0);
+  const [bodyWeightStr, setBodyWeightStr] = useState(init?.bodyWeightStr ?? '');
   const [loadedEntryId, setLoadedEntryId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -83,6 +88,9 @@ export default function DamageCalculator({ initialData }: Props) {
       const d = initialData.input;
       setSkill(d.skill); setBuffs(d.buffs); setDebuffs(d.debuffs); setWeaknesses(d.weaknesses);
       setEquipment(d.equipment); setBonus(d.bonus); setScore(d.score);
+      setSuperChainHits(d.superChainHits ?? 0); setBigChainHits(d.bigChainHits ?? 0);
+      setMidChainHits(d.midChainHits ?? 0); setSmallChainHits(d.smallChainHits ?? 0);
+      setBodyWeightStr(d.bodyWeightStr ?? '');
       setResult(initialData.result); setCalcLabel(initialData.label);
       setLoadedEntryId(initialData.id ?? null);
     }
@@ -98,7 +106,7 @@ export default function DamageCalculator({ initialData }: Props) {
   const handleSave = async () => {
     if (!result) return; setSaving(true);
     const label = calcLabel.trim() || new Date().toLocaleString('zh-CN');
-    const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg };
+    const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg, superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr };
     try {
       if (loadedEntryId) {
         // 从历史加载后修改 → 提供更新/另存选项
@@ -118,7 +126,7 @@ export default function DamageCalculator({ initialData }: Props) {
   };
 
   const handleShare = async () => {
-    const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg };
+    const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg, superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr };
     const code = encodeShareData(input);
     try {
       await navigator.clipboard.writeText(code);
@@ -163,6 +171,11 @@ export default function DamageCalculator({ initialData }: Props) {
       odMul,
       floatVal,
       bonusDmg,
+      superChainHits,
+      bigChainHits,
+      midChainHits,
+      smallChainHits,
+      bodyWeightStr,
     };
     saveUserDefaults(defaults);
     alert('当前数值已保存为默认值，刷新页面后生效');
@@ -182,6 +195,8 @@ export default function DamageCalculator({ initialData }: Props) {
     setOdMul(1);
     setFloatVal(1);
     setBonusDmg(0);
+    setSuperChainHits(0); setBigChainHits(0); setMidChainHits(0); setSmallChainHits(0);
+    setBodyWeightStr('');
     alert('已清除自定义默认值');
   };
 
@@ -296,7 +311,12 @@ export default function DamageCalculator({ initialData }: Props) {
       </CollapsibleSection>
 
       {result && (
-        <DamageResult result={result} skill={skill} floatVal={floatVal} />
+        <DamageResult result={result} skill={skill} floatVal={floatVal}
+          superChainHits={superChainHits} setSuperChainHits={setSuperChainHits}
+          bigChainHits={bigChainHits} setBigChainHits={setBigChainHits}
+          midChainHits={midChainHits} setMidChainHits={setMidChainHits}
+          smallChainHits={smallChainHits} setSmallChainHits={setSmallChainHits}
+          bodyWeightStr={bodyWeightStr} setBodyWeightStr={setBodyWeightStr} />
       )}
       <FloatingBiasCalc />
     </div>
