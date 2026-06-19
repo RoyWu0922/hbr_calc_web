@@ -602,12 +602,15 @@ function DetailTable({
             const isOD = isODRound(turn.roundLabel);
             const isExtra = isExtraRound(turn.roundLabel);
             const isODin = turn.roundLabel.includes('OD内');
+            const prevTurn = ti > 0 ? turns[ti - 1] : null;
+            const prevIsOD = prevTurn ? isODRound(prevTurn.roundLabel) || prevTurn.roundLabel.includes('OD内') : false;
             const prevResult = ti > 0 ? computed[ti - 1] : null;
             const curResult = computed[ti];
             if (!isOD && !isExtra) normalCounter++;
             const normalLabel = (isOD || isExtra || isODin) ? normalCounter + 1 : normalCounter;
             const typeKey = getTurnTypeKey(turn);
-            const rowBgA = (isOD || isODin) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
+            const extraIsRed = isExtra && prevIsOD;
+            const rowBgA = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
             const backChars = [0, 1, 2, 3, 4, 5].filter(i => !frontIdxSet.has(i));
 
@@ -615,7 +618,7 @@ function DetailTable({
               <Fragment key={ti}>
                 {/* Row A: 角色 + 行动 */}
                 <tr>
-                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${(isOD || isODin) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
+                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
                     style={{ background: rowBgA || undefined }} rowSpan={2}>
                     <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer"
                       style={{ color: 'inherit', fontSize: 'inherit' }}
@@ -900,8 +903,12 @@ function SimpleTable({
               {turns.map((turn, ti) => {
                 const isOD = isODRound(turn.roundLabel);
                 const isExtra = isExtraRound(turn.roundLabel);
+                const isODin = turn.roundLabel.includes('OD内');
+                const prevTurn = ti > 0 ? turns[ti - 1] : null;
+                const prevIsOD = prevTurn ? isODRound(prevTurn.roundLabel) || prevTurn.roundLabel.includes('OD内') : false;
+                const extraIsRed = isExtra && prevIsOD;
                 const result = computed[ti];
-                const rowBg = isOD ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
+                const rowBg = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
 
                 const actionPairs = turn.frontActions.map(a => ({
                   name: a.charIndex >= 0 ? (characters[a.charIndex].name || `C${a.charIndex + 1}`) : '',
@@ -910,7 +917,7 @@ function SimpleTable({
 
                 return (
                   <tr key={ti}>
-                    <td className={`font-bold text-xs ${isOD ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
+                    <td className={`font-bold text-xs ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
                       style={{ background: rowBg || undefined }}>
                       {turn.roundLabel}
                     </td>
