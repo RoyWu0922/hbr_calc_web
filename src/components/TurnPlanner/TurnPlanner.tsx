@@ -426,6 +426,7 @@ function getODLevel(label: string): number {
 
 function getTurnTypeKey(turn: PlannerTurn): string {
   if (turn.turnType === 'extra') return 'extra';
+  if (turn.roundLabel.includes('OD内')) return 'odin';
   if (isODRound(turn.roundLabel)) {
     const prefix = turn.roundLabel.startsWith('后置') ? 'post' : 'pre';
     return `od${getODLevel(turn.roundLabel)}${prefix}`;
@@ -437,6 +438,7 @@ function turnTypeToLabel(type: string, normalNum: number): string {
   switch (type) {
     case 'normal': return String(normalNum);
     case 'extra': return '追加';
+    case 'odin': return 'OD内';
     case 'od1pre': return '前置OD1';
     case 'od2pre': return '前置OD2';
     case 'od3pre': return '前置OD3';
@@ -599,12 +601,13 @@ function DetailTable({
           {turns.map((turn, ti) => {
             const isOD = isODRound(turn.roundLabel);
             const isExtra = isExtraRound(turn.roundLabel);
+            const isODin = turn.roundLabel.includes('OD内');
             const prevResult = ti > 0 ? computed[ti - 1] : null;
             const curResult = computed[ti];
             if (!isOD && !isExtra) normalCounter++;
-            const normalLabel = (isOD || isExtra) ? normalCounter + 1 : normalCounter;
+            const normalLabel = (isOD || isExtra || isODin) ? normalCounter + 1 : normalCounter;
             const typeKey = getTurnTypeKey(turn);
-            const rowBgA = isOD ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
+            const rowBgA = (isOD || isODin) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
             const backChars = [0, 1, 2, 3, 4, 5].filter(i => !frontIdxSet.has(i));
 
@@ -612,13 +615,14 @@ function DetailTable({
               <Fragment key={ti}>
                 {/* Row A: 角色 + 行动 */}
                 <tr>
-                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${isOD ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
+                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${(isOD || isODin) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
                     style={{ background: rowBgA || undefined }} rowSpan={2}>
                     <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer"
                       style={{ color: 'inherit', fontSize: 'inherit' }}
                       value={typeKey} onChange={e => updateTurnType(ti, e.target.value, normalCounter)}>
                       <option value="normal">{normalLabel}</option>
                       <option value="extra">追加</option>
+                      <option value="odin">OD内</option>
                       <option value="od1pre">前OD1</option>
                       <option value="od2pre">前OD2</option>
                       <option value="od3pre">前OD3</option>
