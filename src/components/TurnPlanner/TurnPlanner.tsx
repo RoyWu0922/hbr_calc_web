@@ -530,8 +530,27 @@ function DetailTable({
 
   const updateChar = (i: number, fn: (c: typeof characters[number]) => typeof characters[number]) => {
     const next = [...characters] as typeof characters;
+    const oldName = next[i].name;
     next[i] = fn(next[i]);
-    setState({ ...state, characters: next });
+    const newName = next[i].name;
+    // If user swapped names between two slots, update turn references to follow the names
+    let updatedTurns = state.turns;
+    if (newName && newName !== oldName) {
+      const otherIdx = next.findIndex((c, idx) => idx !== i && c.name === newName);
+      if (otherIdx >= 0) {
+        // Swap: otherIdx keeps oldName, update turn charIndex references
+        next[otherIdx] = { ...next[otherIdx], name: oldName };
+        updatedTurns = state.turns.map(t => ({
+          ...t,
+          frontActions: t.frontActions.map(fa => {
+            if (fa.charIndex === otherIdx) return { ...fa, charIndex: i };
+            if (fa.charIndex === i) return { ...fa, charIndex: otherIdx };
+            return fa;
+          }) as typeof t.frontActions,
+        }));
+      }
+    }
+    setState({ ...state, characters: next, turns: updatedTurns });
   };
 
   const updateTurn = (ti: number, fn: (t: PlannerTurn) => PlannerTurn) => {
