@@ -168,6 +168,7 @@ export interface PlannerTurn {
 export interface TurnPlannerState {
   odMode: ODMode;
   defaultPassiveOD: number;  // 全局被动OD（每回合固定附加）
+  showBreak: boolean;         // 是否显示破坏输入
   characters: [TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar];
   turns: PlannerTurn[];
 }

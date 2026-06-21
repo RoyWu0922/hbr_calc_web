@@ -526,7 +526,7 @@ function DetailTable({
   setState: (s: TurnPlannerState) => void;
   computed: ComputedTurnResult[];
 }) {
-  const { characters, turns, odMode } = state;
+  const { characters, turns, odMode, showBreak } = state;
 
   const updateChar = (i: number, fn: (c: typeof characters[number]) => typeof characters[number]) => {
     const next = [...characters] as typeof characters;
@@ -597,6 +597,12 @@ function DetailTable({
             value={String(odMode)} onChange={e => setState({ ...state, odMode: parseInt(e.target.value) as ODMode })}>
             {OD_MODE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showBreak: !showBreak })}>
+            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showBreak ? 'bg-accent border-accent' : 'toggle-off'}`}>
+              {showBreak && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            破坏
+          </label>
         </div>
       </div>
 
@@ -608,21 +614,24 @@ function DetailTable({
             <col className="planner-col-front" style={{ width: 30 }} />
             <col className="planner-col-front" style={{ width: 30 }} />
             <col className="planner-col-front" style={{ width: 30 }} />
+            {showBreak && <col className="planner-col-front" style={{ width: 30 }} />}
           </Fragment>)}
           {[1,2,3].map(n => <Fragment key={`b${n}`}>
             <col className="planner-col-back planner-col-group-start" style={{ width: 36 }} />
             <col className="planner-col-back" style={{ width: 30 }} />
           </Fragment>)}
           <col className="planner-col-od planner-col-group-start" style={{ width: 42 }} />
-          <col className="planner-col-od" style={{ width: 32 }} />
+          <col className="planner-col-od" style={{ width: showBreak ? 26 : 32 }} />
+          {showBreak && <col className="planner-col-od" style={{ width: 26 }} />}
         </colgroup>
         <thead>
           <tr>
             <th className="sticky left-0 bg-bg-card z-10">#</th>
-            {[1, 2, 3].map(n => <th key={n} colSpan={4} className="text-center">前{n}</th>)}
+            {[1, 2, 3].map(n => <th key={n} colSpan={showBreak ? 5 : 4} className="text-center">前{n}</th>)}
             {[1, 2, 3].map(n => <th key={`b${n}`} colSpan={2} className="text-center">后{n}</th>)}
             <th>被动OD</th>
             <th>总计OD</th>
+            {showBreak && <th>总计破坏</th>}
           </tr>
         </thead>
         <tbody>
@@ -630,7 +639,7 @@ function DetailTable({
           <tr className="bg-indigo-500/8">
             <td className="font-bold sticky left-0 bg-indigo-500/8 z-10 text-[9px]">入场</td>
             {characters.map((c, i) => (
-              <td key={i} colSpan={i < 3 ? 4 : 2}>
+              <td key={i} colSpan={i < 3 ? (showBreak ? 5 : 4) : 2}>
                 <div className="flex gap-0.5">
                   <input className={TINY} style={{ flex: 1 }} placeholder={`C${i + 1}`} value={c.name}
                     onChange={e => updateChar(i, ch => ({ ...ch, name: e.target.value }))} />
@@ -646,6 +655,7 @@ function DetailTable({
                 onChange={e => setState({ ...state, defaultPassiveOD: parseFloat(e.target.value) || 0 })} />
             </td>
             <td></td>
+            {showBreak && <td></td>}
           </tr>
           {/* Gap + column labels */}
           <tr className="planner-spacer"><td colSpan={99}></td></tr>
@@ -656,12 +666,14 @@ function DetailTable({
               <td className="text-[8px] text-center">消耗SP</td>
               <td className="text-[8px] text-center">获得SP</td>
               <td className="text-[8px] text-center">OD</td>
+              {showBreak && <td className="text-[8px] text-center">破坏</td>}
             </Fragment>)}
             {[1, 2, 3].map(n => <Fragment key={`b${n}`}>
               <td className="text-[8px] text-center">角色</td>
               <td className="text-[8px] text-center">变化SP</td>
             </Fragment>)}
             <td></td><td></td>
+            {showBreak && <td></td>}
           </tr>
 
           {/* Turns */}
@@ -719,7 +731,7 @@ function DetailTable({
                           {characters.map((c, ci) => c.name ? <option key={ci} value={ci}>{c.name}</option> : null)}
                         </select>
                       </td>
-                      <td colSpan={3}>
+                      <td colSpan={showBreak ? 4 : 3}>
                         <input className={TINY} type="text" value={fa.action} placeholder="行动"
                           onChange={e => updateTurn(ti, t => {
                             const fns = [...t.frontActions] as typeof t.frontActions;
@@ -758,11 +770,22 @@ function DetailTable({
                   </td>
 
                   {/* 当前OD (rowSpan=2) */}
-                  <td className={`text-center font-mono font-bold text-xs relative ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`} rowSpan={2}>
+                  <td className={`text-center font-mono font-bold text-xs ${!showBreak ? 'relative' : ''} ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`} rowSpan={2}>
                     {fmtFloat(curResult?.odCapped ?? 0, 2)}
-                    <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
-                      onClick={() => removeTurn(ti)} title="删除">✕</button>
+                    {!showBreak && (
+                      <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
+                        onClick={() => removeTurn(ti)} title="删除">✕</button>
+                    )}
                   </td>
+
+                  {/* 总计破坏 (rowSpan=2) */}
+                  {showBreak && (
+                    <td className="text-center font-mono font-bold text-xs text-text-muted relative" rowSpan={2}>
+                      {fmtFloat(curResult?.cumulativeDR ?? 0, 2)}
+                      <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
+                        onClick={() => removeTurn(ti)} title="删除">✕</button>
+                    </td>
+                  )}
                 </tr>
 
                 {/* Row B: SP | 消耗 | 获得 | OD */}
@@ -790,6 +813,14 @@ function DetailTable({
                             fns[ai] = { ...fns[ai], odGain: parseFloat(e.target.value) || 0 };
                             return { ...t, frontActions: fns };
                           })} /></td>
+                        {showBreak && (
+                          <td><input className={TINY_NUM} type="number" step="0.1" value={fa.dr || ''} placeholder="0"
+                            onChange={e => updateTurn(ti, t => {
+                              const fns = [...t.frontActions] as typeof t.frontActions;
+                              fns[ai] = { ...fns[ai], dr: parseFloat(e.target.value) || 0 };
+                              return { ...t, frontActions: fns };
+                            })} /></td>
+                        )}
                       </Fragment>
                     );
                   })}
