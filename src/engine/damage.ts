@@ -668,3 +668,65 @@ export function calcIncomingDamage(input: IncomingDamageInput): IncomingDamageRe
     maxDmg: avgDmg * 1.1,
   };
 }
+
+// ─── Reverse Score Calculator ─────────────────────────────────
+
+export function reverseAttenuation(targetDamage: number): number | null {
+  if (targetDamage <= ATTEN_THRESHOLD) return targetDamage;
+  // Attenuation caps output at ATTEN_CAP; anything above is unreachable
+  if (targetDamage >= ATTEN_CAP) return null;
+  // Binary search for pre-attenuation value (monotonic in [ATTEN_THRESHOLD, ATTEN_CAP])
+  let lo = ATTEN_THRESHOLD;
+  let hi = ATTEN_CAP;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    const attenuated = applyAttenuation(mid, 1);
+    if (attenuated < targetDamage) lo = mid;
+    else hi = mid;
+  }
+  return hi;
+}
+
+export interface ReverseScoreResult {
+  requiredDamageScore: number;
+  requiredDamage: number;
+  requiredPreAttenuation: number | null;  // null if attenuation target is unreachable
+  capped: boolean;  // true if required damage exceeds game cap
+}
+
+export function reverseCalcScore(
+  targetScore: number,
+  params: ScoreParams,
+  bonusDmg = 0
+): ReverseScoreResult | null {
+  const { difficulty, turns, hasShield, damageCoeff, thresholdOverride, modifier } = params;
+  const scoreData = getScoreData(difficulty);
+  const threshold = thresholdOverride || scoreData.threshold;
+  const baseScore = params.baseScoreOverride || scoreData.base;
+  const turnCoeff = getTurnCoeff(turns);
+  const shieldScore = hasShield ? scoreData.shield : 0;
+
+  // totalScore = (baseScore + damageScore + shieldScore) * turnCoeff * modifier
+  // => damageScore = totalScore / (turnCoeff * modifier) - baseScore - shieldScore
+  const damageScore = targetScore / (turnCoeff * modifier) - baseScore - shieldScore;
+  if (damageScore <= 0) return null;
+
+  // damageScore = damageCoeff * (threshold * ln(damage / threshold) + threshold)
+  // => damage = threshold * exp((damageScore / damageCoeff - threshold) / threshold)
+  const totalDmg = threshold * Math.exp((damageScore / damageCoeff - threshold) / threshold);
+  let requiredDamage = totalDmg - bonusDmg;
+  if (requiredDamage <= 0) return null;
+
+  // Check against game damage cap
+  const capped = requiredDamage > ATTEN_CAP;
+  if (capped) requiredDamage = ATTEN_CAP;
+
+  const requiredPreAttenuation = reverseAttenuation(requiredDamage);
+
+  return {
+    requiredDamageScore: damageScore,
+    requiredDamage: Math.round(requiredDamage),
+    requiredPreAttenuation: requiredPreAttenuation !== null ? Math.round(requiredPreAttenuation) : null,
+    capped,
+  };
+}

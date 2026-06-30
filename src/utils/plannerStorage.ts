@@ -17,13 +17,13 @@ interface HBRCalcDB extends DBSchema {
   };
   planner_saves: {
     key: number;
-    value: { id?: number; label: string; timestamp: number; state: TurnPlannerState; score: number; turns: number; author: string; notes: string };
+    value: { id?: number; label: string; timestamp: number; state: TurnPlannerState; score: number; turns: number; author: string; notes: string; folderId?: number };
     indexes: { timestamp: number };
   };
 }
 
 const DB_NAME = 'hbr-calc-db';
-let DB_VERSION = 4;
+let DB_VERSION = 5;
 
 async function getDB() {
   return openDB<HBRCalcDB>(DB_NAME, DB_VERSION, {
@@ -71,6 +71,16 @@ async function getDB() {
         if (!db.objectStoreNames.contains('planner_saves')) {
           const store = db.createObjectStore('planner_saves', { keyPath: 'id', autoIncrement: true });
           store.createIndex('timestamp', 'timestamp');
+        }
+      }
+      if (oldVersion < 5) {
+        if (!db.objectStoreNames.contains('folders')) {
+          const foldersStore = db.createObjectStore('folders', { keyPath: 'id', autoIncrement: true });
+          foldersStore.createIndex('type', 'type');
+        }
+        if (!db.objectStoreNames.contains('presets')) {
+          const presetsStore = db.createObjectStore('presets', { keyPath: 'id', autoIncrement: true });
+          presetsStore.createIndex('timestamp', 'timestamp');
         }
       }
     },
@@ -192,6 +202,7 @@ export interface SavedAxle {
   turns: number;
   author: string;
   notes: string;
+  folderId?: number;
 }
 
 export async function saveAxle(label: string, state: TurnPlannerState, score = 0, turns = 0, author = '', notes = ''): Promise<number> {
@@ -218,12 +229,14 @@ export async function updateAxle(id: number, label: string, state: TurnPlannerSt
   const db = await getDB();
   const entry = await db.get('planner_saves', id);
   if (!entry) throw new Error('Not found');
+  const existingFolderId = entry.folderId;
   entry.label = label;
   entry.state = JSON.parse(JSON.stringify(state));
   entry.score = score;
   entry.turns = turns;
   entry.author = author;
   entry.notes = notes;
+  entry.folderId = existingFolderId;
   entry.timestamp = Date.now();
   await db.put('planner_saves', entry);
 }
@@ -247,4 +260,40 @@ export async function clearAllAxles(): Promise<void> {
 export async function deleteAxle(id: number): Promise<void> {
   const db = await getDB();
   await db.delete('planner_saves', id);
+}
+
+export async function deleteAxles(ids: number[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('planner_saves', 'readwrite');
+  for (const id of ids) await tx.store.delete(id);
+  await tx.done;
+}
+
+// ─── Axle Export/Import ────────────────────────────────────
+
+export async function getAllAxles(): Promise<SavedAxle[]> {
+  const db = await getDB();
+  return db.getAll('planner_saves');
+}
+
+export async function importAxles(axles: SavedAxle[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('planner_saves', 'readwrite');
+  for (const axle of axles) {
+    const clean = JSON.parse(JSON.stringify(axle)) as SavedAxle;
+    delete clean.id;
+    if (!clean.timestamp) clean.timestamp = Date.now();
+    await tx.store.add(clean);
+  }
+  await tx.done;
+}
+
+// ─── Folder helpers for planner ────────────────────────────
+
+export async function setAxleFolder(axleId: number, folderId: number | undefined): Promise<void> {
+  const db = await getDB();
+  const entry = await db.get('planner_saves', axleId);
+  if (!entry) throw new Error('Axle not found');
+  entry.folderId = folderId;
+  await db.put('planner_saves', entry);
 }

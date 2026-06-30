@@ -66,6 +66,7 @@ export default function DamageCalculator({ initialData }: Props) {
   const [score, setScore] = useState<ScoreParams>(init?.score ? { ...defaultScore, ...init.score } : defaultScore);
   const [result, setResult] = useState<DamageResultData | null>(null);
   const [calcLabel, setCalcLabel] = useState('');
+  const [calcNotes, setCalcNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [chainMul, setChainMul] = useState(init?.chainMul ?? 1);
   // breakMul stored as % (e.g. 300 = 300%). Old decimal values (< 50) auto-migrate.
@@ -106,20 +107,21 @@ export default function DamageCalculator({ initialData }: Props) {
   const handleSave = async () => {
     if (!result) return; setSaving(true);
     const label = calcLabel.trim() || new Date().toLocaleString('zh-CN');
+    const notes = calcNotes.trim();
     const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg, superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr };
     try {
       if (loadedEntryId) {
         // 从历史加载后修改 → 提供更新/另存选项
         const action = confirm('检测到从历史记录加载的数据。\n点击"确定"更新原记录，点击"取消"另存为新记录。');
         if (action) {
-          await updateHistoryEntry(loadedEntryId, label, input, result);
+          await updateHistoryEntry(loadedEntryId, label, input, result, notes);
           alert('已更新原历史记录');
         } else {
-          await saveToHistory(label, input, result);
+          await saveToHistory(label, input, result, notes);
           alert('已另存为新历史记录');
         }
       } else {
-        await saveToHistory(label, input, result);
+        await saveToHistory(label, input, result, notes);
         alert('已保存到历史记录');
       }
     } catch (e) {
@@ -217,6 +219,7 @@ export default function DamageCalculator({ initialData }: Props) {
         <h2 className="text-xl font-bold">伤害计算器</h2>
         <div className="flex gap-2 items-center">
           <input className="input-field w-40" placeholder="计算标签（可选）" value={calcLabel} onChange={e => setCalcLabel(e.target.value)} />
+          <input className="input-field w-32 text-xs" placeholder="备注（可选）" value={calcNotes} onChange={e => setCalcNotes(e.target.value)} />
           <button className="btn btn-secondary btn-sm" onClick={() => {
             setSkill(defaultSkill); setBuffs([]); setDebuffs([]); setWeaknesses([]);
             setEquipment(defaultEquipment); setBonus(defaultBonus);
@@ -437,12 +440,12 @@ function SkillListCard({ skills, lookup, onUpdate, onAdd, onRemove, type, enemyA
           const showMin = !isBuff && (skill.minPower !== undefined);
           return (
             <div key={i} className="glass-row p-2.5">
-              <div className="flex items-end gap-2">
-                <select className="input-field text-xs py-1.5" style={{ width: 140, flexShrink: 0 }} value={skill.name}
+              <div className="flex items-end gap-1.5">
+                <select className="input-field text-xs py-1.5" style={{ width: 133, flexShrink: 0 }} value={skill.name}
                   onChange={e => {
                     const found = lookup.find(s => s.name === e.target.value);
                     if (found) {
-                      const u: any = { ...skill, name: found.name, maxPower: found.max, border: found.border, passive: 1, layers: 1, skillLevel: 1 };
+                      const u: any = { ...skill, name: found.name, maxPower: found.max, border: found.border, passive: 1, layers: 0, skillLevel: 1 };
                       if (!isBuff) u.minPower = found.min; onUpdate(i, u);
                     } else onUpdate(i, { ...skill, name: e.target.value });
                   }}>
@@ -461,9 +464,9 @@ function SkillListCard({ skills, lookup, onUpdate, onAdd, onRemove, type, enemyA
                   onChange={v => { const u: any = { ...skill, passive: v }; onUpdate(i, u); }} />
                 <div className="w-12 flex-shrink-0">
                   <div className="text-[10px] text-text-muted mb-0.5 leading-tight">层数</div>
-                  <select className="input-field text-xs py-1.5" value={skill.layers || 1}
+                  <select className="input-field text-xs py-1.5" value={skill.layers ?? 0}
                     onChange={e => { const u: any = { ...skill, layers: parseInt(e.target.value) }; onUpdate(i, u); }}>
-                    <option value={1}>1</option><option value={2}>2</option>
+                    <option value={0}>0</option><option value={1}>1</option><option value={2}>2</option>
                   </select>
                 </div>
                 {/* Result in proper cell */}

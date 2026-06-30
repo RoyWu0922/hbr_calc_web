@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { TurnPlannerState, PlannerTurn, FrontAction, ODMode, ComputedTurnResult } from '../../types';
 import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner';
-import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, clearAllAxles, type SavedAxle } from '../../utils/plannerStorage';
+import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, deleteAxles, clearAllAxles, getAllAxles, importAxles, setAxleFolder, type SavedAxle } from '../../utils/plannerStorage';
+import { getFolders, createFolder, updateFolder, deleteFolder } from '../../utils/storage';
+import type { Folder } from '../../types';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
 
@@ -1050,12 +1052,16 @@ function SavedAxles({
   const [sortBy, setSortBy] = useState<'time' | 'score' | 'turns'>('time');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLabel, setEditLabel] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [folderFilter, setFolderFilter] = useState<number | 'all' | 'uncategorized'>('all');
 
   const load = async () => {
     setLoading(true);
     const all = await getSavedAxles();
     setAllEntries(all);
     setEntries(all);
+    setFolders(await getFolders('planner'));
     setLoading(false);
   };
 
@@ -1067,7 +1073,11 @@ function SavedAxles({
     if (q) list = list.filter(e => e.label.toLowerCase().includes(q));
     if (sortBy === 'score') list.sort((a, b) => b.score - a.score);
     else if (sortBy === 'turns') list.sort((a, b) => a.turns - b.turns);
-    // default 'time' — already sorted by timestamp from getSavedAxles
+    if (folderFilter === 'uncategorized') {
+      list = list.filter(e => e.folderId == null);
+    } else if (folderFilter !== 'all') {
+      list = list.filter(e => e.folderId === folderFilter);
+    }
     setEntries(list);
   }, [search, allEntries, sortBy]);
 
@@ -1079,6 +1089,14 @@ function SavedAxles({
   const handleDelete = async (id: number) => {
     if (!confirm('确定删除？')) return;
     await deleteAxle(id);
+    setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+    await load();
+  };
+
+  const handleBatchDelete = async () => {
+    if (!confirm(`确定删除选中的 ${selectedIds.size} 个轴？`)) return;
+    await deleteAxles([...selectedIds]);
+    setSelectedIds(new Set());
     await load();
   };
 
@@ -1094,21 +1112,117 @@ function SavedAxles({
     await load();
   };
 
+  // ─── Export / Import ──────────────────────────────────────
+
+  const handleExport = async () => {
+    const all = await getAllAxles();
+    const json = JSON.stringify(all, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hbr-planner-axles-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (!Array.isArray(parsed)) throw new Error('格式无效');
+        if (!confirm(`将导入 ${parsed.length} 个轴，确定？`)) return;
+        await importAxles(parsed);
+        await load();
+        alert('导入成功');
+      } catch (err) {
+        alert('导入失败: ' + (err instanceof Error ? err.message : '无效的JSON文件'));
+      }
+    };
+    input.click();
+  };
+
   if (loading) return <div className="text-text-muted p-4 text-center">加载中...</div>;
+
+  const allSelected = entries.length > 0 && selectedIds.size === entries.length;
+  const toggleSelectAll = () => {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(entries.map(e => e.id!)));
+  };
 
   return (
     <div className="space-y-4">
-      {/* Search */}
+      {/* Search + Actions */}
       <div className="card">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <input className="input-field text-sm flex-1" placeholder="搜索轴…"
             value={search} onChange={e => setSearch(e.target.value)} />
+          <button className="btn btn-secondary btn-xs" onClick={handleExport}>导出JSON</button>
+          <button className="btn btn-secondary btn-xs" onClick={handleImportFile}>导入JSON</button>
+          {selectedIds.size > 0 && (
+            <button className="btn btn-danger btn-xs" onClick={handleBatchDelete}>删除选中 ({selectedIds.size})</button>
+          )}
+        </div>
+      </div>
+
+      {/* Folder filter */}
+      <div className="card">
+        <div className="flex gap-1.5 items-center flex-wrap">
+          <span className="text-[10px] text-text-muted mr-1">分组:</span>
+          {(['all', 'uncategorized'] as const).map(k => (
+            <button key={k} onClick={() => setFolderFilter(k)}
+              className={`px-2 py-0.5 rounded text-xs ${folderFilter === k ? 'bg-accent/20 text-accent' : 'text-text-muted'}`}>
+              {{ all: '全部', uncategorized: '未分类' }[k]}
+            </button>
+          ))}
+          {folders.map(f => (
+            <button key={f.id} onClick={() => setFolderFilter(f.id!)}
+              className={`px-2 py-0.5 rounded text-xs ${folderFilter === f.id ? 'bg-accent/20 text-accent' : 'text-text-muted'}`}>
+              {f.name}
+            </button>
+          ))}
+          <button className="btn btn-xs px-1.5 text-text-muted hover:text-text-primary" title="新建分组"
+            onClick={async () => {
+              const name = prompt('新建分组名称:');
+              if (!name?.trim()) return;
+              await createFolder(name.trim(), 'planner');
+              setFolders(await getFolders('planner'));
+            }}>+</button>
+          {folderFilter !== 'all' && folderFilter !== 'uncategorized' && (
+            <>
+              <button className="btn btn-xs px-1.5 text-text-muted hover:text-text-primary" title="重命名"
+                onClick={async () => {
+                  const f = folders.find(f => f.id === folderFilter);
+                  if (!f) return;
+                  const name = prompt('重命名:', f.name);
+                  if (!name?.trim()) return;
+                  await updateFolder(f.id!, { name: name.trim() });
+                  setFolders(await getFolders('planner'));
+                }}>✎</button>
+              <button className="btn btn-xs px-1.5 text-red-400/60 hover:text-red-400" title="删除分组"
+                onClick={async () => {
+                  const f = folders.find(f => f.id === folderFilter);
+                  if (!f || !confirm(`删除分组 "${f.name}"？条目将移至未分类。`)) return;
+                  await deleteFolder(f.id!);
+                  setFolderFilter('all');
+                  setFolders(await getFolders('planner'));
+                  await load();
+                }}>✕</button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Saved list */}
       <div className="card">
         <div className="flex items-center gap-3 mb-2">
+          <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
           <h3 className="text-sm font-bold">已保存的轴 ({entries.length})</h3>
           <div className="flex gap-0 text-[10px]">
             <button onClick={() => setSortBy('time')} className={`px-1.5 py-0.5 rounded ${sortBy === 'time' ? 'bg-accent/20 text-accent' : 'text-text-muted'}`}>时间</button>
@@ -1130,6 +1244,14 @@ function SavedAxles({
           <div className="space-y-1.5">
             {entries.map(entry => (
               <div key={entry.id} className="flex items-center gap-2 glass-row p-2">
+                <input type="checkbox"
+                  checked={selectedIds.has(entry.id!)}
+                  onChange={e => {
+                    const next = new Set(selectedIds);
+                    if (e.target.checked) next.add(entry.id!);
+                    else next.delete(entry.id!);
+                    setSelectedIds(next);
+                  }} />
                 <div className="flex-1 min-w-0">
                   {editingId === entry.id ? (
                     <input className="input-field text-xs py-0.5 w-full" value={editLabel}
@@ -1152,6 +1274,25 @@ function SavedAxles({
                     {entry.notes && <span className="ml-3 text-text-muted/70 truncate max-w-[200px] inline-block align-bottom">— {entry.notes}</span>}
                   </div>
                 </div>
+                <select className="input-field text-[10px] py-0 w-16" value={entry.folderId ?? ''}
+                  onChange={async e => {
+                    const v = e.target.value;
+                    const fid = v === '' ? undefined : v === '__new__' ? null : parseInt(v);
+                    if (fid === null) {
+                      const name = prompt('新建分组:');
+                      if (!name?.trim()) return;
+                      const id = await createFolder(name.trim(), 'planner');
+                      await setAxleFolder(entry.id!, id);
+                      setFolders(await getFolders('planner'));
+                    } else {
+                      await setAxleFolder(entry.id!, fid);
+                    }
+                    await load();
+                  }}>
+                  <option value="">—</option>
+                  {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                  <option value="__new__">+ 新建</option>
+                </select>
                 <button className="btn btn-primary btn-xs px-2" onClick={() => entry.id != null && onLoad(entry.state, entry.id)} title="加载">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>

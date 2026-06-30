@@ -265,6 +265,27 @@ export interface CalcHistoryEntry {
   label: string;
   input: DamageInput;
   result: DamageResultData;
+  notes?: string;
+  folderId?: number;
+}
+
+export interface Folder {
+  id?: number;
+  name: string;
+  type: 'calc' | 'planner';
+  timestamp: number;
+  sortOrder: number;
+}
+
+export interface PresetTemplate {
+  id?: number;
+  name: string;
+  timestamp: number;
+  buffs: BuffSkill[];
+  debuffs: DebuffSkill[];
+  weaknesses: WeaknessSkill[];
+  equipment: Equipment;
+  bonus: BonusArea;
 }
 
 export interface DamageInput {
