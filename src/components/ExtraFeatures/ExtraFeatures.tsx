@@ -170,7 +170,7 @@ function BreakCalculator() {
       <div className="text-xs text-text-muted mb-1">耳环加成: {result.earringBonus.toFixed(3)} | DR乘数: {result.drMultiplier.toFixed(3)}</div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
         <StatBox label="理论DR增量" value={fmtDec(result.theoreticalDRInc, 4)} />
-        <StatBox label="理论破坏率增量" value={fmtDec(result.theoreticalBreakInc, 4) + '%'} />
+        <StatBox label="理论破坏率增量" value={(result.theoreticalBreakInc * 100).toFixed(2) + '%'} />
         <StatBox label="实际最终破坏率" value={(result.actualFinalDR * 100).toFixed(2) + '%'} />
       </div>
       <div className="mb-3">

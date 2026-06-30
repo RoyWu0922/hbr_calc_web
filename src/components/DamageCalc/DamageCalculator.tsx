@@ -122,7 +122,10 @@ export default function DamageCalculator({ initialData }: Props) {
         await saveToHistory(label, input, result);
         alert('已保存到历史记录');
       }
-    } catch { alert('保存失败'); } setSaving(false);
+    } catch (e) {
+      console.error('保存失败', e);
+      alert('保存失败: ' + (e instanceof Error ? e.message : String(e)));
+    } setSaving(false);
   };
 
   const handleShare = async () => {

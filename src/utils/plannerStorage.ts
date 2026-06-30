@@ -17,17 +17,23 @@ interface HBRCalcDB extends DBSchema {
   };
   planner_saves: {
     key: number;
-    value: { id?: number; label: string; timestamp: number; state: TurnPlannerState; score: number; turns: number };
+    value: { id?: number; label: string; timestamp: number; state: TurnPlannerState; score: number; turns: number; author: string; notes: string };
     indexes: { timestamp: number };
   };
 }
 
 const DB_NAME = 'hbr-calc-db';
-let DB_VERSION = 3;
+let DB_VERSION = 4;
 
 async function getDB() {
   return openDB<HBRCalcDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        if (!db.objectStoreNames.contains('history')) {
+          const store = db.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('timestamp', 'timestamp');
+        }
+      }
       if (oldVersion < 2) {
         if (!db.objectStoreNames.contains('planner_chars')) {
           db.createObjectStore('planner_chars', { keyPath: 'id' });
@@ -41,6 +47,27 @@ async function getDB() {
         }
       }
       if (oldVersion < 3) {
+        if (!db.objectStoreNames.contains('planner_saves')) {
+          const store = db.createObjectStore('planner_saves', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('timestamp', 'timestamp');
+        }
+      }
+      if (oldVersion < 4) {
+        // Repair: ensure all stores exist (prior versions had split upgrade handlers)
+        if (!db.objectStoreNames.contains('history')) {
+          const store = db.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('timestamp', 'timestamp');
+        }
+        if (!db.objectStoreNames.contains('planner_chars')) {
+          db.createObjectStore('planner_chars', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('planner_turns')) {
+          const store = db.createObjectStore('planner_turns', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('turnIndex', 'turnIndex');
+        }
+        if (!db.objectStoreNames.contains('planner_config')) {
+          db.createObjectStore('planner_config', { keyPath: 'key' });
+        }
         if (!db.objectStoreNames.contains('planner_saves')) {
           const store = db.createObjectStore('planner_saves', { keyPath: 'id', autoIncrement: true });
           store.createIndex('timestamp', 'timestamp');
@@ -163,11 +190,13 @@ export interface SavedAxle {
   state: TurnPlannerState;
   score: number;
   turns: number;
+  author: string;
+  notes: string;
 }
 
-export async function saveAxle(label: string, state: TurnPlannerState, score = 0, turns = 0): Promise<number> {
+export async function saveAxle(label: string, state: TurnPlannerState, score = 0, turns = 0, author = '', notes = ''): Promise<number> {
   const db = await getDB();
-  const entry: SavedAxle = { label, timestamp: Date.now(), state: JSON.parse(JSON.stringify(state)), score, turns };
+  const entry: SavedAxle = { label, timestamp: Date.now(), state: JSON.parse(JSON.stringify(state)), score, turns, author, notes };
   return db.add('planner_saves', entry) as Promise<number>;
 }
 
@@ -185,7 +214,7 @@ export async function updateAxleLabel(id: number, label: string): Promise<void> 
   await db.put('planner_saves', entry);
 }
 
-export async function updateAxle(id: number, label: string, state: TurnPlannerState, score: number, turns: number): Promise<void> {
+export async function updateAxle(id: number, label: string, state: TurnPlannerState, score: number, turns: number, author = '', notes = ''): Promise<void> {
   const db = await getDB();
   const entry = await db.get('planner_saves', id);
   if (!entry) throw new Error('Not found');
@@ -193,6 +222,8 @@ export async function updateAxle(id: number, label: string, state: TurnPlannerSt
   entry.state = JSON.parse(JSON.stringify(state));
   entry.score = score;
   entry.turns = turns;
+  entry.author = author;
+  entry.notes = notes;
   entry.timestamp = Date.now();
   await db.put('planner_saves', entry);
 }

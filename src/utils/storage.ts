@@ -10,7 +10,7 @@ interface HBRCalcDB extends DBSchema {
 }
 
 const DB_NAME = 'hbr-calc-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 async function getDB() {
   return openDB<HBRCalcDB>(DB_NAME, DB_VERSION, {
@@ -21,6 +21,45 @@ async function getDB() {
             keyPath: 'id',
             autoIncrement: true,
           });
+          store.createIndex('timestamp', 'timestamp');
+        }
+      }
+      if (oldVersion < 2) {
+        if (!db.objectStoreNames.contains('planner_chars')) {
+          db.createObjectStore('planner_chars', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('planner_turns')) {
+          const store = db.createObjectStore('planner_turns', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('turnIndex', 'turnIndex');
+        }
+        if (!db.objectStoreNames.contains('planner_config')) {
+          db.createObjectStore('planner_config', { keyPath: 'key' });
+        }
+      }
+      if (oldVersion < 3) {
+        if (!db.objectStoreNames.contains('planner_saves')) {
+          const store = db.createObjectStore('planner_saves', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('timestamp', 'timestamp');
+        }
+      }
+      if (oldVersion < 4) {
+        // Repair: ensure all stores exist (prior versions had split upgrade handlers)
+        if (!db.objectStoreNames.contains('history')) {
+          const store = db.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('timestamp', 'timestamp');
+        }
+        if (!db.objectStoreNames.contains('planner_chars')) {
+          db.createObjectStore('planner_chars', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('planner_turns')) {
+          const store = db.createObjectStore('planner_turns', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('turnIndex', 'turnIndex');
+        }
+        if (!db.objectStoreNames.contains('planner_config')) {
+          db.createObjectStore('planner_config', { keyPath: 'key' });
+        }
+        if (!db.objectStoreNames.contains('planner_saves')) {
+          const store = db.createObjectStore('planner_saves', { keyPath: 'id', autoIncrement: true });
           store.createIndex('timestamp', 'timestamp');
         }
       }

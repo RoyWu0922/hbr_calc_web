@@ -696,7 +696,7 @@ function DetailTable({
             return (
               <Fragment key={ti}>
                 {/* Row A: 角色 + 行动 */}
-                <tr>
+                <tr className={(isOD && !isODin) ? 'planner-od-start' : ''}>
                   <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
                     style={{ background: rowBgA || undefined }} rowSpan={2}>
                     <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer"
@@ -1008,21 +1008,23 @@ function SimpleTable({
                 }));
 
                 return (
-                  <tr key={ti} className={ti % 2 === 0 ? 'alt-row' : ''}>
-                    <td className={`font-bold text-xs ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
-                      style={{ background: rowBg || undefined }}>
-                      {turn.roundLabel}
-                    </td>
-                    {actionPairs.map((pair, ai) => (
-                      <Fragment key={ai}>
-                        <td className="font-medium text-xs text-right pr-1">{pair.name}</td>
-                        <td className="text-xs text-left pl-1 text-text-muted">{pair.act}</td>
-                      </Fragment>
-                    ))}
-                    <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                      {fmtFloat(result?.odCapped ?? 0, 2)}
-                    </td>
-                  </tr>
+                  <Fragment key={ti}>
+                    <tr className={(isOD && !isODin ? 'planner-od-start ' : '') + (ti % 2 === 0 ? 'alt-row' : '')}>
+                      <td className={`font-bold text-xs ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
+                        style={{ background: rowBg || undefined }}>
+                        {turn.roundLabel}
+                      </td>
+                      {actionPairs.map((pair, ai) => (
+                        <Fragment key={ai}>
+                          <td className="font-medium text-xs text-right pr-1">{pair.name}</td>
+                          <td className="text-xs text-left pl-1 text-text-muted">{pair.act}</td>
+                        </Fragment>
+                      ))}
+                      <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
+                        {fmtFloat(result?.odCapped ?? 0, 2)}
+                      </td>
+                    </tr>
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -1146,6 +1148,8 @@ function SavedAxles({
                     {new Date(entry.timestamp).toLocaleString('zh-CN')}
                     {entry.score > 0 && <span className="ml-3">分数 {entry.score.toLocaleString()}</span>}
                     {entry.turns > 0 && <span className="ml-3">回合 {entry.turns}</span>}
+                    {entry.author && <span className="ml-3">作者 {entry.author}</span>}
+                    {entry.notes && <span className="ml-3 text-text-muted/70 truncate max-w-[200px] inline-block align-bottom">— {entry.notes}</span>}
                   </div>
                 </div>
                 <button className="btn btn-primary btn-xs px-2" onClick={() => entry.id != null && onLoad(entry.state, entry.id)} title="加载">
@@ -1232,10 +1236,10 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
               <button className="btn btn-primary btn-xs ml-1 px-2" title="保存到记录" onClick={async () => {
                 const label = axleTitle.trim() || new Date().toLocaleString('zh-CN');
                 if (loadedAxleId != null) {
-                  await updateAxle(loadedAxleId, label, state, axleScore, axleTurns);
+                  await updateAxle(loadedAxleId, label, state, axleScore, axleTurns, simpleAuthor, simpleNotes);
                   alert('已更新');
                 } else {
-                  await saveAxle(label, state, axleScore, axleTurns);
+                  await saveAxle(label, state, axleScore, axleTurns, simpleAuthor, simpleNotes);
                   alert('已保存');
                 }
               }}>

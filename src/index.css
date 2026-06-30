@@ -495,6 +495,14 @@ input[type="checkbox"]:checked {
   background: none !important;
 }
 
+/* OD separator — thicker top border on OD turn rows */
+.planner-table tbody tr.planner-od-start td {
+  border-top: 2px solid rgba(148, 163, 184, 0.35);
+}
+[data-theme="light"] .planner-table tbody tr.planner-od-start td {
+  border-top-color: rgba(0, 0, 0, 0.15);
+}
+
 /* alternating turn pairs in detail table (skip entry/spacer/labels, then every 4 rows) */
 .planner-table:not(.simple-timeline) tbody tr:nth-child(n+4):nth-child(4n) td,
 .planner-table:not(.simple-timeline) tbody tr:nth-child(n+4):nth-child(4n+1) td {

@@ -1,25 +1,59 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CalcHistoryEntry, DamageResultData } from '../../types';
 import { getHistory, deleteHistoryEntry, clearHistory, duplicateHistoryEntry, updateHistoryLabel } from '../../utils/storage';
 import { decodeShareData } from '../../utils/shareUrl';
+
+type SortKey = 'time' | 'label' | 'score' | 'turns';
 
 function fmt(n: number): string {
   return Math.round(n).toLocaleString('zh-CN');
 }
 
+function getEntryScore(entry: CalcHistoryEntry): number {
+  return entry.result?.score?.totalScore ?? 0;
+}
+
+function getEntryTurns(entry: CalcHistoryEntry): number {
+  return entry.input?.score?.turns ?? 0;
+}
+
 export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEntry) => void }) {
-  const [entries, setEntries] = useState<CalcHistoryEntry[]>([]);
+  const [allEntries, setAllEntries] = useState<CalcHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLabel, setEditLabel] = useState('');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('time');
+  const [importCode, setImportCode] = useState('');
 
   const loadHistory = async () => {
     setLoading(true);
-    try { setEntries(await getHistory()); } catch { /* */ }
+    try { setAllEntries(await getHistory()); } catch { /* */ }
     setLoading(false);
   };
 
   useEffect(() => { loadHistory(); }, []);
+
+  const entries = useMemo(() => {
+    let list = [...allEntries];
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(e => e.label.toLowerCase().includes(q));
+    }
+    switch (sortBy) {
+      case 'label':
+        list.sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
+        break;
+      case 'score':
+        list.sort((a, b) => getEntryScore(b) - getEntryScore(a));
+        break;
+      case 'turns':
+        list.sort((a, b) => getEntryTurns(a) - getEntryTurns(b));
+        break;
+      // 'time' — already sorted by timestamp desc from getHistory
+    }
+    return list;
+  }, [allEntries, search, sortBy]);
 
   const handleDelete = async (id: number) => {
     await deleteHistoryEntry(id);
@@ -42,8 +76,6 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
     setEditLabel(label);
   };
 
-  const [importCode, setImportCode] = useState('');
-
   const handleImport = () => {
     const code = importCode.trim();
     if (!code) return;
@@ -62,18 +94,24 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
     if (editingId == null) return;
     try {
       await updateHistoryLabel(editingId, editLabel.trim());
-      setEntries(prev => prev.map(e => e.id === editingId ? { ...e, label: editLabel.trim() } : e));
+      setAllEntries(prev => prev.map(e => e.id === editingId ? { ...e, label: editLabel.trim() } : e));
     } catch { /* */ }
     setEditingId(null);
   };
 
   if (loading) return <div className="text-text-muted p-8 text-center">加载中...</div>;
 
-  if (entries.length === 0) {
+  if (allEntries.length === 0) {
     return (
       <div className="text-center py-16">
         <div className="text-text-muted text-lg mb-2">暂无计算历史</div>
         <div className="text-text-muted text-sm">进行伤害计算并保存后，历史记录会出现在这里</div>
+        <div className="mt-4 flex justify-center gap-1.5">
+          <input className="input-field w-64 text-xs py-1.5" placeholder="粘贴分享码导入…"
+            value={importCode} onChange={e => setImportCode(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleImport(); }} />
+          <button className="btn btn-primary btn-sm" onClick={handleImport} disabled={!importCode.trim()}>导入</button>
+        </div>
       </div>
     );
   }
@@ -81,7 +119,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">计算历史</h2>
+        <h2 className="text-xl font-bold">计算历史 ({entries.length}{search ? '/' + allEntries.length : ''})</h2>
         <div className="flex gap-2 items-center">
           <div className="flex gap-1.5">
             <input className="input-field w-64 text-xs py-1.5" placeholder="粘贴分享码导入…"
@@ -90,6 +128,22 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
             <button className="btn btn-primary btn-sm" onClick={handleImport} disabled={!importCode.trim()}>导入</button>
           </div>
           <button className="btn btn-danger" onClick={handleClear}>清除全部</button>
+        </div>
+      </div>
+
+      {/* Search + Sort */}
+      <div className="card">
+        <div className="flex gap-3 items-center">
+          <input className="input-field text-sm flex-1" placeholder="搜索标签…"
+            value={search} onChange={e => setSearch(e.target.value)} />
+          <div className="flex gap-0 text-[10px] flex-shrink-0">
+            {(['time', 'label', 'score', 'turns'] as SortKey[]).map(k => (
+              <button key={k} onClick={() => setSortBy(k)}
+                className={`px-2 py-0.5 rounded ${sortBy === k ? 'bg-accent/20 text-accent' : 'text-text-muted'}`}>
+                {{ time: '时间', label: '标签', score: '分数', turns: '回合' }[k]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
