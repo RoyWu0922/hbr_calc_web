@@ -1382,26 +1382,27 @@ function SavedAxles({
                     {entry.notes && <span className="ml-3 text-text-muted/70 truncate max-w-[200px] inline-block align-bottom">— {entry.notes}</span>}
                   </div>
                 </div>
-                <select className="input-field text-[10px] py-0 w-16" value={entry.folderId ?? ''}
-                  onChange={async e => {
-                    const v = e.target.value;
-                    const fid = v === '' ? undefined : v === '__new__' ? null : parseInt(v);
-                    if (fid === null) {
-                      const name = prompt('新建分组:');
-                      if (!name?.trim()) return;
-                      const id = await createFolder(name.trim(), 'planner');
-                      await setAxleFolder(entry.id!, id);
-                      setFolders(await getFolders('planner'));
-                    } else {
-                      await setAxleFolder(entry.id!, fid);
-                    }
-                    await load();
-                  }}>
-                  <option value="">—</option>
-                  {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                  <option value="__new__">+ 新建</option>
-                </select>
-                <button className="btn btn-primary btn-xs px-2" onClick={() => entry.id != null && onLoad(entry)} title="加载">
+                <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+                  <select className="input-field text-[10px] py-0 w-14" value={entry.folderId ?? ''}
+                    onChange={async e => {
+                      const v = e.target.value;
+                      const fid = v === '' ? undefined : v === '__new__' ? null : parseInt(v);
+                      if (fid === null) {
+                        const name = prompt('新建分组:');
+                        if (!name?.trim()) return;
+                        const id = await createFolder(name.trim(), 'planner');
+                        await setAxleFolder(entry.id!, id);
+                        setFolders(await getFolders('planner'));
+                      } else {
+                        await setAxleFolder(entry.id!, fid);
+                      }
+                      await load();
+                    }}>
+                    <option value="">—</option>
+                    {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                    <option value="__new__">+</option>
+                  </select>
+                  <button className="btn btn-primary btn-xs px-2" onClick={() => entry.id != null && onLoad(entry)} title="加载">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
                 <button className="btn btn-secondary btn-xs px-2" onClick={() => entry.id != null && handleCopy(entry.id)} title="复制">
@@ -1410,6 +1411,7 @@ function SavedAxles({
                 <button className="btn btn-danger btn-xs px-2" onClick={() => entry.id != null && handleDelete(entry.id)} title="删除">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
+                </div>
               </div>
             ))}
           </div>
