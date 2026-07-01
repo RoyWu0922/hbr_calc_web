@@ -29,8 +29,6 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
   const [sortBy, setSortBy] = useState<SortKey>('time');
   const [importCode, setImportCode] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [compareMode, setCompareMode] = useState(false);
-  const [compareIds, setCompareIds] = useState<number[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [folderFilter, setFolderFilter] = useState<number | 'all' | 'uncategorized'>('all');
 
@@ -71,7 +69,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
         break;
     }
     return list;
-  }, [allEntries, search, sortBy]);
+  }, [allEntries, search, sortBy, folderFilter]);
 
   const handleDelete = async (id: number) => {
     await deleteHistoryEntry(id);
@@ -177,28 +175,15 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
 
   // ─── Compare ──────────────────────────────────────────────
 
-  const toggleCompare = (id: number) => {
-    if (!compareMode) {
-      setCompareMode(true);
-      setCompareIds([id]);
-    } else if (compareIds.includes(id)) {
-      setCompareIds(compareIds.filter(i => i !== id));
-    } else if (compareIds.length < 2) {
-      setCompareIds([...compareIds, id]);
-    }
-  };
-
   const doCompare = () => {
-    if (compareIds.length !== 2) return;
-    const e1 = allEntries.find(e => e.id === compareIds[0]);
-    const e2 = allEntries.find(e => e.id === compareIds[1]);
-    if (!e1 || !e2) return;
-    setCompareMode(false);
-    setCompareIds([]);
-    setCompareEntries([e1, e2]);
+    const ids = [...selectedIds];
+    if (ids.length < 2) return;
+    const entries = ids.map(id => allEntries.find(e => e.id === id)).filter(Boolean) as CalcHistoryEntry[];
+    if (entries.length < 2) return;
+    setCompareEntries(entries);
   };
 
-  const [compareEntries, setCompareEntries] = useState<[CalcHistoryEntry, CalcHistoryEntry] | null>(null);
+  const [compareEntries, setCompareEntries] = useState<CalcHistoryEntry[] | null>(null);
 
   // ─── Loading / Empty ──────────────────────────────────────
 
@@ -264,12 +249,8 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
               </button>
             ))}
           </div>
-          <button className={`btn btn-xs ${compareMode ? 'bg-accent/20 text-accent' : 'btn-secondary'}`}
-            onClick={() => { setCompareMode(!compareMode); setCompareIds([]); }}>
-            对比{compareMode ? ` (${compareIds.length}/2)` : ''}
-          </button>
-          {compareMode && compareIds.length === 2 && (
-            <button className="btn btn-primary btn-xs" onClick={doCompare}>开始对比</button>
+          {selectedIds.size >= 2 && (
+            <button className="btn btn-primary btn-xs" onClick={doCompare}>对比选中 ({selectedIds.size})</button>
           )}
         </div>
       </div>
@@ -333,7 +314,6 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
                   </span>
                 </span>
               </th>
-              {compareMode && <th style={{ width: 32 }}></th>}
               <th>标签</th>
               <th>备注</th>
               <th>难度</th>
@@ -350,7 +330,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
               const r = entry.result;
               const s = entry.input.score;
               return (
-                <tr key={entry.id} className={`hover:bg-bg-input/30 ${compareMode && compareIds.includes(entry.id!) ? 'bg-accent/10' : ''}`}>
+                <tr key={entry.id} className="hover:bg-bg-input/30">
                   <td>
                     <span className="inline-flex cursor-pointer select-none"
                       onClick={() => {
@@ -364,15 +344,6 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
                       </span>
                     </span>
                   </td>
-                  {compareMode && (
-                    <td>
-                      <span className="inline-flex cursor-pointer select-none" onClick={() => toggleCompare(entry.id!)}>
-                        <span className={`w-4 h-4 rounded flex items-center justify-center border-2 transition-all flex-shrink-0 ${compareIds.includes(entry.id!) ? 'bg-accent border-accent' : 'toggle-off'}`}>
-                          {compareIds.includes(entry.id!) && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                        </span>
-                      </span>
-                    </td>
-                  )}
                   <td className="font-medium" style={{ minWidth: 120 }}>
                     {editingId === entry.id ? (
                       <input className="input-field text-xs py-1 w-full" value={editLabel}
@@ -453,67 +424,56 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
 
 // ─── Compare Modal ──────────────────────────────────────────
 
-function CompareModal({ entries, onClose }: { entries: [CalcHistoryEntry, CalcHistoryEntry]; onClose: () => void }) {
-  const [e1, e2] = entries;
+function CompareModal({ entries, onClose }: { entries: CalcHistoryEntry[]; onClose: () => void }) {
+  const allSame = (vals: string[]) => vals.every(v => v === vals[0]);
 
-  function diffRow(label: string, v1: string, v2: string) {
-    const differs = v1 !== v2;
+  function diffRow(label: string, vals: string[]) {
+    const differs = !allSame(vals);
     return (
-      <tr className={differs ? 'bg-amber-500/6' : ''}>
-        <td className="text-xs font-medium text-text-muted">{label}</td>
-        <td className={`font-mono text-xs ${differs ? 'text-amber-200' : ''}`}>{v1}</td>
-        <td className={`font-mono text-xs ${differs ? 'text-amber-200' : ''}`}>{v2}</td>
+      <tr className={differs ? 'bg-amber-500/10' : ''}>
+        <td className="text-xs font-medium text-text-muted" style={{ minWidth: 80 }}>{label}</td>
+        {vals.map((v, i) => (
+          <td key={i} className={`font-mono text-xs ${differs ? 'text-amber-500' : ''}`}>{v}</td>
+        ))}
       </tr>
     );
   }
 
-  const i1 = e1.input; const i2 = e2.input;
-  const r1 = e1.result; const r2 = e2.result;
-
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="card max-w-[95vw] max-h-[90vh] overflow-y-auto" style={{ minWidth: 700 }}>
+      <div className="card max-w-[95vw] max-h-[90vh] overflow-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold">配置对比</h3>
+          <h3 className="text-lg font-bold">配置对比 ({entries.length})</h3>
           <button className="btn btn-secondary btn-xs" onClick={onClose}>关闭</button>
-        </div>
-        <div className="flex gap-1 mb-3 text-xs text-text-muted">
-          <span className="flex-1 font-bold text-text-primary">{e1.label}</span>
-          <span className="px-2">vs</span>
-          <span className="flex-1 font-bold text-text-primary text-right">{e2.label}</span>
         </div>
         <table>
           <thead>
             <tr>
               <th>项目</th>
-              <th>{e1.label || '条目1'}</th>
-              <th>{e2.label || '条目2'}</th>
+              {entries.map((e, i) => (
+                <th key={i} className="text-xs max-w-[120px] truncate">{e.label || `#${i + 1}`}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {diffRow('最大威力', String(i1.skill.maxPower), String(i2.skill.maxPower))}
-            {diffRow('技能等级', String(i1.skill.skillLevel), String(i2.skill.skillLevel))}
-            {diffRow('基础差值', String(i1.skill.baseDiff), String(i2.skill.baseDiff))}
-            {diffRow('Hit数', String(i1.skill.hitCount), String(i2.skill.hitCount))}
-            {diffRow('暴击', i1.skill.isCrit ? '是' : '否', i2.skill.isCrit ? '是' : '否')}
-            {diffRow('宝珠', String(i1.skill.orb), String(i2.skill.orb))}
-            {diffRow('偏向', String(i1.skill.deviation), String(i2.skill.deviation))}
-            {diffRow('Token', String(i1.skill.token), String(i2.skill.token))}
-            {diffRow('特殊', String(i1.skill.special), String(i2.skill.special))}
-            {diffRow('加攻区', r1.atkFactor.toFixed(3), r2.atkFactor.toFixed(3))}
-            {diffRow('减防区', r1.defFactor.toFixed(3), r2.defFactor.toFixed(3))}
-            {diffRow('弱点区', r1.weaknessFactor.toFixed(3), r2.weaknessFactor.toFixed(3))}
-            {diffRow('爆伤区', r1.critFactor.toFixed(1), r2.critFactor.toFixed(1))}
-            {diffRow('连击倍率', String(i1.chainMul), String(i2.chainMul))}
-            {diffRow('破坏倍率', String(i1.breakMul), String(i2.breakMul))}
-            {diffRow('OD倍率', String(i1.odMul), String(i2.odMul))}
-            {diffRow('浮动', String(i1.floatVal), String(i2.floatVal))}
-            {diffRow('垫刀', String(i1.bonusDmg || 0), String(i2.bonusDmg || 0))}
-            {diffRow('难度', String(i1.score.difficulty), String(i2.score.difficulty))}
-            {diffRow('回合', String(i1.score.turns), String(i2.score.turns))}
-            {diffRow('衰减后伤害', fmt(r1.postAttenuation), fmt(r2.postAttenuation))}
-            {diffRow('总分', r1.score ? fmt(r1.score.totalScore) : '—', r2.score ? fmt(r2.score.totalScore) : '—')}
+            {diffRow('最大威力', entries.map(e => String(e.input.skill.maxPower)))}
+            {diffRow('技能等级', entries.map(e => String(e.input.skill.skillLevel)))}
+            {diffRow('Hit数', entries.map(e => String(e.input.skill.hitCount)))}
+            {diffRow('暴击', entries.map(e => e.input.skill.isCrit ? '是' : '否'))}
+            {diffRow('加攻区', entries.map(e => e.result.atkFactor.toFixed(3)))}
+            {diffRow('减防区', entries.map(e => e.result.defFactor.toFixed(3)))}
+            {diffRow('弱点区', entries.map(e => e.result.weaknessFactor.toFixed(3)))}
+            {diffRow('爆伤区', entries.map(e => e.result.critFactor.toFixed(1)))}
+            {diffRow('连击倍率', entries.map(e => String(e.input.chainMul)))}
+            {diffRow('破坏倍率', entries.map(e => String(e.input.breakMul)))}
+            {diffRow('OD倍率', entries.map(e => String(e.input.odMul)))}
+            {diffRow('浮动', entries.map(e => String(e.input.floatVal)))}
+            {diffRow('垫刀', entries.map(e => String(e.input.bonusDmg || 0)))}
+            {diffRow('难度', entries.map(e => String(e.input.score.difficulty)))}
+            {diffRow('回合', entries.map(e => String(e.input.score.turns)))}
+            {diffRow('衰减后伤害', entries.map(e => fmt(e.result.postAttenuation)))}
+            {diffRow('总分', entries.map(e => e.result.score ? fmt(e.result.score.totalScore) : '—'))}
           </tbody>
         </table>
       </div>

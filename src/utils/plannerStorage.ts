@@ -134,27 +134,24 @@ export async function loadPlannerTurns(): Promise<PlannerTurn[]> {
 
 // ─── Config ────────────────────────────────────────────────
 
-export async function savePlannerConfig(config: { odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean }): Promise<void> {
+export async function savePlannerConfig(config: { odMode: ODMode; defaultPassiveOD: number; showBreak: boolean }): Promise<void> {
   const db = await getDB();
   const tx = db.transaction('planner_config', 'readwrite');
   await tx.store.put({ key: 'odMode', value: config.odMode });
   await tx.store.put({ key: 'defaultPassiveOD', value: config.defaultPassiveOD });
   await tx.store.put({ key: 'showBreak', value: config.showBreak });
-  await tx.store.put({ key: 'showEncounter', value: config.showEncounter });
   await tx.done;
 }
 
-export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean }> {
+export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPassiveOD: number; showBreak: boolean }> {
   const db = await getDB();
   const odMode = await db.get('planner_config', 'odMode');
   const passive = await db.get('planner_config', 'defaultPassiveOD');
   const showBreak = await db.get('planner_config', 'showBreak');
-  const showEncounter = await db.get('planner_config', 'showEncounter');
   return {
     odMode: (odMode?.value as ODMode) || 300,
     defaultPassiveOD: (passive?.value as number) || 0,
     showBreak: (showBreak?.value as boolean) || false,
-    showEncounter: (showEncounter?.value as boolean) || false,
   };
 }
 
@@ -163,7 +160,7 @@ export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPass
 export async function savePlannerState(state: TurnPlannerState): Promise<void> {
   await savePlannerChars(state.characters as unknown as TurnPlannerChar[]);
   await savePlannerTurns(state.turns);
-  await savePlannerConfig({ odMode: state.odMode, defaultPassiveOD: state.defaultPassiveOD, showBreak: state.showBreak, showEncounter: state.showEncounter });
+  await savePlannerConfig({ odMode: state.odMode, defaultPassiveOD: state.defaultPassiveOD, showBreak: state.showBreak });
 }
 
 export async function loadPlannerState(): Promise<TurnPlannerState | null> {
@@ -182,7 +179,6 @@ export async function loadPlannerState(): Promise<TurnPlannerState | null> {
     odMode: config.odMode,
     defaultPassiveOD: config.defaultPassiveOD,
     showBreak: config.showBreak,
-    showEncounter: config.showEncounter,
     characters: characters as TurnPlannerState['characters'],
     turns: turns.length > 0 ? turns : [],
   };

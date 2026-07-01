@@ -135,6 +135,7 @@ export interface ScoreParams {
   thresholdOverride?: number; // 阈值 override
   modifier: number; // 词条
   baseScoreOverride?: number;
+  targets: number; // 目标数，默认1
 }
 
 // ─── Turn Planner ───────────────────────────────────────────
@@ -163,15 +164,12 @@ export interface PlannerTurn {
   jailOD: number;        // 牢房 (column W in TL.xlsx)
   passiveOD: number;     // 被动OD (column X)
   bossDR: number;        // BOSS DR this turn (column AB)
-  encounterPhase?: number;  // 1-5 for encounter phases, undefined = normal
-  encounterModifier?: string; // modifier text for 词条 rows
 }
 
 export interface TurnPlannerState {
   odMode: ODMode;
   defaultPassiveOD: number;  // 全局被动OD（每回合固定附加）
   showBreak: boolean;         // 是否显示破坏输入
-  showEncounter: boolean;     // 是否显示遭遇战phase选择
   characters: [TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar];
   turns: PlannerTurn[];
 }

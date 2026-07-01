@@ -440,7 +440,7 @@ export function calcScore(damage: number, params: ScoreParams, bonusDmg = 0): {
   baseScore: number; threshold: number; damageScore: number;
   shieldScore: number; turnCoeff: number; totalScore: number;
 } {
-  const { difficulty, turns, hasShield, damageCoeff, thresholdOverride, modifier } = params;
+  const { difficulty, turns, hasShield, damageCoeff, thresholdOverride, modifier, targets } = params;
 
   const scoreData = getScoreData(difficulty);
   const threshold = thresholdOverride || scoreData.threshold;
@@ -448,7 +448,7 @@ export function calcScore(damage: number, params: ScoreParams, bonusDmg = 0): {
   const turnCoeff = getTurnCoeff(turns);
   const shieldScore = hasShield ? scoreData.shield : 0;
 
-  const totalDmg = damage + bonusDmg;
+  const totalDmg = damage * (targets || 1) + bonusDmg;
   // Damage score: H*(G*ln(damage/G)+G)
   const damageScore = damageCoeff * (threshold * Math.log(totalDmg / threshold) + threshold);
 
@@ -699,22 +699,24 @@ export function reverseCalcScore(
   params: ScoreParams,
   bonusDmg = 0
 ): ReverseScoreResult | null {
-  const { difficulty, turns, hasShield, damageCoeff, thresholdOverride, modifier } = params;
+  const { difficulty, turns, hasShield, damageCoeff, thresholdOverride, modifier, targets } = params;
   const scoreData = getScoreData(difficulty);
   const threshold = thresholdOverride || scoreData.threshold;
   const baseScore = params.baseScoreOverride || scoreData.base;
   const turnCoeff = getTurnCoeff(turns);
   const shieldScore = hasShield ? scoreData.shield : 0;
+  const t = targets || 1;
 
   // totalScore = (baseScore + damageScore + shieldScore) * turnCoeff * modifier
   // => damageScore = totalScore / (turnCoeff * modifier) - baseScore - shieldScore
   const damageScore = targetScore / (turnCoeff * modifier) - baseScore - shieldScore;
   if (damageScore <= 0) return null;
 
-  // damageScore = damageCoeff * (threshold * ln(damage / threshold) + threshold)
-  // => damage = threshold * exp((damageScore / damageCoeff - threshold) / threshold)
+  // damageScore = damageCoeff * (threshold * ln(totalDmg / threshold) + threshold)
+  // totalDmg = damage * targets + bonusDmg
+  // => damage = (threshold * exp(...) - bonusDmg) / targets
   const totalDmg = threshold * Math.exp((damageScore / damageCoeff - threshold) / threshold);
-  let requiredDamage = totalDmg - bonusDmg;
+  let requiredDamage = (totalDmg - bonusDmg) / t;
   if (requiredDamage <= 0) return null;
 
   // Check against game damage cap

@@ -33,7 +33,7 @@ const defaultEquipment: Equipment = { ring: false, hpEarring: false, silverNeckl
 const defaultBonus: BonusArea = { passiveAtkEntries: [], passiveDefEntries: [], critDmgBase: 0, critDmgBonus: 0, critDmgExtraEntries: [{ name: '基础暴击', value: 100 }, { name: '暴击', value: 50 }] };
 const defaultOD: ODParams = { origHit: 0, addHit: 0, fixedOD: 0, earringCoeff: 0 };
 const defaultBreak: BreakParams = { skillDR: 0, enemyDR: 0, origHits: 0, earring: 0, necklace: 0, otherDR: 0, superChain: 0, bigChain: 0, midChain: 0, smallChain: 0, maxDR: undefined, initDR: undefined, dists: [] };
-const defaultScore: ScoreParams = { difficulty: 40, turns: 2, hasShield: true, damageCoeff: 0.01, modifier: 1.35 };
+const defaultScore: ScoreParams = { difficulty: 40, turns: 2, hasShield: true, damageCoeff: 0.01, modifier: 1.35, targets: 1 };
 
 function buildLookup(builtins: any[], category: 'buff' | 'debuff' | 'weakness') {
   const deleted = getDeletedBuiltins(category); const overrides = getBuiltinOverrides(category);
@@ -607,7 +607,7 @@ function ScoreSection({ score, updateScore, bonusDmg, setBonusDmg }: {
   bonusDmg: number; setBonusDmg: (v: number) => void;
 }) {
   return (
-    <div className="grid grid-cols-7 gap-3 items-end">
+    <div className="grid grid-cols-8 gap-2 items-end">
       <div>
         <div className="input-label">难度</div>
         <select className="input-field text-xs py-1.5" value={score.difficulty} onChange={e => updateScore('difficulty', parseInt(e.target.value))}>
@@ -626,6 +626,11 @@ function ScoreSection({ score, updateScore, bonusDmg, setBonusDmg }: {
           onChange={e => updateScore('damageCoeff', parseFloat(e.target.value) || 0)} />
       </div>
       <div>
+        <div className="input-label">目标数</div>
+        <input className="input-field text-xs py-1.5" type="number" step={1} value={score.targets || 1}
+          onChange={e => updateScore('targets', parseInt(e.target.value) || 1)} />
+      </div>
+      <div>
         <div className="input-label">词条倍率</div>
         <input className="input-field text-xs py-1.5" type="number" step={0.01} value={score.modifier}
           onChange={e => updateScore('modifier', parseFloat(e.target.value) || 0)} />
@@ -640,7 +645,10 @@ function ScoreSection({ score, updateScore, bonusDmg, setBonusDmg }: {
         <input className="input-field text-xs py-1.5" type="number" value={bonusDmg || ''}
           onChange={e => { const v = e.target.value; setBonusDmg(v === '' ? 0 : parseFloat(v) || 0); }} />
       </div>
-      <Toggle label="盾分" value={score.hasShield} onChange={v => updateScore('hasShield', v)} />
+      <div>
+        <div className="input-label">&nbsp;</div>
+        <Toggle label="盾分" value={score.hasShield} onChange={v => updateScore('hasShield', v)} />
+      </div>
     </div>
   );
 }

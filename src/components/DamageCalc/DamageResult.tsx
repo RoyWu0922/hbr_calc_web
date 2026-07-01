@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { DamageResultData, SkillInput } from '../../types';
 import { computeFloatDistribution, buildHitWeights, parseWeightString, FloatDistData } from '../../engine/floatProb';
+import { applyAttenuation } from '../../engine/damage';
 
 function fmtRaw(n: number): string {
   return Math.round(n).toLocaleString('zh-CN');
@@ -42,7 +43,7 @@ export default function DamageResult({ result, skill, floatVal,
   const [hover, setHover] = useState<{ x: number; y: number; pdfVal: number; survivalVal: number; dmg: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const W = 400, H = 200, L = 45, R = 20, T = 15, B = 35;
+  const W = 420, H = 200, L = 45, R = 32, T = 15, B = 35;
   const pw = W - L - R, ph = H - T - B;
 
   // Plot range: up from -0.1 to 0.1
@@ -89,9 +90,10 @@ export default function DamageResult({ result, skill, floatVal,
       const d = Math.abs(p.up - up);
       if (d < bestDist) { bestDist = d; best = p; }
     }
-    const dmgEstimate = result.postAttenuation * (1 + best.up) / floatVal;
+    const preAtUp = result.preAttenuation * (1 + best.up);
+    const dmgEstimate = applyAttenuation(preAtUp, 1);
     setHover({ x: best.up, y: best.pdf, pdfVal: best.pdf, survivalVal: best.survival, dmg: dmgEstimate });
-  }, [floatDist, result.postAttenuation, floatVal, W, L, pw]);
+  }, [floatDist, result.preAttenuation, W, L, pw]);
 
   return (
     <div className="space-y-4">
@@ -110,10 +112,21 @@ export default function DamageResult({ result, skill, floatVal,
           </div>
 
           <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 220 }}>
+            {/* Baseline */}
             <line x1={L} y1={T + ph} x2={L + pw} y2={T + ph} stroke="var(--app-glass-border)" strokeWidth={1} />
+            {/* Zero vertical */}
             <line x1={sx(0)} y1={T} x2={sx(0)} y2={T + ph} stroke="rgba(245,158,11,0.3)" strokeWidth={1} strokeDasharray="4,2" />
-            <path d={pdfPathD} fill="rgba(99,102,241,0.25)" stroke="rgba(99,102,241,0.7)" strokeWidth={1} />
-            <path d={survivalPathD} fill="none" stroke="rgba(245,158,11,0.5)" strokeWidth={1} strokeDasharray="2,2" />
+            {/* PDF fill + line */}
+            <path d={pdfPathD} fill="rgba(99,102,241,0.15)" stroke="rgba(99,102,241,0.6)" strokeWidth={1.2} />
+            {/* Survival curve — solid, thicker */}
+            <path d={survivalPathD} fill="none" stroke="rgba(245,158,11,0.8)" strokeWidth={2} />
+            {/* Right Y-axis labels for survival probability */}
+            {[0, 25, 50, 75, 100].map(pct => (
+              <text key={`s${pct}`} x={L + pw + 3} y={T + (1 - pct / 100) * ph + 3} fill="rgba(245,158,11,0.6)" fontSize={8} textAnchor="start">
+                {pct}%
+              </text>
+            ))}
+            {/* X-axis labels */}
             {[-0.1, -0.05, 0, 0.05, 0.1].map(x => (
               <text key={x} x={sx(x)} y={T + ph + 14} textAnchor="middle" fill="var(--app-text-muted)" fontSize={9}>
                 {x === 0 ? '0%' : `${Math.round(x * 100)}%`}
@@ -132,8 +145,8 @@ export default function DamageResult({ result, skill, floatVal,
           <div className="flex justify-between text-[10px] text-text-muted mt-1">
             <span>-10%</span>
             <span className="flex items-center gap-2">
-              <span className="inline-block w-2.5 h-0.5 bg-indigo-400/70 rounded" /> PDF
-              <span className="inline-block w-2.5 h-0.5 bg-amber-400/50 rounded" style={{ borderTop: '1px dashed rgba(245,158,11,0.5)' }} /> P(≥up)
+              <span className="inline-block w-2.5 h-0.5 bg-indigo-400/60 rounded" /> PDF概率密度
+              <span className="inline-block w-2.5 h-0.5 bg-amber-400/70 rounded" /> P(≥浮动)
             </span>
             <span>+10%</span>
           </div>
