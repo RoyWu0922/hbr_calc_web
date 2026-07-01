@@ -13,9 +13,7 @@ Web 版全能红烧天堂计算工具箱，支持伤害计算、白值计算、O
 
 **GitHub Pages(国内可能不稳定)**: [roywu0922.github.io/hbr_calc_web](https://roywu0922.github.io/hbr_calc_web)
 
-**Vercel Pages(国内需科学上网)**: [https://hbrtoolbox.vercel.app/](https://hbrtoolbox.vercel.app/)
-
-**Gitee Pages(国内推荐)**: [https://nothinb.gitee.io/hbr_calc_web](https://nothinb.gitee.io/hbr_calc_web)
+**Vercel Pages(需科学上网)**: [https://hbrtoolbox.vercel.app/](https://hbrtoolbox.vercel.app/)
 
 
   
