@@ -528,7 +528,7 @@ function DetailTable({
   setState: (s: TurnPlannerState) => void;
   computed: ComputedTurnResult[];
 }) {
-  const { characters, turns, odMode, showBreak } = state;
+  const { characters, turns, odMode, showBreak, showEncounter } = state;
 
   const updateChar = (i: number, fn: (c: typeof characters[number]) => typeof characters[number]) => {
     const next = [...characters] as typeof characters;
@@ -605,11 +605,18 @@ function DetailTable({
             </div>
             破坏
           </label>
+          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showEncounter: !showEncounter })}>
+            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showEncounter ? 'bg-accent border-accent' : 'toggle-off'}`}>
+              {showEncounter && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            遭遇战
+          </label>
         </div>
       </div>
 
       <table className="planner-table">
         <colgroup>
+          {showEncounter && <col style={{ width: 32 }} />}
           <col style={{ width: 48 }} />
           {[1,2,3].map(n => <Fragment key={n}>
             <col className="planner-col-front planner-col-group-start" style={{ width: 45 }} />
@@ -628,7 +635,8 @@ function DetailTable({
         </colgroup>
         <thead>
           <tr>
-            <th className="sticky left-0 bg-bg-card z-10">#</th>
+            {showEncounter && <th className="sticky left-0 bg-bg-card z-10" style={{ left: 0 }}>P</th>}
+            <th className={`sticky bg-bg-card z-10 ${showEncounter ? '' : 'left-0'}`} style={showEncounter ? { left: 32 } : undefined}>#</th>
             {[1, 2, 3].map(n => <th key={n} colSpan={showBreak ? 5 : 4} className="text-center">前{n}</th>)}
             {[1, 2, 3].map(n => <th key={`b${n}`} colSpan={2} className="text-center">后{n}</th>)}
             <th>被动OD</th>
@@ -639,7 +647,8 @@ function DetailTable({
         <tbody>
           {/* 入场: name + SP side by side */}
           <tr className="bg-indigo-500/8">
-            <td className="font-bold sticky left-0 bg-indigo-500/8 z-10 text-[9px]">入场</td>
+            {showEncounter && <td></td>}
+            <td className={`font-bold sticky bg-indigo-500/8 z-10 text-[9px] ${showEncounter ? '' : 'left-0'}`} style={showEncounter ? { left: 32 } : undefined}>入场</td>
             {characters.map((c, i) => (
               <td key={i} colSpan={i < 3 ? (showBreak ? 5 : 4) : 2}>
                 <div className="flex gap-0.5">
@@ -662,7 +671,8 @@ function DetailTable({
           {/* Gap + column labels */}
           <tr className="planner-spacer"><td colSpan={99}></td></tr>
           <tr className="text-text-muted">
-            <td className="text-[8px] text-center sticky left-0 bg-bg-card z-10"></td>
+            {showEncounter && <td className="text-[8px] text-center"></td>}
+            <td className={`text-[8px] text-center sticky bg-bg-card z-10 ${showEncounter ? '' : 'left-0'}`} style={showEncounter ? { left: 32 } : undefined}></td>
             {[1, 2, 3].map(n => <Fragment key={n}>
               <td className="text-[8px] text-center">角色</td>
               <td className="text-[8px] text-center">消耗SP</td>
@@ -694,13 +704,83 @@ function DetailTable({
             const rowBgA = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
             const backChars = [0, 1, 2, 3, 4, 5].filter(i => !frontIdxSet.has(i));
+            const isModifier = !!turn.encounterModifier;
+            const prevPhase = prevTurn?.encounterPhase;
+            const curPhase = turn.encounterPhase;
+            const phaseChanged = showEncounter && curPhase !== prevPhase && (curPhase || prevPhase);
+            const rowClass = [(isOD && !isODin) ? 'planner-od-start' : '', phaseChanged ? 'planner-od-start' : ''].filter(Boolean).join(' ') || undefined;
+
+            // Modifier row — short text input only
+            if (showEncounter && isModifier) {
+              return (
+                <Fragment key={ti}>
+                  {phaseChanged && <tr className="planner-od-start"><td colSpan={99}></td></tr>}
+                  <tr>
+                    <td className="text-center text-[9px] text-text-muted" style={{ width: 32 }} rowSpan={2}>
+                      <select className="input-field text-[8px] py-0 w-full text-center" value={turn.encounterPhase ?? ''}
+                        onChange={e => updateTurn(ti, t => ({ ...t, encounterPhase: e.target.value === 'modifier' ? -1 : parseInt(e.target.value) || undefined, encounterModifier: e.target.value === 'modifier' ? (t.encounterModifier || '') : undefined }))}>
+                        <option value="">—</option>
+                        {[1,2,3,4,5].map(p => <option key={p} value={p}>{p}</option>)}
+                        <option value="modifier">词条</option>
+                      </select>
+                    </td>
+                    <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card text-purple-400`}
+                      style={{ left: showEncounter ? 32 : 0 }} rowSpan={2}>
+                      <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer text-purple-400"
+                        style={{ fontSize: 'inherit' }}
+                        value={typeKey} onChange={e => updateTurnType(ti, e.target.value, normalCounter)}>
+                        <option value="normal">{normalLabel}</option>
+                        <option value="extra">追加</option>
+                        <option value="odin">OD内</option>
+                        <option value="od1pre">前置OD1</option>
+                        <option value="od2pre">前置OD2</option>
+                        <option value="od3pre">前置OD3</option>
+                        <option value="od1post">后置OD1</option>
+                        <option value="od2post">后置OD2</option>
+                        <option value="od3post">后置OD3</option>
+                      </select>
+                    </td>
+                    <td colSpan={showBreak ? 21 : 18}>
+                      <input className="input-field text-[9px] py-0.5 w-full" placeholder="词条内容…"
+                        value={turn.encounterModifier || ''}
+                        onChange={e => updateTurn(ti, t => ({ ...t, encounterModifier: e.target.value }))} />
+                    </td>
+                  </tr>
+                  <tr>
+                    {showEncounter && <td></td>}
+                    <td colSpan={showBreak ? 22 : 19}>
+                      <input className="input-field text-[9px] py-0.5 w-full" style={{ border: 'none' }} placeholder="词条效果…"
+                        value={turn.encounterModifier || ''}
+                        onChange={e => updateTurn(ti, t => ({ ...t, encounterModifier: e.target.value }))} />
+                    </td>
+                  </tr>
+                </Fragment>
+              );
+            }
 
             return (
               <Fragment key={ti}>
                 {/* Row A: 角色 + 行动 */}
-                <tr className={(isOD && !isODin) ? 'planner-od-start' : ''}>
-                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
-                    style={{ background: rowBgA || undefined }} rowSpan={2}>
+                <tr className={rowClass || undefined}>
+                  {showEncounter && (
+                    <td className="text-center text-[9px] text-text-muted" style={{ width: 32 }} rowSpan={2}>
+                      <select className="input-field text-[8px] py-0 w-full text-center" value={turn.encounterPhase ?? ''}
+                        onChange={e => {
+                          const v = e.target.value;
+                          updateTurn(ti, t => ({
+                            ...t,
+                            encounterPhase: v === '' ? undefined : v === 'modifier' ? -1 : parseInt(v),
+                            encounterModifier: v === 'modifier' ? (t.encounterModifier || '') : undefined,
+                          }));
+                        }}>
+                        <option value="">—</option>
+                        {[1,2,3,4,5].map(p => <option key={p} value={p}>{p}</option>)}
+                        <option value="modifier">词条</option>
+                      </select>
+                    </td>
+                  )}
+                  <td className={`text-center sticky z-10 font-bold text-[12px] bg-bg-card ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
+                    style={{ background: rowBgA || undefined, left: showEncounter ? 32 : 0 }} rowSpan={2}>
                     <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer"
                       style={{ color: 'inherit', fontSize: 'inherit' }}
                       value={typeKey} onChange={e => updateTurnType(ti, e.target.value, normalCounter)}>
@@ -1003,18 +1083,46 @@ function SimpleTable({
                 const extraIsRed = isExtra && prevIsOD;
                 const result = computed[ti];
                 const rowBg = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
+                const prevPhase = prevTurn?.encounterPhase;
+                const curPhase = turn.encounterPhase;
+                const phaseChanged = state.showEncounter && curPhase !== prevPhase && (curPhase || prevPhase);
+
+                const phasePrefix = state.showEncounter && curPhase
+                  ? (curPhase === -1 ? '词条 ' : `P${curPhase} `)
+                  : '';
 
                 const actionPairs = turn.frontActions.map(a => ({
                   name: a.charIndex >= 0 ? (characters[a.charIndex].name || `C${a.charIndex + 1}`) : '',
                   act: a.action || '',
                 }));
 
+                // Modifier row in simple table
+                if (state.showEncounter && turn.encounterModifier) {
+                  return (
+                    <Fragment key={ti}>
+                      {phaseChanged && <tr className="planner-od-start"><td colSpan={8}></td></tr>}
+                      <tr className={(isOD && !isODin ? 'planner-od-start ' : '') + (ti % 2 === 0 ? 'alt-row' : '')}>
+                        <td className="font-bold text-xs text-purple-400" style={{ background: rowBg || undefined }}>
+                          词条 {turn.roundLabel}
+                        </td>
+                        <td colSpan={6} className="text-xs text-left pl-1 text-text-muted">
+                          {turn.encounterModifier}
+                        </td>
+                        <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
+                          {fmtFloat(result?.odCapped ?? 0, 2)}
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                }
+
                 return (
                   <Fragment key={ti}>
+                    {phaseChanged && <tr className="planner-od-start"><td colSpan={8}></td></tr>}
                     <tr className={(isOD && !isODin ? 'planner-od-start ' : '') + (ti % 2 === 0 ? 'alt-row' : '')}>
                       <td className={`font-bold text-xs ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
                         style={{ background: rowBg || undefined }}>
-                        {turn.roundLabel}
+                        {phasePrefix}{turn.roundLabel}
                       </td>
                       {actionPairs.map((pair, ai) => (
                         <Fragment key={ai}>
