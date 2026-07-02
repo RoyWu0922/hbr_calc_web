@@ -212,7 +212,7 @@ function QuickScoreCard() {
   const result = useMemo(() => {
     if (!totalDmg) return null;
     return calcScore(totalDmg, {
-      difficulty: diff, turns, hasShield, damageCoeff, modifier,
+      difficulty: diff, turns, hasShield, damageCoeff, modifier, targets: 1,
       thresholdOverride,
     });
   }, [totalDmg, damageCoeff, diff, turns, hasShield, modifier, thresholdOverride]);

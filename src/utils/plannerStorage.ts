@@ -2,12 +2,17 @@ import { openDB, type DBSchema } from 'idb';
 import type { TurnPlannerState, PlannerTurn, ODMode, TurnPlannerChar } from '../types';
 
 interface HBRCalcDB extends DBSchema {
+  history: {
+    key: number;
+    value: { id?: number; label: string; timestamp: number; input: any; result: any; notes?: string; folderId?: number };
+    indexes: { timestamp: number };
+  };
   planner_chars: {
-    key: number;       // 0-5
+    key: number;
     value: { id: number; name: string; sp: number };
   };
   planner_turns: {
-    key: number;       // auto-increment, turn index
+    key: number;
     value: PlannerTurn & { id?: number };
     indexes: { turnIndex: number };
   };
@@ -18,6 +23,16 @@ interface HBRCalcDB extends DBSchema {
   planner_saves: {
     key: number;
     value: { id?: number; label: string; timestamp: number; state: TurnPlannerState; score: number; turns: number; author: string; notes: string; folderId?: number };
+    indexes: { timestamp: number };
+  };
+  folders: {
+    key: number;
+    value: { id?: number; name: string; type: string; timestamp: number; sortOrder: number };
+    indexes: { type: string };
+  };
+  presets: {
+    key: number;
+    value: { id?: number; name: string; timestamp: number };
     indexes: { timestamp: number };
   };
 }

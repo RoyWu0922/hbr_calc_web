@@ -7,6 +7,24 @@ interface HBRCalcDB extends DBSchema {
     value: CalcHistoryEntry;
     indexes: { timestamp: number; folderId: number };
   };
+  planner_chars: {
+    key: number;
+    value: { id: number; name: string; sp: number };
+  };
+  planner_turns: {
+    key: number;
+    value: { id?: number; turnIndex?: number; roundLabel?: string };
+    indexes: { turnIndex: number };
+  };
+  planner_config: {
+    key: string;
+    value: { key: string; value: unknown };
+  };
+  planner_saves: {
+    key: number;
+    value: { id?: number; label: string; timestamp: number; folderId?: number };
+    indexes: { timestamp: number };
+  };
   folders: {
     key: number;
     value: Folder;
