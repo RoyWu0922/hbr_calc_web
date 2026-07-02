@@ -507,7 +507,7 @@ function emptyFA(): FrontAction {
 function syncNormalLabels(turns: PlannerTurn[]): PlannerTurn[] {
   let counter = 0;
   return turns.map(t => {
-    if (!isODRound(t.roundLabel) && !isExtraRound(t.roundLabel)) {
+    if (!isODRound(t.roundLabel) && !isExtraRound(t.roundLabel) && t.encounterModifier === undefined) {
       counter++;
       const expected = String(counter);
       if (t.roundLabel !== expected) return { ...t, roundLabel: expected };
@@ -529,7 +529,7 @@ function DetailTable({
   setState: (s: TurnPlannerState) => void;
   computed: ComputedTurnResult[];
 }) {
-  const { characters, turns, odMode, showBreak } = state;
+  const { characters, turns, odMode, showBreak, showEncounter } = state;
 
   const updateChar = (i: number, fn: (c: typeof characters[number]) => typeof characters[number]) => {
     const next = [...characters] as typeof characters;
@@ -606,6 +606,12 @@ function DetailTable({
             </div>
             破坏
           </label>
+          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showEncounter: !showEncounter })}>
+            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showEncounter ? 'bg-accent border-accent' : 'toggle-off'}`}>
+              {showEncounter && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            遭遇战
+          </label>
         </div>
       </div>
 
@@ -626,6 +632,7 @@ function DetailTable({
           <col className="planner-col-od planner-col-group-start" style={{ width: 42 }} />
           <col className="planner-col-od" style={{ width: showBreak ? 26 : 32 }} />
           {showBreak && <col className="planner-col-od" style={{ width: 26 }} />}
+          {showEncounter && <col style={{ width: 18 }} />}
         </colgroup>
         <thead>
           <tr>
@@ -680,7 +687,9 @@ function DetailTable({
           </tr>
 
           {/* Turns */}
-          {turns.map((turn, ti) => {
+          {turns.map((turn, origTi) => ({ turn, origTi })).filter(({ turn }) => showEncounter || turn.encounterModifier === undefined).map(({ turn, origTi }) => {
+            const ti = origTi;
+            const isModifier = showEncounter && turn.encounterModifier !== undefined;
             const isOD = isODRound(turn.roundLabel);
             const isExtra = isExtraRound(turn.roundLabel);
             const isODin = turn.roundLabel.includes('OD内');
@@ -688,13 +697,45 @@ function DetailTable({
             const prevIsOD = prevTurn ? isODRound(prevTurn.roundLabel) || prevTurn.roundLabel.includes('OD内') : false;
             const prevResult = ti > 0 ? computed[ti - 1] : null;
             const curResult = computed[ti];
-            if (!isOD && !isExtra) normalCounter++;
+            if (!isOD && !isExtra && !isModifier) normalCounter++;
             const normalLabel = (isOD || isExtra || isODin) ? normalCounter + 1 : normalCounter;
             const typeKey = getTurnTypeKey(turn);
             const extraIsRed = isExtra && prevIsOD;
             const rowBgA = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
             const backChars = [0, 1, 2, 3, 4, 5].filter(i => !frontIdxSet.has(i));
+            // Auto-number modifier rows
+            let modNum = 0;
+            if (isModifier) { for (let k = 0; k <= ti; k++) { if (turns[k].encounterModifier !== undefined) modNum++; } }
+
+            // Modifier row: short text, no character slots
+            if (isModifier) {
+              const modColSpan = (showBreak ? 5 : 4) * 3 + 6;
+              return (
+                <tr key={ti} className="planner-mod-row">
+                  <td className="text-center sticky left-0 z-10 font-bold text-[10px] text-purple-400"
+                    style={{ background: 'rgba(139,92,246,0.08)' }}>
+                    词条{modNum}
+                  </td>
+                  <td colSpan={modColSpan}>
+                    <input className="input-field text-[10px] py-0.5 w-full" placeholder="词条内容…"
+                      value={turn.encounterModifier || ''}
+                      onChange={e => updateTurn(ti, t => ({ ...t, encounterModifier: e.target.value }))} />
+                  </td>
+                  <td>
+                    <input className={TINY_NUM} style={{ border: 'none' }} type="number" step="0.1"
+                      value={(turn.jailOD + turn.passiveOD) || ''} placeholder="0"
+                      onChange={e => updateTurn(ti, t => ({ ...t, jailOD: parseFloat(e.target.value) || 0, passiveOD: 0 }))} />
+                  </td>
+                  <td className={`text-center font-mono font-bold text-xs relative ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
+                    {fmtFloat(curResult?.odCapped ?? 0, 2)}
+                    <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
+                      onClick={() => removeTurn(ti)} title="删除">✕</button>
+                  </td>
+                  {showBreak && <td className="text-center font-mono font-bold text-xs text-text-muted">{fmtFloat(curResult?.cumulativeDR ?? 0, 2)}</td>}
+                </tr>
+              );
+            }
 
             return (
               <Fragment key={ti}>
@@ -787,6 +828,23 @@ function DetailTable({
                       {fmtFloat(curResult?.cumulativeDR ?? 0, 2)}
                       <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
                         onClick={() => removeTurn(ti)} title="删除">✕</button>
+                    </td>
+                  )}
+                  {/* Encounter "+" button */}
+                  {showEncounter && (
+                    <td rowSpan={2} className="text-center w-5">
+                      <button className="text-accent/60 hover:text-accent text-xs leading-none px-0.5"
+                        onClick={() => {
+                          const next = [...turns];
+                          next.splice(ti + 1, 0, {
+                            roundLabel: '', turnType: 'normal' as const,
+                            frontActions: [emptyFA(), emptyFA(), emptyFA()],
+                            backSPGain: [0, 0, 0],
+                            jailOD: 0, passiveOD: 0, bossDR: 0,
+                            encounterModifier: '',
+                          });
+                          setState({ ...state, turns: syncNormalLabels(next) });
+                        }} title="添加词条">+</button>
                     </td>
                   )}
                 </tr>
@@ -1065,7 +1123,9 @@ function SimpleTable({
               </tr>
             </thead>
             <tbody>
-              {turns.map((turn, ti) => {
+              {turns.map((turn, origTi) => ({ turn, origTi })).filter(({ turn }) => state.showEncounter || turn.encounterModifier === undefined).map(({ turn, origTi }) => {
+                const ti = origTi;
+                const isModifier = state.showEncounter && turn.encounterModifier !== undefined;
                 const isOD = isODRound(turn.roundLabel);
                 const isExtra = isExtraRound(turn.roundLabel);
                 const isODin = turn.roundLabel.includes('OD内');
@@ -1074,6 +1134,20 @@ function SimpleTable({
                 const extraIsRed = isExtra && prevIsOD;
                 const result = computed[ti];
                 const rowBg = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
+                let modNum = 0;
+                if (isModifier) { for (let k = 0; k <= ti; k++) { if (turns[k].encounterModifier !== undefined) modNum++; } }
+
+                if (isModifier) {
+                  return (
+                    <tr key={ti} className="planner-mod-row">
+                      <td className="font-bold text-[10px] text-purple-400">词条{modNum}</td>
+                      <td colSpan={6} className="text-xs text-left pl-1 text-text-muted">{turn.encounterModifier}</td>
+                      <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
+                        {fmtFloat(result?.odCapped ?? 0, 2)}
+                      </td>
+                    </tr>
+                  );
+                }
 
                 const actionPairs = turn.frontActions.map(a => ({
                   name: a.charIndex >= 0 ? (characters[a.charIndex].name || `C${a.charIndex + 1}`) : '',

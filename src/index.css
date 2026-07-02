@@ -503,6 +503,18 @@ input[type="checkbox"]:checked {
   border-top-color: rgba(0, 0, 0, 0.15);
 }
 
+/* Encounter modifier row — thick borders top & bottom, distinct bg */
+.planner-table tbody tr.planner-mod-row td {
+  border-top: 2px solid rgba(148, 163, 184, 0.35);
+  border-bottom: 2px solid rgba(148, 163, 184, 0.35);
+  background: rgba(139, 92, 246, 0.06);
+}
+[data-theme="light"] .planner-table tbody tr.planner-mod-row td {
+  border-top-color: rgba(0, 0, 0, 0.15);
+  border-bottom-color: rgba(0, 0, 0, 0.15);
+  background: rgba(139, 92, 246, 0.04);
+}
+
 /* alternating turn pairs in detail table (skip entry/spacer/labels, then every 4 rows) */
 .planner-table:not(.simple-timeline) tbody tr:nth-child(n+4):nth-child(4n) td,
 .planner-table:not(.simple-timeline) tbody tr:nth-child(n+4):nth-child(4n+1) td {

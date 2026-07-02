@@ -572,6 +572,7 @@ export interface EncounterInput {
   turns: number;             // e.g. 5
   difficultyScore: number;   // 难度分, default 65000 for diff 40
   modifier: number;          // 词条, default 1.3
+  isInternational?: boolean; // 国际服: 回合分衰减从 turns-3 开始
 }
 
 export interface EncounterResult {
@@ -586,8 +587,10 @@ export interface EncounterResult {
 export function calcEncounterScore(input: EncounterInput): EncounterResult {
   const roundScores = input.damages.map(d => Math.round(roundDamageScore(d)));
   const totalDamageScore = roundScores.reduce((a, b) => a + b, 0);
-  // Round score = 50000 * 0.9^(turns - 1 - (difficulty - 40))
-  const roundScore = Math.round(50000 * Math.pow(0.9, input.turns - 1 - (input.difficulty - 40)));
+  // Round score = 50000 * 0.9^(turns - offset - (difficulty - 40))
+  // 日服 offset=1, 国际服 offset=3
+  const turnOffset = input.isInternational ? 3 : 1;
+  const roundScore = Math.round(50000 * Math.pow(0.9, input.turns - turnOffset - (input.difficulty - 40)));
   const finalScore = Math.round((totalDamageScore + roundScore + input.difficultyScore) * input.modifier);
   return {
     roundScores,

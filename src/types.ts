@@ -164,12 +164,14 @@ export interface PlannerTurn {
   jailOD: number;        // 牢房 (column W in TL.xlsx)
   passiveOD: number;     // 被动OD (column X)
   bossDR: number;        // BOSS DR this turn (column AB)
+  encounterModifier?: string; // 遭遇战词条文本（空=普通行，有值=词条行）
 }
 
 export interface TurnPlannerState {
   odMode: ODMode;
   defaultPassiveOD: number;  // 全局被动OD（每回合固定附加）
   showBreak: boolean;         // 是否显示破坏输入
+  showEncounter: boolean;     // 是否显示遭遇战phase
   characters: [TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar];
   turns: PlannerTurn[];
 }

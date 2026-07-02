@@ -355,12 +355,13 @@ function EncounterCalc() {
   const [turns, setTurns] = useState(5);
   const [difficultyScore, setDifficultyScore] = useState(65000);
   const [modifier, setModifier] = useState(1.3);
+  const [isInternational, setIsInternational] = useState(false);
   const [open, setOpen] = useState(false);
 
   const result = useMemo(() => calcEncounterScore({
     damages: [d1, d2, d3, d4, d5],
-    difficulty, turns, difficultyScore, modifier,
-  }), [d1, d2, d3, d4, d5, difficulty, turns, difficultyScore, modifier]);
+    difficulty, turns, difficultyScore, modifier, isInternational,
+  }), [d1, d2, d3, d4, d5, difficulty, turns, difficultyScore, modifier, isInternational]);
 
   return (
     <div className="card border-gold/20">
@@ -402,6 +403,7 @@ function EncounterCalc() {
         </div>
         <Field label="难度分" value={difficultyScore} onChange={v => setDifficultyScore(v)} />
         <Field label="词条" value={modifier} onChange={v => setModifier(v)} step={0.01} />
+        <Toggle label="国际服" value={isInternational} onChange={setIsInternational} />
       </div>
 
       {/* Summary */}

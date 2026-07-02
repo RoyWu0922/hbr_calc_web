@@ -92,6 +92,7 @@ export function createDefaultState(): TurnPlannerState {
     odMode: 300,
     defaultPassiveOD: 0,
     showBreak: false,
+    showEncounter: false,
     characters: [emptyChar, emptyChar, emptyChar, emptyChar, emptyChar, emptyChar] as TurnPlannerState['characters'],
     turns: defaultTurns,
   };
