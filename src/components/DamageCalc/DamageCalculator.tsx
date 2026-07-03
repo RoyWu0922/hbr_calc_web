@@ -5,6 +5,7 @@ import {
   Equipment, BonusArea, BonusEntry, ODParams, BreakParams, ScoreParams, DamageInput, DamageResultData, CalcHistoryEntry,
 } from '../../types';
 import { calculateAll, calcPassiveAtkSum, calcPassiveDefSum, calcBuffPower, calcBuffPowerDetail, calcDebuffPower, calcDebuffPowerDetail } from '../../engine/damage';
+import { copyToClipboard } from '../../utils/copyToast';
 import { BUFF_SKILLS, DEBUFF_SKILLS, WEAKNESS_SKILLS, SCORE_TABLE, TURN_COEFF } from '../../engine/skillDb';
 import { getCustomSkills, getDeletedBuiltins, getBuiltinOverrides } from '../../engine/customSkills';
 import { saveToHistory, updateHistoryEntry } from '../../utils/storage';
@@ -330,26 +331,36 @@ export default function DamageCalculator({ initialData }: Props) {
 }
 
 // ─── Result Header Row ─────────────────────────────────────
+function copyVal(text: string) { copyToClipboard(text); }
+
 function ResultHeaderRow({ result }: { result: DamageResultData }) {
   return (
     <div className="card border-accent/30">
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex gap-3 flex-wrap text-xs text-text-muted flex-1">
-          <div>技能倍率 <span className="text-text-primary font-mono">{result.multiplier.toFixed(2)}</span></div>
+          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.multiplier.toFixed(2))} title="点击复制">
+            技能倍率 <span className="text-text-primary font-mono">{result.multiplier.toFixed(2)}</span></div>
           <div className="text-white/20">|</div>
-          <div>加攻区 <span className="text-text-primary font-mono">{result.atkFactor.toFixed(3)}</span></div>
+          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.atkFactor.toFixed(3))} title="点击复制">
+            加攻区 <span className="text-text-primary font-mono">{result.atkFactor.toFixed(3)}</span></div>
           <div className="text-white/20">|</div>
-          <div>减防区 <span className="text-text-primary font-mono">{result.defFactor.toFixed(3)}</span></div>
+          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.defFactor.toFixed(3))} title="点击复制">
+            减防区 <span className="text-text-primary font-mono">{result.defFactor.toFixed(3)}</span></div>
           <div className="text-white/20">|</div>
-          <div>弱点区 <span className="text-text-primary font-mono">{result.weaknessFactor.toFixed(3)}</span></div>
+          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.weaknessFactor.toFixed(3))} title="点击复制">
+            弱点区 <span className="text-text-primary font-mono">{result.weaknessFactor.toFixed(3)}</span></div>
           <div className="text-white/20">|</div>
-          <div>爆伤区 <span className="text-text-primary font-mono">{result.critFactor.toFixed(1)}</span></div>
+          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.critFactor.toFixed(1))} title="点击复制">
+            爆伤区 <span className="text-text-primary font-mono">{result.critFactor.toFixed(1)}</span></div>
         </div>
         <div className="text-right flex-shrink-0 relative">
           <div className="text-xs text-text-muted">最终伤害</div>
-          <div className="text-3xl font-bold text-gold">{Math.round(result.postAttenuation).toLocaleString('zh-CN')}</div>
+          <div className="text-3xl font-bold text-gold cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => copyVal(String(Math.round(result.postAttenuation)))} title="点击复制">
+            {Math.round(result.postAttenuation).toLocaleString('zh-CN')}</div>
           {result.attenuationApplied && (
-            <div className="text-[10px] text-danger absolute -bottom-3 right-0 whitespace-nowrap">
+            <div className="text-[10px] text-danger absolute -bottom-3 right-0 whitespace-nowrap cursor-pointer hover:opacity-80"
+              onClick={() => copyVal(String(Math.round(result.preAttenuation)))} title="点击复制">
               衰减前: {Math.round(result.preAttenuation).toLocaleString('zh-CN')}
             </div>
           )}

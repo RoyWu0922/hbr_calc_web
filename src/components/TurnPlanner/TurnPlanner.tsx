@@ -4,6 +4,7 @@ import { TurnPlannerState, PlannerTurn, FrontAction, ODMode, ComputedTurnResult 
 import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner';
 import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, deleteAxles, clearAllAxles, getAllAxles, importAxles, setAxleFolder, type SavedAxle } from '../../utils/plannerStorage';
 import { getFolders, createFolder, updateFolder, deleteFolder } from '../../utils/storage';
+import { copyToClipboard } from '../../utils/copyToast';
 import type { Folder } from '../../types';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
@@ -418,12 +419,17 @@ function ODPanel() {
                           title="额外OD上升量">
                           {showExtraOD[i] ? '▾' : '▸'}
                         </button>
-                        <span className="text-accent font-bold cursor-pointer select-none text-[10px] border border-white/10 rounded px-1.5 py-0.5 text-center min-w-[48px] ml-auto"
-                          onClick={toggleShowHit}>
-                          {showHit
-                            ? `${r.actualHits.toFixed(3)}`
-                            : `${(r.n * 100).toFixed(2)}%`}
-                        </span>
+                        <div className="flex items-center gap-1 ml-auto">
+                          <span className="text-accent font-bold cursor-pointer select-none text-[10px] border border-white/10 rounded px-1.5 py-0.5 text-center min-w-[48px]"
+                            onClick={toggleShowHit} title="点击切换 实际OD%/实际hit数">
+                            {showHit
+                              ? `${r.actualHits.toFixed(3)}`
+                              : `${(r.n * 100).toFixed(2)}%`}
+                          </span>
+                          <button className="text-text-muted hover:text-accent text-[10px] leading-none px-0.5"
+                            onClick={(e) => { e.stopPropagation(); copyToClipboard(showHit ? r.actualHits.toFixed(3) : (r.n * 100).toFixed(2)); }}
+                            title="复制数值">📋</button>
+                        </div>
                       </div>
                       {showExtraOD[i] && (
                         <div className="mt-1 flex items-center gap-1">

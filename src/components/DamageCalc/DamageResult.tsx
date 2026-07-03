@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback } from 'react';
 import { DamageResultData, SkillInput } from '../../types';
 import { computeFloatDistribution, buildHitWeights, parseWeightString, FloatDistData } from '../../engine/floatProb';
 import { applyAttenuation } from '../../engine/damage';
+import { copyToClipboard } from '../../utils/copyToast';
 
 function fmtRaw(n: number): string {
   return Math.round(n).toLocaleString('zh-CN');
@@ -211,26 +212,28 @@ export default function DamageResult({ result, skill, floatVal,
           <div className="card border-gold/20">
             <div className="card-header">打分预估</div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="text-center stat-box">
+              <div className="text-center stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm" onClick={() => copyToClipboard(String(result.score!.baseScore))} title="点击复制">
                 <div className="input-label">基础分</div>
                 <div className="font-bold">{fmtRaw(result.score.baseScore)}</div>
               </div>
-              <div className="text-center stat-box">
+              <div className="text-center stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm" onClick={() => copyToClipboard(String(result.score!.damageScore))} title="点击复制">
                 <div className="input-label">伤害分</div>
                 <div className="font-bold">{fmtRaw(result.score.damageScore)}</div>
               </div>
-              <div className="text-center stat-box">
+              <div className="text-center stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm" onClick={() => copyToClipboard(String(result.score!.shieldScore))} title="点击复制">
                 <div className="input-label">盾分</div>
                 <div className="font-bold">{fmtRaw(result.score.shieldScore)}</div>
               </div>
-              <div className="text-center stat-box">
+              <div className="text-center stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm" onClick={() => copyToClipboard(result.score!.turnCoeff.toFixed(2))} title="点击复制">
                 <div className="input-label">回合系数</div>
                 <div className="font-bold">{result.score.turnCoeff.toFixed(2)}</div>
               </div>
             </div>
             <div className="text-center pt-3 mt-3 border-t divider">
               <div className="text-xs text-text-muted mb-1">预估总分</div>
-              <div className="result-value text-gold">{fmtRaw(result.score.totalScore)}</div>
+              <div className="result-value text-gold cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => copyToClipboard(String(result.score!.totalScore))} title="点击复制">
+                {fmtRaw(result.score.totalScore)}</div>
             </div>
           </div>
         )}

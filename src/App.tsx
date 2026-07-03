@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import DamageCalculator from './components/DamageCalc/DamageCalculator';
 import HistoryPage from './components/History/HistoryPage';
 import SkillDatabase from './components/SkillDb/SkillDatabase';
@@ -7,6 +7,7 @@ import WhiteStats from './components/WhiteStats/WhiteStats';
 import TurnPlanner from './components/TurnPlanner/TurnPlanner';
 import { useTheme } from './utils/theme';
 import { decodeShareData } from './utils/shareUrl';
+import { setToastHandler } from './utils/copyToast';
 import { CalcHistoryEntry, DamageResultData } from './types';
 
 type PrimaryTab = 'damage' | 'white' | 'extra' | 'planner';
@@ -23,6 +24,16 @@ export default function App() {
   const [plannerSubTab, setPlannerSubTab] = useState<'editor' | 'saved'>('editor');
   const [historyToLoad, setHistoryToLoad] = useState<CalcHistoryEntry | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
+  const [toastVisible, setToastVisible] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    setToastHandler(() => {
+      setToastVisible(true);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToastVisible(false), 1200);
+    });
+  }, []);
 
   useEffect(() => {
     // 1) Priority: ?share= URL param
@@ -62,6 +73,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--app-bg)' }}>
+        {/* Copy toast */}
+        <div className={`fixed top-3 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 rounded-lg bg-accent/90 text-white text-sm font-medium transition-all duration-200 pointer-events-none ${toastVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+          已复制到剪贴板
+        </div>
         <header className="glass-header sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
             <h1 className="text-lg font-bold whitespace-nowrap" style={{ color: 'var(--app-text-primary)' }}>HBR Toolbox</h1>
