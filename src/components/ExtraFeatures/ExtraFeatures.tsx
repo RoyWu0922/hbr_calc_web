@@ -484,10 +484,31 @@ function OdRiseTip() {
   );
 }
 
-function StatBox({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function StatBox({ label, value, highlight, copyValue }: { label: string; value: string; highlight?: boolean; copyValue?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const text = copyValue ?? value.replace(/%/g, '').replace(/,/g, '');
+    try {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 800);
+      }).catch(() => {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        setCopied(true); setTimeout(() => setCopied(false), 800);
+      });
+    } catch {
+      // ignore
+    }
+  };
   return (
-    <div className="stat-box">
-      <div className="text-xs text-text-muted">{label}</div>
+    <div className={`stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm px-1 -mx-1 ${copied ? 'ring-1 ring-accent/50' : ''}`}
+      onClick={handleCopy} title="点击复制到剪贴板">
+      <div className="text-xs text-text-muted">{label}{copied && <span className="ml-1 text-accent text-[10px]">已复制</span>}</div>
       <div className={`font-semibold text-sm ${highlight ? 'text-gold' : ''}`}>{value}</div>
     </div>
   );
