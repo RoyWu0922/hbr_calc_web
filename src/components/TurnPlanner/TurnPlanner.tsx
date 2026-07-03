@@ -426,9 +426,11 @@ function ODPanel() {
                               ? `${r.actualHits.toFixed(3)}`
                               : `${(r.n * 100).toFixed(2)}%`}
                           </span>
-                          <button className="text-text-muted hover:text-accent text-[10px] leading-none px-0.5"
+                          <button className="text-text-muted hover:text-accent px-0.5" style={{ width: 14, height: 14, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             onClick={(e) => { e.stopPropagation(); copyToClipboard(showHit ? r.actualHits.toFixed(3) : (r.n * 100).toFixed(2)); }}
-                            title="复制数值">📋</button>
+                            title="复制数值">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                          </button>
                         </div>
                       </div>
                       {showExtraOD[i] && (

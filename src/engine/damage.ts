@@ -102,7 +102,7 @@ export function calcBuffPowerDetail(buff: BuffSkill): BuffPowerDetail {
   const { maxPower, border, orb, currentAttr, moraleFighting, skillLevel, passive, layers } = buff;
   const combinedAttr = currentAttr + moraleFighting;
   const skillScale = 0.98 + 0.02 * skillLevel;
-  const mul = (passive || 1) * (layers || 1);
+  const mul = (passive || 1) * (layers ?? 1);
 
   // Base power (三区段 — attr=0 视为满属性向后兼容)
   let basePower: number;
@@ -158,7 +158,7 @@ interface DebuffPowerDetail {
 export function calcDebuffPowerDetail(debuff: DebuffSkill, enemyAttr: number): DebuffPowerDetail {
   const { maxPower, minPower, border, orb, currentAttr, moraleDebuffs, skillLevel, passive, layers } = debuff;
   const combinedAttr = currentAttr + moraleDebuffs;
-  const mul = (passive || 1) * (layers || 1);
+  const mul = (passive || 1) * (layers ?? 1);
 
   // Base power
   let basePower: number;

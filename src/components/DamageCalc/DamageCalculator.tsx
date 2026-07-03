@@ -331,36 +331,33 @@ export default function DamageCalculator({ initialData }: Props) {
 }
 
 // ─── Result Header Row ─────────────────────────────────────
-function copyVal(text: string) { copyToClipboard(text); }
-
 function ResultHeaderRow({ result }: { result: DamageResultData }) {
+  const copyBtn = (val: string) => (
+    <button className="ml-0.5 text-text-muted hover:text-accent inline-flex items-center" style={{ width: 12, height: 12 }}
+      onClick={(e) => { e.stopPropagation(); copyToClipboard(val); }} title="复制">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    </button>
+  );
   return (
     <div className="card border-accent/30">
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex gap-3 flex-wrap text-xs text-text-muted flex-1">
-          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.multiplier.toFixed(2))} title="点击复制">
-            技能倍率 <span className="text-text-primary font-mono">{result.multiplier.toFixed(2)}</span></div>
+          <div>技能倍率 <span className="text-text-primary font-mono">{result.multiplier.toFixed(2)}</span>{copyBtn(result.multiplier.toFixed(2))}</div>
           <div className="text-white/20">|</div>
-          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.atkFactor.toFixed(3))} title="点击复制">
-            加攻区 <span className="text-text-primary font-mono">{result.atkFactor.toFixed(3)}</span></div>
+          <div>加攻区 <span className="text-text-primary font-mono">{result.atkFactor.toFixed(3)}</span>{copyBtn(result.atkFactor.toFixed(3))}</div>
           <div className="text-white/20">|</div>
-          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.defFactor.toFixed(3))} title="点击复制">
-            减防区 <span className="text-text-primary font-mono">{result.defFactor.toFixed(3)}</span></div>
+          <div>减防区 <span className="text-text-primary font-mono">{result.defFactor.toFixed(3)}</span>{copyBtn(result.defFactor.toFixed(3))}</div>
           <div className="text-white/20">|</div>
-          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.weaknessFactor.toFixed(3))} title="点击复制">
-            弱点区 <span className="text-text-primary font-mono">{result.weaknessFactor.toFixed(3)}</span></div>
+          <div>弱点区 <span className="text-text-primary font-mono">{result.weaknessFactor.toFixed(3)}</span>{copyBtn(result.weaknessFactor.toFixed(3))}</div>
           <div className="text-white/20">|</div>
-          <div className="cursor-pointer hover:text-text-primary transition-colors" onClick={() => copyVal(result.critFactor.toFixed(1))} title="点击复制">
-            爆伤区 <span className="text-text-primary font-mono">{result.critFactor.toFixed(1)}</span></div>
+          <div>爆伤区 <span className="text-text-primary font-mono">{result.critFactor.toFixed(1)}</span>{copyBtn(result.critFactor.toFixed(1))}</div>
         </div>
         <div className="text-right flex-shrink-0 relative">
-          <div className="text-xs text-text-muted">最终伤害</div>
-          <div className="text-3xl font-bold text-gold cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => copyVal(String(Math.round(result.postAttenuation)))} title="点击复制">
+          <div className="text-xs text-text-muted">最终伤害 {copyBtn(String(Math.round(result.postAttenuation)))}</div>
+          <div className="text-3xl font-bold text-gold">
             {Math.round(result.postAttenuation).toLocaleString('zh-CN')}</div>
           {result.attenuationApplied && (
-            <div className="text-[10px] text-danger absolute -bottom-3 right-0 whitespace-nowrap cursor-pointer hover:opacity-80"
-              onClick={() => copyVal(String(Math.round(result.preAttenuation)))} title="点击复制">
+            <div className="text-[10px] text-danger absolute -bottom-3 right-0 whitespace-nowrap">
               衰减前: {Math.round(result.preAttenuation).toLocaleString('zh-CN')}
             </div>
           )}
@@ -488,6 +485,12 @@ function SkillListCard({ skills, lookup, onUpdate, onAdd, onRemove, type, enemyA
                       {finalPower > 0 ? finalPower.toLocaleString('zh-CN', { maximumFractionDigits: 2 }) : '—'}
                     </span>
                     {detail && <PopoverDetail type={type} detail={detail} />}
+                    {finalPower > 0 && (
+                      <button className="text-text-muted hover:text-accent inline-flex items-center" style={{ width: 14, height: 14 }}
+                        onClick={() => copyToClipboard(String(finalPower))} title="复制数值">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      </button>
+                    )}
                   </div>
                 </div>
                 <IconBtn color="danger" title="删除" onClick={() => onRemove(i)}>
