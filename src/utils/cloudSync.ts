@@ -1,9 +1,49 @@
-import { supabase, fetchCalcHistory, fetchPlannerAxles, fetchWhiteStats, fetchCustomSkills } from './supabase';
+import { supabase } from './supabase';
 import { openDB } from 'idb';
-import type { DBSchema } from 'idb';
-import type { CalcHistoryEntry, Folder, PresetTemplate } from '../types';
+import type { CalcHistoryEntry } from '../types';
 
-// ─── Pull cloud data into local IndexedDB on login ─────────────
+// ─── Push all local data to cloud on login ───────────────────
+
+export async function pushLocalToCloud() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  // 1) Calc history
+  const db1 = await openDB<{ history: { key: number; value: CalcHistoryEntry; indexes: { timestamp: number } } }>('hbr-calc-db', 5);
+  const localHistory = await db1.getAll('history');
+  for (const entry of localHistory) {
+    await supabase.from('calc_history').upsert({
+      user_id: user.id, data: entry, timestamp: entry.timestamp
+    }, { onConflict: 'user_id, timestamp' }).then(() => {}, () => {});
+  }
+
+  // 2) Planner axles
+  const localAxles = await db1.getAll('planner_saves') as any[];
+  for (const axle of localAxles) {
+    await supabase.from('planner_axles').upsert({
+      user_id: user.id, data: axle, timestamp: axle.timestamp
+    }, { onConflict: 'user_id, timestamp' }).then(() => {}, () => {});
+  }
+
+  // 3) White stats
+  const db2 = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
+  const localWS = await db2.getAll('entries');
+  for (const entry of localWS) {
+    await supabase.from('white_stats').upsert({
+      user_id: user.id, data: entry, timestamp: entry.timestamp
+    }, { onConflict: 'user_id, timestamp' }).then(() => {}, () => {});
+  }
+
+  // 4) Custom skills (from localStorage)
+  const data: Record<string, unknown> = {};
+  for (const cat of ['buff', 'debuff', 'weakness'] as const) {
+    data['skills_' + cat] = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
+    data['overrides_' + cat] = JSON.parse(localStorage.getItem('hbr-builtin-overrides-' + cat) || '{}');
+  }
+  await supabase.from('custom_skills').upsert({ user_id: user.id, data, updated_at: Date.now() }).then(() => {}, () => {});
+}
+
+// ─── Pull cloud data into local on login ──────────────────────
 
 export async function pullFromCloud() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -11,19 +51,16 @@ export async function pullFromCloud() {
 
   try {
     // 1) Calc history
-    const cloudHistory = await fetchCalcHistory();
-    if (cloudHistory.length > 0) {
-      const db = await openDB<{
-        history: { key: number; value: CalcHistoryEntry; indexes: { timestamp: number } };
-      }>('hbr-calc-db', 5);
+    const { data: cloudHistory } = await supabase.from('calc_history').select('*').order('timestamp', { ascending: false });
+    if (cloudHistory && cloudHistory.length > 0) {
+      const db = await openDB<{ history: { key: number; value: CalcHistoryEntry; indexes: { timestamp: number } } }>('hbr-calc-db', 5);
       const local = await db.getAll('history');
-      const localIds = new Set(local.map(e => e.timestamp));
+      const localTs = new Set(local.map(e => e.timestamp));
       const tx = db.transaction('history', 'readwrite');
       for (const row of cloudHistory) {
         const entry = row.data as CalcHistoryEntry;
         entry.timestamp = row.timestamp;
-        // Only add if not already present (match by timestamp)
-        if (!localIds.has(row.timestamp)) {
+        if (!localTs.has(row.timestamp)) {
           delete (entry as any).id;
           await tx.store.add(entry);
         }
@@ -32,11 +69,9 @@ export async function pullFromCloud() {
     }
 
     // 2) Planner axles
-    const cloudAxles = await fetchPlannerAxles();
-    if (cloudAxles.length > 0) {
-      const db = await openDB<{
-        planner_saves: { key: number; value: any; indexes: { timestamp: number } };
-      }>('hbr-calc-db', 5);
+    const { data: cloudAxles } = await supabase.from('planner_axles').select('*').order('timestamp', { ascending: false });
+    if (cloudAxles && cloudAxles.length > 0) {
+      const db = await openDB<{ planner_saves: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-calc-db', 5);
       const local = await db.getAll('planner_saves');
       const localTs = new Set(local.map(e => e.timestamp));
       const tx = db.transaction('planner_saves', 'readwrite');
@@ -48,12 +83,10 @@ export async function pullFromCloud() {
       await tx.done;
     }
 
-    // 3) White stats (separate DB)
-    const cloudWS = await fetchWhiteStats();
-    if (cloudWS.length > 0) {
-      const db = await openDB<{
-        entries: { key: number; value: any; indexes: { timestamp: number } };
-      }>('hbr-white-stats', 1);
+    // 3) White stats
+    const { data: cloudWS } = await supabase.from('white_stats').select('*').order('timestamp', { ascending: false });
+    if (cloudWS && cloudWS.length > 0) {
+      const db = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
       const local = await db.getAll('entries');
       const localTs = new Set(local.map(e => e.timestamp));
       const tx = db.transaction('entries', 'readwrite');
@@ -66,12 +99,12 @@ export async function pullFromCloud() {
       await tx.done;
     }
 
-    // 4) Custom skills — write to localStorage
-    const cloudSkills = await fetchCustomSkills();
-    if (cloudSkills) {
+    // 4) Custom skills
+    const { data: cloudSkills } = await supabase.from('custom_skills').select('*').eq('user_id', user.id).single();
+    if (cloudSkills?.data) {
       for (const cat of ['buff', 'debuff', 'weakness'] as const) {
-        const skills = cloudSkills['skills_' + cat];
-        const overrides = cloudSkills['overrides_' + cat];
+        const skills = cloudSkills.data['skills_' + cat];
+        const overrides = cloudSkills.data['overrides_' + cat];
         if (skills && Array.isArray(skills)) {
           localStorage.setItem('hbr-custom-skills-' + cat, JSON.stringify(skills));
         }

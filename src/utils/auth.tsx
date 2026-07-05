@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { supabase, signInWithGoogle, signUp as supabaseSignUp, signIn as supabaseSignIn, signOut as supabaseSignOut } from './supabase';
-import { pullFromCloud } from './cloudSync';
+import { pullFromCloud, pushLocalToCloud } from './cloudSync';
 import type { User } from '@supabase/supabase-js';
 
 interface AuthState {
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) pullFromCloud();
+      if (session?.user) { pushLocalToCloud().then(() => pullFromCloud()); }
     });
     return () => subscription.unsubscribe();
   }, []);
