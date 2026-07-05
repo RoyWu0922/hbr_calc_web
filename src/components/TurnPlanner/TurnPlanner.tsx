@@ -5,6 +5,7 @@ import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner
 import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, deleteAxles, clearAllAxles, getAllAxles, importAxles, setAxleFolder, type SavedAxle } from '../../utils/plannerStorage';
 import { getFolders, createFolder, updateFolder, deleteFolder } from '../../utils/storage';
 import { copyToClipboard } from '../../utils/copyToast';
+import { pushPlannerAxle } from '../../utils/supabase';
 import type { Folder } from '../../types';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
@@ -1649,9 +1650,11 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
                 const label = axleTitle.trim() || new Date().toLocaleString('zh-CN');
                 if (loadedAxleId != null) {
                   await updateAxle(loadedAxleId, label, state, axleScore, axleTurns, simpleAuthor, simpleNotes);
+                  pushPlannerAxle({ label, state, score: axleScore, turns: axleTurns, author: simpleAuthor, notes: simpleNotes, timestamp: Date.now() }).catch(() => {});
                   alert('已更新');
                 } else {
                   await saveAxle(label, state, axleScore, axleTurns, simpleAuthor, simpleNotes);
+                  pushPlannerAxle({ label, state, score: axleScore, turns: axleTurns, author: simpleAuthor, notes: simpleNotes, timestamp: Date.now() }).catch(() => {});
                   alert('已保存');
                 }
               }}>
