@@ -7,40 +7,40 @@ import type { CalcHistoryEntry } from '../types';
 export async function pushLocalToCloud() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
+  const uid = user.id;
+
+  // Delete old cloud data for this user, then re-insert all local data
+  await supabase.from('calc_history').delete().eq('user_id', uid).then(() => {}, () => {});
+  await supabase.from('planner_axles').delete().eq('user_id', uid).then(() => {}, () => {});
+  await supabase.from('white_stats').delete().eq('user_id', uid).then(() => {}, () => {});
 
   // 1) Calc history
   const db1 = await openDB<{ history: { key: number; value: CalcHistoryEntry; indexes: { timestamp: number } } }>('hbr-calc-db', 5);
   const localHistory = await db1.getAll('history');
   for (const entry of localHistory) {
-    await supabase.from('calc_history').upsert({
-      user_id: user.id, data: entry, timestamp: entry.timestamp
-    }, { onConflict: 'user_id, timestamp' }).then(() => {}, () => {});
+    await supabase.from('calc_history').insert({ user_id: uid, data: entry, timestamp: entry.timestamp }).then(() => {}, () => {});
   }
 
   // 2) Planner axles
   const localAxles = await db1.getAll('planner_saves') as any[];
   for (const axle of localAxles) {
-    await supabase.from('planner_axles').upsert({
-      user_id: user.id, data: axle, timestamp: axle.timestamp
-    }, { onConflict: 'user_id, timestamp' }).then(() => {}, () => {});
+    await supabase.from('planner_axles').insert({ user_id: uid, data: axle, timestamp: axle.timestamp }).then(() => {}, () => {});
   }
 
   // 3) White stats
   const db2 = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
   const localWS = await db2.getAll('entries');
   for (const entry of localWS) {
-    await supabase.from('white_stats').upsert({
-      user_id: user.id, data: entry, timestamp: entry.timestamp
-    }, { onConflict: 'user_id, timestamp' }).then(() => {}, () => {});
+    await supabase.from('white_stats').insert({ user_id: uid, data: entry, timestamp: entry.timestamp }).then(() => {}, () => {});
   }
 
-  // 4) Custom skills (from localStorage)
+  // 4) Custom skills
   const data: Record<string, unknown> = {};
   for (const cat of ['buff', 'debuff', 'weakness'] as const) {
     data['skills_' + cat] = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
     data['overrides_' + cat] = JSON.parse(localStorage.getItem('hbr-builtin-overrides-' + cat) || '{}');
   }
-  await supabase.from('custom_skills').upsert({ user_id: user.id, data, updated_at: Date.now() }).then(() => {}, () => {});
+  await supabase.from('custom_skills').upsert({ user_id: uid, data, updated_at: Date.now() });
 }
 
 // ─── Pull cloud data into local on login ──────────────────────
