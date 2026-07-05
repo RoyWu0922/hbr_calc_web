@@ -9,32 +9,30 @@ export async function pushLocalToCloud() {
   if (!user) return;
   const uid = user.id;
 
-  // Delete old cloud data for this user, then re-insert all local data
-  await supabase.from('calc_history').delete().eq('user_id', uid).then(() => {}, () => {});
-  await supabase.from('planner_axles').delete().eq('user_id', uid).then(() => {}, () => {});
-  await supabase.from('white_stats').delete().eq('user_id', uid).then(() => {}, () => {});
+  // Helper: sync table — fetch cloud timestamps, insert only new local entries
+  async function syncTable(table: string, localEntries: any[]) {
+    if (localEntries.length === 0) return;
+    const { data: cloud } = await supabase.from(table).select('timestamp').eq('user_id', uid);
+    const cloudTs = new Set((cloud || []).map(r => r.timestamp));
+    for (const entry of localEntries) {
+      if (!cloudTs.has(entry.timestamp)) {
+        await supabase.from(table).insert({ user_id: uid, data: entry, timestamp: entry.timestamp }).then(() => {}, () => {});
+      }
+    }
+  }
 
   // 1) Calc history
   const db1 = await openDB<{ history: { key: number; value: CalcHistoryEntry; indexes: { timestamp: number } } }>('hbr-calc-db', 5);
-  const localHistory = await db1.getAll('history');
-  for (const entry of localHistory) {
-    await supabase.from('calc_history').insert({ user_id: uid, data: entry, timestamp: entry.timestamp }).then(() => {}, () => {});
-  }
+  await syncTable('calc_history', await db1.getAll('history'));
 
   // 2) Planner axles
-  const localAxles = await db1.getAll('planner_saves') as any[];
-  for (const axle of localAxles) {
-    await supabase.from('planner_axles').insert({ user_id: uid, data: axle, timestamp: axle.timestamp }).then(() => {}, () => {});
-  }
+  await syncTable('planner_axles', (await db1.getAll('planner_saves')) as any[]);
 
   // 3) White stats
   const db2 = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
-  const localWS = await db2.getAll('entries');
-  for (const entry of localWS) {
-    await supabase.from('white_stats').insert({ user_id: uid, data: entry, timestamp: entry.timestamp }).then(() => {}, () => {});
-  }
+  await syncTable('white_stats', await db2.getAll('entries'));
 
-  // 4) Custom skills
+  // 4) Custom skills — always upsert latest
   const data: Record<string, unknown> = {};
   for (const cat of ['buff', 'debuff', 'weakness'] as const) {
     data['skills_' + cat] = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
