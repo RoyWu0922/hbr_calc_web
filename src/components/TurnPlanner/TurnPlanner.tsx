@@ -358,17 +358,17 @@ function ODPanel() {
               <div className="grid grid-cols-3 gap-1.5">
                 <div>
                   <div className="text-[9px] text-text-muted">目标数</div>
-                  <input className={OD_NUM} type="number" placeholder="1" value={shared.targets || ''}
-                    onChange={e => setShared(s => ({ ...s, targets: parseInt(e.target.value) || 0 }))} />
+                  <input className={OD_NUM} type="text" inputMode="decimal" placeholder="1" value={shared.targets || ''}
+                    onChange={e => setShared(s => ({ ...s, targets: Math.round(parseFloat(e.target.value) || 0) }))} />
                 </div>
                 <div>
                   <div className="text-[9px] text-text-muted">目标OD率%</div>
-                  <input className={OD_NUM} type="number" step="0.5" value={shared.odRate || ''}
+                  <input className={OD_NUM} type="text" inputMode="decimal" step="0.5" value={shared.odRate || ''}
                     onChange={e => setShared(s => ({ ...s, odRate: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div>
                   <div className="text-[9px] text-text-muted">额外OD上升量%</div>
-                  <input className={OD_NUM} type="number" step="0.01" value={shared.odRise || ''}
+                  <input className={OD_NUM} type="text" inputMode="decimal" step="0.01" value={shared.odRise || ''}
                     onChange={e => setShared(s => ({ ...s, odRise: parseFloat(e.target.value) || 0 }))} />
                 </div>
               </div>
@@ -401,11 +401,11 @@ function ODPanel() {
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-text-muted w-4 flex-shrink-0">#{i + 1}</span>
                     <div className="flex-1 grid grid-cols-[1fr_1fr_1fr_2fr]">
-                      <input className={OD_NUM} type="number" placeholder="0" value={row.origHit || ''}
-                        onChange={e => updateRow(i, r => ({ ...r, origHit: parseInt(e.target.value) || 0 }))} />
-                      <input className={OD_NUM} type="number" placeholder="0" value={row.addHit || ''}
-                        onChange={e => updateRow(i, r => ({ ...r, addHit: parseInt(e.target.value) || 0 }))} />
-                      <input className={OD_NUM} type="number" step="0.1" placeholder="0" value={row.fixedOD || ''}
+                      <input className={OD_NUM} type="text" inputMode="decimal" placeholder="0" value={row.origHit || ''}
+                        onChange={e => updateRow(i, r => ({ ...r, origHit: Math.round(parseFloat(e.target.value) || 0) }))} />
+                      <input className={OD_NUM} type="text" inputMode="decimal" placeholder="0" value={row.addHit || ''}
+                        onChange={e => updateRow(i, r => ({ ...r, addHit: Math.round(parseFloat(e.target.value) || 0) }))} />
+                      <input className={OD_NUM} type="text" inputMode="decimal" step="0.1" placeholder="0" value={row.fixedOD || ''}
                         onChange={e => updateRow(i, r => ({ ...r, fixedOD: parseFloat(e.target.value) || 0 }))} />
                       <div className="flex items-center">
                         <label className="cursor-pointer select-none pl-1">
@@ -526,7 +526,40 @@ function syncNormalLabels(turns: PlannerTurn[]): PlannerTurn[] {
 
 // ─── Shared tiny input style ──────────────────────────────────
 const TINY = 'input-field text-[8px] py-px px-0.5 w-full text-center';
-const TINY_NUM = 'input-field text-[8px] py-px px-0 text-center';
+const TINY_NUM = 'input-field text-[8px] py-px px-0 text-center eval-num';
+
+// Auto-eval math expressions on blur (e.g. "1+1" → 2)
+function parseInputExpr(v: string): number {
+  const s = v.trim();
+  if (s === '' || s === '-') return 0;
+  if (/[+\-*/]/.test(s) && s.length > 1 && !/^-\d+$/.test(s)) {
+    try {
+      const r = Function('return (' + s + ')')();
+      if (typeof r === 'number' && isFinite(r)) return r;
+    } catch { /* fall through */ }
+  }
+  return parseFloat(s) || 0;
+}
+// Tiny input that accepts math expressions, evaluates on blur
+function EvalInput({ className, value, setValue, placeholder, step }: {
+  className: string; value: number; setValue: (v: number) => void; placeholder?: string; step?: string;
+}) {
+  const [text, setText] = useState(String(value || ''));
+  useEffect(() => { setText(String(value || '')); }, [value]);
+  const flush = () => {
+    const v = parseInputExpr(text);
+    setValue(v);
+  };
+  return (
+    <input className={className} type="text" inputMode="decimal" step={step}
+      value={text}
+      placeholder={placeholder}
+      onChange={e => setText(e.target.value)}
+      onBlur={flush}
+      onKeyDown={e => { if (e.key === 'Enter') flush(); }}
+    />
+  );
+}
 
 // ─── Detail Table ─────────────────────────────────────────────
 
@@ -598,6 +631,21 @@ function DetailTable({
 
   let normalCounter = 0;
 
+  // Skill search
+  const [skillSearch, setSkillSearch] = useState('');
+  const [showSkillSearch, setShowSkillSearch] = useState(false);
+  const matchSet = useMemo(() => {
+    if (!skillSearch.trim()) return new Set<string>();
+    const q = skillSearch.trim().toLowerCase();
+    const m = new Set<string>();
+    turns.forEach((turn, ti) => {
+      turn.frontActions.forEach((fa, ai) => {
+        if (fa.action && fa.action.toLowerCase().includes(q)) m.add(`${ti}-${ai}`);
+      });
+    });
+    return m;
+  }, [turns, skillSearch]);
+
   return (
     <div className="card overflow-x-auto">
       <div className="flex items-center justify-between mb-2">
@@ -620,10 +668,40 @@ function DetailTable({
             </div>
             遭遇战
           </label>
+          <button className={`px-1 ${showSkillSearch ? 'text-accent' : 'text-text-muted hover:text-accent'}`} title="搜索技能"
+            onClick={() => { setShowSkillSearch(p => !p); setSkillSearch(''); }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          {showSkillSearch && (
+            <div className="relative">
+              {skillSearch.trim() && (
+                <span className="absolute -top-3 left-0 text-[9px] text-amber-400">{matchSet.size}个匹配</span>
+              )}
+              <input className="input-field text-[10px] py-0.5 w-24"
+                placeholder="搜索技能…"
+                autoFocus
+                value={skillSearch}
+                onChange={e => setSkillSearch(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape') { setShowSkillSearch(false); setSkillSearch(''); } }} />
+            </div>
+          )}
         </div>
       </div>
 
-      <table className="planner-table">
+      <table className="planner-table" onBlur={e => {
+        const t = e.target as unknown as HTMLInputElement;
+        if (!t || !t.classList || !t.classList.contains('eval-num')) return;
+        const val = parseInputExpr(t.value);
+        const plain = parseFloat(t.value);
+        if (val !== plain || (isNaN(plain) && !isNaN(val))) {
+          // Value changed via expression — trigger React onChange
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+          if (nativeInputValueSetter) {
+            nativeInputValueSetter.call(t, String(val || ''));
+            t.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+      }}>
         <colgroup>
           <col style={{ width: 48 }} />
           {[1,2,3].map(n => <Fragment key={n}>
@@ -661,16 +739,14 @@ function DetailTable({
                 <div className="flex gap-0.5">
                   <input className={TINY} style={{ flex: 1 }} placeholder={`C${i + 1}`} value={c.name}
                     onChange={e => updateChar(i, ch => ({ ...ch, name: e.target.value }))} />
-                  <input className={TINY} style={{ width: i < 3 ? '28%' : '45%' }} type="number" placeholder="SP"
-                    value={c.sp || ''}
-                    onChange={e => updateChar(i, ch => ({ ...ch, sp: parseFloat(e.target.value) || 0 }))} />
+                  <EvalInput className={TINY} placeholder="SP" value={c.sp}
+                    setValue={v => updateChar(i, ch => ({ ...ch, sp: v }))} />
                 </div>
               </td>
             ))}
             <td>
-              <input className={TINY_NUM} style={{ border: 'none' }} type="number" step="0.1"
-                value={state.defaultPassiveOD || ''} placeholder="被动" title="全局被动OD"
-                onChange={e => setState({ ...state, defaultPassiveOD: parseFloat(e.target.value) || 0 })} />
+              <EvalInput className={`${TINY_NUM} border-0`} value={state.defaultPassiveOD} placeholder="被动"
+                setValue={v => setState({ ...state, defaultPassiveOD: v })} />
             </td>
             <td></td>
             {showBreak && <td></td>}
@@ -731,9 +807,8 @@ function DetailTable({
                       onChange={e => updateTurn(ti, t => ({ ...t, encounterModifier: e.target.value }))} />
                   </td>
                   <td>
-                    <input className={TINY_NUM} style={{ border: 'none' }} type="number" step="0.1"
-                      value={(turn.jailOD + turn.passiveOD) || ''} placeholder="0"
-                      onChange={e => updateTurn(ti, t => ({ ...t, jailOD: parseFloat(e.target.value) || 0, passiveOD: 0 }))} />
+                    <EvalInput className={`${TINY_NUM} border-0`} value={turn.jailOD + turn.passiveOD} placeholder="0"
+                      setValue={v => updateTurn(ti, t => ({ ...t, jailOD: v, passiveOD: 0 }))} />
                   </td>
                   <td className={`text-center font-mono font-bold text-xs relative ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
                     {fmtFloat(curResult?.odCapped ?? 0, 2)}
@@ -785,6 +860,7 @@ function DetailTable({
                       </td>
                       <td colSpan={showBreak ? 4 : 3}>
                         <input className={TINY} type="text" value={fa.action} placeholder="行动"
+                          style={matchSet.has(`${ti}-${ai}`) ? { background: 'rgba(245,158,11,0.3)', borderColor: 'rgba(245,158,11,0.6)' } : undefined}
                           onChange={e => updateTurn(ti, t => {
                             const fns = [...t.frontActions] as typeof t.frontActions;
                             fns[ai] = { ...fns[ai], action: e.target.value };
@@ -803,10 +879,10 @@ function DetailTable({
                           {ci >= 0 ? characters[ci].name || ci + 1 : null}
                         </td>
                         <td rowSpan={2}>
-                          <input className={TINY_NUM} style={{ border: 'none' }} type="number" value={turn.backSPGain[bi] || ''} placeholder="0"
-                            onChange={e => updateTurn(ti, t => {
+                          <EvalInput className={TINY_NUM} value={turn.backSPGain[bi]} placeholder="0"
+                            setValue={v => updateTurn(ti, t => {
                               const bg = [...t.backSPGain] as typeof t.backSPGain;
-                              bg[bi] = parseFloat(e.target.value) || 0;
+                              bg[bi] = v;
                               return { ...t, backSPGain: bg };
                             })} />
                         </td>
@@ -816,9 +892,8 @@ function DetailTable({
 
                   {/* ±OD (rowSpan=2) */}
                   <td rowSpan={2}>
-                    <input className={TINY_NUM} style={{ border: 'none' }} type="number" step="0.1"
-                      value={(turn.jailOD + turn.passiveOD) || ''} placeholder="0" title="额外OD"
-                      onChange={e => updateTurn(ti, t => ({ ...t, jailOD: parseFloat(e.target.value) || 0, passiveOD: 0 }))} />
+                    <EvalInput className={`${TINY_NUM} border-0`} value={turn.jailOD + turn.passiveOD} placeholder="0"
+                      setValue={v => updateTurn(ti, t => ({ ...t, jailOD: v, passiveOD: 0 }))} />
                   </td>
 
                   {/* 当前OD (rowSpan=2) */}
@@ -864,29 +939,29 @@ function DetailTable({
                     return (
                       <Fragment key={ai}>
                         <td className="text-center font-mono text-xs text-text-muted">{fmt(curSP)}</td>
-                        <td><input className={TINY_NUM} type="number" value={fa.spCost || ''} placeholder="0"
-                          onChange={e => updateTurn(ti, t => {
+                        <td><EvalInput className={TINY_NUM} value={fa.spCost} placeholder="0"
+                          setValue={v => updateTurn(ti, t => {
                             const fns = [...t.frontActions] as typeof t.frontActions;
-                            fns[ai] = { ...fns[ai], spCost: parseFloat(e.target.value) || 0 };
+                            fns[ai] = { ...fns[ai], spCost: v };
                             return { ...t, frontActions: fns };
                           })} /></td>
-                        <td><input className={TINY_NUM} type="number" value={fa.spGain || ''} placeholder="0"
-                          onChange={e => updateTurn(ti, t => {
+                        <td><EvalInput className={TINY_NUM} value={fa.spGain} placeholder="0"
+                          setValue={v => updateTurn(ti, t => {
                             const fns = [...t.frontActions] as typeof t.frontActions;
-                            fns[ai] = { ...fns[ai], spGain: parseFloat(e.target.value) || 0 };
+                            fns[ai] = { ...fns[ai], spGain: v };
                             return { ...t, frontActions: fns };
                           })} /></td>
-                        <td><input className={TINY_NUM} type="number" step="0.1" value={fa.odGain || ''} placeholder="0"
-                          onChange={e => updateTurn(ti, t => {
+                        <td><EvalInput className={TINY_NUM} value={fa.odGain} placeholder="0" step="0.1"
+                          setValue={v => updateTurn(ti, t => {
                             const fns = [...t.frontActions] as typeof t.frontActions;
-                            fns[ai] = { ...fns[ai], odGain: parseFloat(e.target.value) || 0 };
+                            fns[ai] = { ...fns[ai], odGain: v };
                             return { ...t, frontActions: fns };
                           })} /></td>
                         {showBreak && (
-                          <td><input className={TINY_NUM} type="number" step="0.1" value={fa.dr || ''} placeholder="0"
-                            onChange={e => updateTurn(ti, t => {
+                          <td><EvalInput className={TINY_NUM} value={fa.dr} placeholder="0" step="0.1"
+                            setValue={v => updateTurn(ti, t => {
                               const fns = [...t.frontActions] as typeof t.frontActions;
-                              fns[ai] = { ...fns[ai], dr: parseFloat(e.target.value) || 0 };
+                              fns[ai] = { ...fns[ai], dr: v };
                               return { ...t, frontActions: fns };
                             })} /></td>
                         )}
@@ -1063,11 +1138,11 @@ function SimpleTable({
           <div className="flex gap-2">
             <div className="flex-1">
               <div className="input-label">分数</div>
-              <input className="input-field text-xs py-1.5" type="number" value={score || ''} placeholder="0" onChange={e => setScore(parseInt(e.target.value) || 0)} />
+              <input className="input-field text-xs py-1.5" type="number" value={score || ''} placeholder="0" onChange={e => setScore(Math.round(parseFloat(e.target.value) || 0))} />
             </div>
             <div className="flex-1">
               <div className="input-label">回合</div>
-              <input className="input-field text-xs py-1.5" type="number" value={turnsCount || ''} placeholder="0" onChange={e => setTurnsCount(parseInt(e.target.value) || 0)} />
+              <input className="input-field text-xs py-1.5" type="number" value={turnsCount || ''} placeholder="0" onChange={e => setTurnsCount(Math.round(parseFloat(e.target.value) || 0))} />
             </div>
           </div>
           <div>
