@@ -48,17 +48,18 @@ export async function pullFromCloud() {
       await tx.done;
     }
 
-    // 3) White stats
+    // 3) White stats (separate DB)
     const cloudWS = await fetchWhiteStats();
     if (cloudWS.length > 0) {
       const db = await openDB<{
-        white_stats: { key: number; value: any; indexes: { timestamp: number } };
-      }>('hbr-calc-db', 5);
-      const local = await db.getAll('white_stats');
+        entries: { key: number; value: any; indexes: { timestamp: number } };
+      }>('hbr-white-stats', 1);
+      const local = await db.getAll('entries');
       const localTs = new Set(local.map(e => e.timestamp));
-      const tx = db.transaction('white_stats', 'readwrite');
+      const tx = db.transaction('entries', 'readwrite');
       for (const row of cloudWS) {
         if (!localTs.has(row.timestamp)) {
+          delete row.data.id;
           await tx.store.add({ ...row.data, timestamp: row.timestamp });
         }
       }
