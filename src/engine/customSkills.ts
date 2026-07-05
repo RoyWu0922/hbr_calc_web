@@ -1,3 +1,5 @@
+import { supabase } from '../utils/supabase';
+
 const STORAGE_KEY = 'hbr-custom-skills';
 
 export interface CustomSkill {
@@ -8,6 +10,18 @@ export interface CustomSkill {
 }
 
 type SkillCategory = 'buff' | 'debuff' | 'weakness';
+
+function syncToCloud(category: SkillCategory) {
+  const skills = getCustomSkills(category);
+  const overrides = getOverrides(category);
+  const data: Record<string, unknown> = {};
+  data['skills_' + category] = skills;
+  data['overrides_' + category] = overrides;
+  supabase.auth.getUser().then(({ data: { user } }) => {
+    if (!user) return;
+    supabase.from('custom_skills').upsert({ user_id: user.id, data, updated_at: Date.now() });
+  });
+}
 
 export function getCustomSkills(category: SkillCategory): CustomSkill[] {
   try {
@@ -20,16 +34,18 @@ export function addCustomSkill(category: SkillCategory, skill: CustomSkill): voi
   const skills = getCustomSkills(category);
   const idx = skills.findIndex(s => s.name === skill.name);
   if (idx >= 0) {
-    skills[idx] = skill; // overwrite (for edits)
+    skills[idx] = skill;
   } else {
     skills.push(skill);
   }
   localStorage.setItem(`${STORAGE_KEY}-${category}`, JSON.stringify(skills));
+  syncToCloud(category);
 }
 
 export function deleteCustomSkill(category: SkillCategory, name: string): void {
   const skills = getCustomSkills(category).filter(s => s.name !== name);
   localStorage.setItem(`${STORAGE_KEY}-${category}`, JSON.stringify(skills));
+  syncToCloud(category);
 }
 
 export function getAllCustomSkills(category: SkillCategory): CustomSkill[] {
@@ -56,6 +72,7 @@ function getOverrides(category: SkillCategory): Record<string, BuiltinOverride> 
 
 function saveOverrides(category: SkillCategory, overrides: Record<string, BuiltinOverride>) {
   localStorage.setItem(`${OVERRIDE_KEY}-${category}`, JSON.stringify(overrides));
+  syncToCloud(category);
 }
 
 export function getDeletedBuiltins(category: SkillCategory): Set<string> {
