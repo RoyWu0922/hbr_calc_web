@@ -114,7 +114,7 @@ function AppInner() {
             <div className="flex-1" />
             {user ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-text-muted">{user.email?.replace('@hbr.local', '')}</span>
+                <span className="text-xs text-text-muted">{user.email?.replace('@hbrcalc.dev', '')}</span>
                 <button className="btn btn-secondary btn-xs" onClick={signOut}>登出</button>
               </div>
             ) : (

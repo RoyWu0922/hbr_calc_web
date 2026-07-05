@@ -18,7 +18,7 @@ export default function AuthDialog({ onClose }: { onClose: () => void }) {
     if (password.length < 6) { setError('密码至少6位'); return; }
     setBusy(true);
     // Use username as pseudo-email for Supabase auth
-    const email = username.trim().toLowerCase() + '@hbr.local';
+    const email = username.trim().toLowerCase() + '@hbrcalc.dev';
     const err = mode === 'login' ? await signIn(email, password) : await signUp(email, password);
     setBusy(false);
     if (err) setError(err);
