@@ -468,13 +468,6 @@ function fmtFloat(n: number, decimals = 1): string {
   return Number(n.toFixed(decimals)).toLocaleString('zh-CN');
 }
 
-function fmtOD(capped: number, assist: number, mode: number) {
-  const over = assist - mode;
-  if (over > 0.005) {
-    return { main: String(mode), over: '+' + fmtFloat(over, 1) };
-  }
-  return { main: fmtFloat(capped, 2), over: '' };
-}
 
 const OD_MODE_OPTIONS = [
   { value: '300', label: '百分比(300%)' },
@@ -845,7 +838,7 @@ function DetailTable({
                       setValue={v => updateTurn(ti, t => ({ ...t, jailOD: v, passiveOD: 0 }))} />
                   </td>
                   <td className={`text-center font-mono font-bold text-xs relative ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                    {(() => { const od = fmtOD(curResult?.odCapped ?? 0, curResult?.odAssist ?? 0, odMode); return <>{od.main}{od.over && <span className="text-[8px] text-text-muted ml-0.5">{od.over}</span>}</>; })()}
+                    {(curResult?.odAssist ?? 0) - odMode > 0.005 ? <>{odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((curResult?.odAssist ?? 0) - odMode, 1)}</span></> : fmtFloat(curResult?.odCapped ?? 0, 2)}
                     <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
                       onClick={() => removeTurn(ti)} title="删除">✕</button>
                   </td>
@@ -939,7 +932,7 @@ function DetailTable({
 
                   {/* 当前OD (rowSpan=2) */}
                   <td className={`text-center font-mono font-bold text-xs ${!showBreak ? 'relative' : ''} ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`} rowSpan={2}>
-                    {(() => { const od = fmtOD(curResult?.odCapped ?? 0, curResult?.odAssist ?? 0, odMode); return <>{od.main}{od.over && <span className="text-[8px] text-text-muted ml-0.5">{od.over}</span>}</>; })()}
+                    {(curResult?.odAssist ?? 0) - odMode > 0.005 ? <>{odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((curResult?.odAssist ?? 0) - odMode, 1)}</span></> : fmtFloat(curResult?.odCapped ?? 0, 2)}
                     {!showBreak && (
                       <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
                         onClick={() => removeTurn(ti)} title="删除">✕</button>
@@ -1264,7 +1257,7 @@ function SimpleTable({
                       <td className="font-bold text-[10px] text-purple-400">词条{modNum}</td>
                       <td colSpan={6} className="text-xs text-left pl-1 text-text-muted">{turn.encounterModifier}</td>
                       <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                        {(() => { const od = fmtOD(result?.odCapped ?? 0, result?.odAssist ?? 0, state.odMode); return <>{od.main}{od.over && <span className="text-[8px] text-text-muted ml-0.5">{od.over}</span>}</>; })()}
+                        {(result?.odAssist ?? 0) - state.odMode > 0.005 ? <>{state.odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((result?.odAssist ?? 0) - state.odMode, 1)}</span></> : fmtFloat(result?.odCapped ?? 0, 2)}
                       </td>
                     </tr>
                   );
@@ -1289,7 +1282,7 @@ function SimpleTable({
                         </Fragment>
                       ))}
                       <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                        {(() => { const od = fmtOD(result?.odCapped ?? 0, result?.odAssist ?? 0, state.odMode); return <>{od.main}{od.over && <span className="text-[8px] text-text-muted ml-0.5">{od.over}</span>}</>; })()}
+                        {(result?.odAssist ?? 0) - state.odMode > 0.005 ? <>{state.odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((result?.odAssist ?? 0) - state.odMode, 1)}</span></> : fmtFloat(result?.odCapped ?? 0, 2)}
                       </td>
                     </tr>
                   </Fragment>
