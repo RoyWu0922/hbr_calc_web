@@ -541,8 +541,8 @@ function parseInputExpr(v: string): number {
   return parseFloat(s) || 0;
 }
 // Tiny input that accepts math expressions, evaluates on blur
-function EvalInput({ className, value, setValue, placeholder, step }: {
-  className: string; value: number; setValue: (v: number) => void; placeholder?: string; step?: string;
+function EvalInput({ className, value, setValue, placeholder, step, style }: {
+  className: string; value: number; setValue: (v: number) => void; placeholder?: string; step?: string; style?: React.CSSProperties;
 }) {
   const [text, setText] = useState(String(value || ''));
   useEffect(() => { setText(String(value || '')); }, [value]);
@@ -551,7 +551,7 @@ function EvalInput({ className, value, setValue, placeholder, step }: {
     setValue(v);
   };
   return (
-    <input className={className} type="text" inputMode="decimal" step={step}
+    <input className={className} type="text" inputMode="decimal" step={step} style={style}
       value={text}
       placeholder={placeholder}
       onChange={e => setText(e.target.value)}
@@ -739,7 +739,7 @@ function DetailTable({
                 <div className="flex gap-0.5">
                   <input className={TINY} style={{ flex: 1 }} placeholder={`C${i + 1}`} value={c.name}
                     onChange={e => updateChar(i, ch => ({ ...ch, name: e.target.value }))} />
-                  <EvalInput className={TINY} placeholder="SP" value={c.sp}
+                  <EvalInput className={TINY} style={{ width: i < 3 ? '28%' : '45%' }} placeholder="SP" value={c.sp}
                     setValue={v => updateChar(i, ch => ({ ...ch, sp: v }))} />
                 </div>
               </td>
