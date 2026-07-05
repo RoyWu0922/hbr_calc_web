@@ -725,7 +725,7 @@ function DetailTable({
           <col className="planner-col-od planner-col-group-start" style={{ width: 42 }} />
           <col className="planner-col-od" style={{ width: showBreak ? 26 : 32 }} />
           {showBreak && <col className="planner-col-od" style={{ width: 26 }} />}
-          {showEncounter && <col style={{ width: 18 }} />}
+          {showEncounter && <col style={{ width: 22 }} />}
         </colgroup>
         <thead>
           <tr>
@@ -793,7 +793,18 @@ function DetailTable({
             if (!isOD && !isExtra && !isModifier) normalCounter++;
             const normalLabel = (isOD || isExtra || isODin) ? normalCounter + 1 : normalCounter;
             const typeKey = getTurnTypeKey(turn);
-            const extraIsRed = isExtra && prevIsOD;
+            // Extra turns chain red: if current is extra and any preceding turn since last non-OD/non-extra was OD/OD内
+            let redChain = isExtra && prevIsOD;
+            if (isExtra && !redChain && prevTurn) {
+              // Check if prev turn was also a red extra (walk back until we hit OD or non-extra)
+              for (let k = ti - 1; k >= 0; k--) {
+                const t = turns[k];
+                if (isODRound(t.roundLabel) || t.roundLabel.includes('OD内')) { redChain = true; break; }
+                if (!isExtraRound(t.roundLabel)) break;
+                // If prev turn was extra, keep walking
+              }
+            }
+            const extraIsRed = redChain;
             const rowBgA = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
             const backChars = [0, 1, 2, 3, 4, 5].filter(i => !frontIdxSet.has(i));
@@ -937,8 +948,8 @@ function DetailTable({
                   )}
                   {/* Encounter "+" button */}
                   {showEncounter && (
-                    <td rowSpan={2} className="text-center w-5">
-                      <button className="text-accent/60 hover:text-accent text-xs leading-none px-0.5"
+                    <td rowSpan={2} className="text-center" style={{ width: 22 }}>
+                      <button className="text-accent/60 hover:text-accent text-sm leading-none"
                         onClick={() => {
                           const next = [...turns];
                           next.splice(ti + 1, 0, {
@@ -1225,7 +1236,15 @@ function SimpleTable({
                 const isODin = turn.roundLabel.includes('OD内');
                 const prevTurn = ti > 0 ? turns[ti - 1] : null;
                 const prevIsOD = prevTurn ? isODRound(prevTurn.roundLabel) || prevTurn.roundLabel.includes('OD内') : false;
-                const extraIsRed = isExtra && prevIsOD;
+                let redChain3 = isExtra && prevIsOD;
+                if (isExtra && !redChain3 && prevTurn) {
+                  for (let k = ti - 1; k >= 0; k--) {
+                    const t = turns[k];
+                    if (isODRound(t.roundLabel) || t.roundLabel.includes('OD内')) { redChain3 = true; break; }
+                    if (!isExtraRound(t.roundLabel)) break;
+                  }
+                }
+                const extraIsRed = redChain3;
                 const result = computed[ti];
                 const rowBg = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
                 let modNum = 0;
