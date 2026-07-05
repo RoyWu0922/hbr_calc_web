@@ -468,12 +468,12 @@ function fmtFloat(n: number, decimals = 1): string {
   return Number(n.toFixed(decimals)).toLocaleString('zh-CN');
 }
 
-function FmtOD({ capped, assist, mode }: { capped: number; assist: number; mode: number }) {
+function fmtOD(capped: number, assist: number, mode: number) {
   const over = assist - mode;
   if (over > 0.005) {
-    return <span>{mode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat(over, 1)}</span></span>;
+    return { main: String(mode), over: '+' + fmtFloat(over, 1) };
   }
-  return <>{fmtFloat(capped, 2)}</>;
+  return { main: fmtFloat(capped, 2), over: '' };
 }
 
 const OD_MODE_OPTIONS = [
@@ -845,7 +845,7 @@ function DetailTable({
                       setValue={v => updateTurn(ti, t => ({ ...t, jailOD: v, passiveOD: 0 }))} />
                   </td>
                   <td className={`text-center font-mono font-bold text-xs relative ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                    <FmtOD capped={curResult?.odCapped ?? 0} assist={curResult?.odAssist ?? 0} mode={odMode} />
+                    {(() => { const od = fmtOD(curResult?.odCapped ?? 0, curResult?.odAssist ?? 0, odMode); return <>{od.main}{od.over && <span className="text-[8px] text-text-muted ml-0.5">{od.over}</span>}</>; })()}
                     <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
                       onClick={() => removeTurn(ti)} title="删除">✕</button>
                   </td>
@@ -939,7 +939,7 @@ function DetailTable({
 
                   {/* 当前OD (rowSpan=2) */}
                   <td className={`text-center font-mono font-bold text-xs ${!showBreak ? 'relative' : ''} ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`} rowSpan={2}>
-                    <FmtOD capped={curResult?.odCapped ?? 0} assist={curResult?.odAssist ?? 0} mode={odMode} />
+                    {(() => { const od = fmtOD(curResult?.odCapped ?? 0, curResult?.odAssist ?? 0, odMode); return <>{od.main}{od.over && <span className="text-[8px] text-text-muted ml-0.5">{od.over}</span>}</>; })()}
                     {!showBreak && (
                       <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
                         onClick={() => removeTurn(ti)} title="删除">✕</button>
@@ -1264,7 +1264,7 @@ function SimpleTable({
                       <td className="font-bold text-[10px] text-purple-400">词条{modNum}</td>
                       <td colSpan={6} className="text-xs text-left pl-1 text-text-muted">{turn.encounterModifier}</td>
                       <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                        <FmtOD capped={result?.odCapped ?? 0} assist={result?.odAssist ?? 0} mode={state.odMode} />
+                        {(() => { const od = fmtOD(result?.odCapped ?? 0, result?.odAssist ?? 0, state.odMode); return <>{od.main}{od.over && <span className="text-[8px] text-text-muted ml-0.5">{od.over}</span>}</>; })()}
                       </td>
                     </tr>
                   );
@@ -1289,7 +1289,7 @@ function SimpleTable({
                         </Fragment>
                       ))}
                       <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                        <FmtOD capped={result?.odCapped ?? 0} assist={result?.odAssist ?? 0} mode={state.odMode} />
+                        {(() => { const od = fmtOD(result?.odCapped ?? 0, result?.odAssist ?? 0, state.odMode); return <>{od.main}{od.over && <span className="text-[8px] text-text-muted ml-0.5">{od.over}</span>}</>; })()}
                       </td>
                     </tr>
                   </Fragment>
