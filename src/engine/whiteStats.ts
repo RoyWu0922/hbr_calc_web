@@ -23,6 +23,7 @@ export interface WhiteStatsInput {
   scoreBuff: number;        // 打分buff 0/15/30 (default 0)
   totalFix: Bonus6;         // 合计值修正行 (D37-I37)
   necklaceLuck: number;     // 坠链运气加成 0 or 48 (default 0)
+  extraWhiteBonus: number;  // 额外白值加成，直接加在最终结果上 (default 0)
 }
 
 export const DEFAULT_INPUT: WhiteStatsInput = {
@@ -44,6 +45,7 @@ export const DEFAULT_INPUT: WhiteStatsInput = {
   scoreBuff: 0,
   totalFix: { pow: 0, dex: 0, tough: 0, spr: 0, wis: 0, luck: 0 },
   necklaceLuck: 0,
+  extraWhiteBonus: 0,
 };
 
 // ─── Output ────────────────────────────────────────────────────
@@ -120,13 +122,14 @@ export function calcWhiteStats(input: WhiteStatsInput): WhiteStatsOutput {
   const tl = totalForStat(baseStats.luck, bias.multipliers.luck, bias.flats.luck, equipBonus.luck, input.support.luck);
 
   // ── Output2: Total Stats (D40-I40) ──────────────────────────
+  const eb = input.extraWhiteBonus || 0;
   const totalStats: Bonus6 = {
-    pow: tp.withGear + input.totalFix.pow,
-    dex: td.withGear + input.totalFix.dex,
-    tough: tt.withGear + input.totalFix.tough,
-    spr: ts.withGear + input.totalFix.spr,
-    wis: tw.withGear + input.totalFix.wis,
-    luck: tl.withGear + input.totalFix.luck + (isNaked ? 0 : input.necklaceLuck - 48),
+    pow: tp.withGear + input.totalFix.pow + eb,
+    dex: td.withGear + input.totalFix.dex + eb,
+    tough: tt.withGear + input.totalFix.tough + eb,
+    spr: ts.withGear + input.totalFix.spr + eb,
+    wis: tw.withGear + input.totalFix.wis + eb,
+    luck: tl.withGear + input.totalFix.luck + (isNaked ? 0 : input.necklaceLuck - 48) + eb,
   };
 
   // ── Output3-共鸣有效值: ceil(不含配装/专武/共鸣/修正 / 10) ─

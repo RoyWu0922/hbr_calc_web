@@ -367,7 +367,7 @@ function ODPanel() {
                     onChange={e => setShared(s => ({ ...s, odRate: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div>
-                  <div className="text-[9px] text-text-muted">OD上升量%</div>
+                  <div className="text-[9px] text-text-muted">额外OD上升量%</div>
                   <input className={OD_NUM} type="number" step="0.01" value={shared.odRise || ''}
                     onChange={e => setShared(s => ({ ...s, odRise: parseFloat(e.target.value) || 0 }))} />
                 </div>
@@ -944,47 +944,36 @@ function SimpleTable({
     if (!el) { alert('未找到时间线元素'); return; }
     try {
       const canvas = await html2canvas(el, {
-        backgroundColor: '#0a0e1a',
+        backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
         logging: false,
         onclone(_clonedDoc) {
-          // Replace oklch() colors (unsupported by html2canvas) with approximate hex
-          const style = _clonedDoc.createElement('style');
-          style.textContent = `
-            *, *::before, *::after {
-              --app-glass-border: rgba(255,255,255,0.1) !important;
-              --app-text-muted: #94a3b8 !important;
-              --app-text-primary: #e2e8f0 !important;
-              --app-text-secondary: #cbd5e1 !important;
-              --app-bg-card: #1e293b !important;
-              --app-bg-input: rgba(255,255,255,0.05) !important;
-              --color-accent: #818cf8 !important;
-              --color-gold: #f59e0b !important;
-              --planner-grid-border: rgba(255,255,255,0.1) !important;
-              --planner-header-bg: rgba(255,255,255,0.06) !important;
-              --planner-col-front: rgba(129,140,248,0.08) !important;
-              --planner-col-back: rgba(148,163,184,0.06) !important;
-              --planner-col-od: rgba(251,191,36,0.08) !important;
-              --planner-input-border: rgba(255,255,255,0.1) !important;
+          // Set light theme
+          _clonedDoc.documentElement.setAttribute('data-theme', 'light');
+          // Force vertical center in table cells (html2canvas sometimes misaligns)
+          const fixCss = _clonedDoc.createElement('style');
+          fixCss.textContent = `td, th { vertical-align: middle !important; line-height: 1.2 !important; padding-top: 4px !important; padding-bottom: 4px !important; }`;
+          _clonedDoc.head.appendChild(fixCss);
+          // Strip oklch() colors (unsupported by html2canvas) from all elements
+          _clonedDoc.querySelectorAll('*').forEach(el => {
+            const s = (el as HTMLElement).style;
+            for (let i = s.length - 1; i >= 0; i--) {
+              const val = s.getPropertyValue(s[i]);
+              if (val.includes('oklch(')) {
+                s.removeProperty(s[i]);
+              }
             }
-            .text-text-muted { color: #94a3b8 !important; }
-            .text-text-primary { color: #e2e8f0 !important; }
-            .text-text-secondary { color: #cbd5e1 !important; }
-            .text-accent { color: #818cf8 !important; }
-            .text-gold { color: #f59e0b !important; }
-            .text-red-400 { color: #f87171 !important; }
-            .text-green-400 { color: #4ade80 !important; }
-            .bg-bg-card { background: #1e293b !important; }
-            .bg-accent\\/20 { background: rgba(99,102,241,0.2) !important; }
-            .card { background: #1e293b !important; border-color: rgba(255,255,255,0.1) !important; }
-            .input-field { background: rgba(255,255,255,0.05) !important; border-color: rgba(255,255,255,0.1) !important; }
-            .btn { border-color: rgba(255,255,255,0.1) !important; }
-            .planner-table td { border-color: rgba(255,255,255,0.1) !important; }
-            .planner-table th { border-color: rgba(255,255,255,0.1) !important; background: rgba(255,255,255,0.06) !important; }
-            svg { stroke: currentColor !important; }
-          `;
-          _clonedDoc.head.appendChild(style);
+            if (el.hasAttribute('style')) {
+              const attr = el.getAttribute('style') || '';
+              const cleaned = attr.replace(/oklch\([^)]+\)/gi, '#666');
+              if (cleaned !== attr) el.setAttribute('style', cleaned);
+            }
+          });
+          // Also strip from <style> tags
+          _clonedDoc.querySelectorAll('style').forEach(st => {
+            st.textContent = (st.textContent || '').replace(/oklch\([^)]+\)/gi, '#666');
+          });
         },
       });
       canvas.toBlob(blob => {

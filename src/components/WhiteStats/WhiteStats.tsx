@@ -22,6 +22,7 @@ export default function WhiteStats() {
   const [weaponLevel, setWeaponLevel] = useState(5);
   const [scoreBuff, setScoreBuff] = useState(0);
   const [necklaceLuck, setNecklaceLuck] = useState(0);
+  const [extraWhiteBonus, setExtraWhiteBonus] = useState(0);
   const [support, setSupport] = useState({ pow: 0, dex: 0, tough: 0, spr: 0, wis: 0, luck: 0 });
 
   const input: WhiteStatsInput = useMemo(() => ({
@@ -30,10 +31,10 @@ export default function WhiteStats() {
     baseFix, equipPreset, weaponLevel,
     resonance: 0, support, scoreBuff,
     totalFix: { pow: 0, dex: 0, tough: 0, spr: 0, wis: 0, luck: 0 },
-    necklaceLuck,
+    extraWhiteBonus, necklaceLuck,
   }), [shortId, level, badgeLevel, rebirth, biasType, breakLevel,
       missingPower, missingDex, missingSpr, missingPowerDex,
-      baseFix, equipPreset, weaponLevel, scoreBuff, necklaceLuck, support]);
+      baseFix, equipPreset, weaponLevel, scoreBuff, extraWhiteBonus, necklaceLuck, support]);
 
   const result = useMemo(() => calcWhiteStats(input), [input]);
 
@@ -76,6 +77,7 @@ export default function WhiteStats() {
     setWeaponLevel(inp.weaponLevel);
     setScoreBuff(inp.scoreBuff);
     setNecklaceLuck(inp.necklaceLuck);
+    setExtraWhiteBonus(inp.extraWhiteBonus ?? 0);
     setSupport(inp.support);
   };
 
@@ -209,6 +211,11 @@ export default function WhiteStats() {
               <option value={0}>0</option>
               <option value={48}>48</option>
             </select>
+          </div>
+          <div>
+            <div className="input-label">额外白值加成</div>
+            <input className="input-field text-sm" type="number" value={extraWhiteBonus || ''}
+              onChange={e => setExtraWhiteBonus(parseInt(e.target.value) || 0)} />
           </div>
         </div>
         <div className="text-xs text-text-muted mb-2">支援修正</div>
