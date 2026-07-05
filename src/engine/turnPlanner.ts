@@ -46,7 +46,7 @@ export function computeTurnPlanner(state: TurnPlannerState): ComputedTurnResult[
 
     // Add gains
     const passiveBonus = ti === 0 ? defaultPassiveOD : 0;
-    odAssist += frontOD + turn.jailOD + turn.passiveOD + turn.pursuitOD + passiveBonus;
+    odAssist += frontOD + turn.jailOD + turn.passiveOD + (turn.pursuitOD ?? 0) + passiveBonus;
 
     // Cap
     odCap = Math.min(odAssist, odMode);
