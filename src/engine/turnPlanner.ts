@@ -46,7 +46,7 @@ export function computeTurnPlanner(state: TurnPlannerState): ComputedTurnResult[
 
     // Add gains
     const passiveBonus = ti === 0 ? defaultPassiveOD : 0;
-    odAssist += frontOD + turn.jailOD + turn.passiveOD + passiveBonus;
+    odAssist += frontOD + turn.jailOD + turn.passiveOD + turn.pursuitOD + passiveBonus;
 
     // Cap
     odCap = Math.min(odAssist, odMode);
@@ -85,7 +85,7 @@ export function createDefaultState(): TurnPlannerState {
     turnType: 'normal' as const,
     frontActions: [emptyFA, emptyFA, emptyFA] as [typeof emptyFA, typeof emptyFA, typeof emptyFA],
     backSPGain: [0, 0, 0] as [number, number, number],
-    jailOD: 0, passiveOD: 0, bossDR: 0,
+    jailOD: 0, passiveOD: 0, pursuitOD: 0, bossDR: 0,
   }));
 
   return {
@@ -93,6 +93,7 @@ export function createDefaultState(): TurnPlannerState {
     defaultPassiveOD: 0,
     showBreak: false,
     showEncounter: false,
+    showPursuit: false,
     characters: [emptyChar, emptyChar, emptyChar, emptyChar, emptyChar, emptyChar] as TurnPlannerState['characters'],
     turns: defaultTurns,
   };

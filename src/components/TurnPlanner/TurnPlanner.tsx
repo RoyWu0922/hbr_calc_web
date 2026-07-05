@@ -570,7 +570,7 @@ function DetailTable({
   setState: (s: TurnPlannerState) => void;
   computed: ComputedTurnResult[];
 }) {
-  const { characters, turns, odMode, showBreak, showEncounter } = state;
+  const { characters, turns, odMode, showBreak, showEncounter, showPursuit } = state;
 
   const updateChar = (i: number, fn: (c: typeof characters[number]) => typeof characters[number]) => {
     const next = [...characters] as typeof characters;
@@ -616,7 +616,7 @@ function DetailTable({
       roundLabel: '', turnType: 'normal',
       frontActions: [emptyFA(), emptyFA(), emptyFA()],
       backSPGain: [0, 0, 0],
-      jailOD: 0, passiveOD: 0, bossDR: 0,
+      jailOD: 0, passiveOD: 0, pursuitOD: 0, bossDR: 0,
     };
     const next = syncNormalLabels([...turns, newTurn]);
     setState({ ...state, turns: next });
@@ -661,6 +661,12 @@ function DetailTable({
               {showBreak && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
             </div>
             破坏
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showPursuit: !showPursuit })}>
+            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showPursuit ? 'bg-accent border-accent' : 'toggle-off'}`}>
+              {showPursuit && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            追击
           </label>
           <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showEncounter: !showEncounter })}>
             <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showEncounter ? 'bg-accent border-accent' : 'toggle-off'}`}>
@@ -715,6 +721,7 @@ function DetailTable({
             <col className="planner-col-back planner-col-group-start" style={{ width: 36 }} />
             <col className="planner-col-back" style={{ width: 30 }} />
           </Fragment>)}
+          {showPursuit && <col className="planner-col-od" style={{ width: 36 }} />}
           <col className="planner-col-od planner-col-group-start" style={{ width: 42 }} />
           <col className="planner-col-od" style={{ width: showBreak ? 26 : 32 }} />
           {showBreak && <col className="planner-col-od" style={{ width: 26 }} />}
@@ -725,6 +732,7 @@ function DetailTable({
             <th className="sticky left-0 bg-bg-card z-10">#</th>
             {[1, 2, 3].map(n => <th key={n} colSpan={showBreak ? 5 : 4} className="text-center">前{n}</th>)}
             {[1, 2, 3].map(n => <th key={`b${n}`} colSpan={2} className="text-center">后{n}</th>)}
+            {showPursuit && <th>追击OD</th>}
             <th>被动OD</th>
             <th>总计OD</th>
             {showBreak && <th>总计破坏</th>}
@@ -744,6 +752,7 @@ function DetailTable({
                 </div>
               </td>
             ))}
+            {showPursuit && <td></td>}
             <td>
               <EvalInput className={`${TINY_NUM} border-0`} value={state.defaultPassiveOD} placeholder="被动"
                 setValue={v => setState({ ...state, defaultPassiveOD: v })} />
@@ -806,6 +815,12 @@ function DetailTable({
                       value={turn.encounterModifier || ''}
                       onChange={e => updateTurn(ti, t => ({ ...t, encounterModifier: e.target.value }))} />
                   </td>
+                  {showPursuit && (
+                    <td>
+                      <EvalInput className={`${TINY_NUM} border-0`} value={turn.pursuitOD} placeholder="0"
+                        setValue={v => updateTurn(ti, t => ({ ...t, pursuitOD: v }))} />
+                    </td>
+                  )}
                   <td>
                     <EvalInput className={`${TINY_NUM} border-0`} value={turn.jailOD + turn.passiveOD} placeholder="0"
                       setValue={v => updateTurn(ti, t => ({ ...t, jailOD: v, passiveOD: 0 }))} />
@@ -890,6 +905,13 @@ function DetailTable({
                     );
                   })}
 
+                  {/* 追击OD (rowSpan=2) */}
+                  {showPursuit && (
+                    <td rowSpan={2}>
+                      <EvalInput className={`${TINY_NUM} border-0`} value={turn.pursuitOD} placeholder="0"
+                        setValue={v => updateTurn(ti, t => ({ ...t, pursuitOD: v }))} />
+                    </td>
+                  )}
                   {/* ±OD (rowSpan=2) */}
                   <td rowSpan={2}>
                     <EvalInput className={`${TINY_NUM} border-0`} value={turn.jailOD + turn.passiveOD} placeholder="0"
@@ -923,7 +945,7 @@ function DetailTable({
                             roundLabel: '', turnType: 'normal' as const,
                             frontActions: [emptyFA(), emptyFA(), emptyFA()],
                             backSPGain: [0, 0, 0],
-                            jailOD: 0, passiveOD: 0, bossDR: 0,
+                            jailOD: 0, passiveOD: 0, pursuitOD: 0, bossDR: 0,
                             encounterModifier: '',
                           });
                           setState({ ...state, turns: syncNormalLabels(next) });
