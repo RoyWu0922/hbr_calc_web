@@ -33,7 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         if (confirm('检测到登录成功，是否将本地数据同步到云端？')) {
-          pushLocalToCloud().then(() => pullFromCloud());
+          pushLocalToCloud().finally(() => pullFromCloud());
+        } else {
+          pullFromCloud();
         }
       }
     });
