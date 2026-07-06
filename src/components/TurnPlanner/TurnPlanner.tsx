@@ -6,6 +6,7 @@ import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles
 import { getFolders, createFolder, updateFolder, deleteFolder } from '../../utils/storage';
 import { copyToClipboard } from '../../utils/copyToast';
 import { pushPlannerAxle } from '../../utils/supabase';
+import { pullAxles } from '../../utils/cloudSync';
 import type { Folder } from '../../types';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
@@ -1318,6 +1319,7 @@ function SavedAxles({
 
   const load = async () => {
     setLoading(true);
+    await pullAxles(); // fetch new cloud entries first
     const all = await getSavedAxles();
     setAllEntries(all);
     setEntries(all);
