@@ -32,11 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        if (confirm('检测到登录成功，是否将本地数据同步到云端？')) {
-          pushLocalToCloud().finally(() => pullFromCloud());
-        } else {
-          pullFromCloud();
-        }
+        const doSync = async () => {
+          if (confirm('检测到登录成功，是否将本地数据同步到云端？')) {
+            await pushLocalToCloud();
+          }
+          await pullFromCloud();
+          window.location.reload();
+        };
+        doSync();
       }
     });
     return () => subscription.unsubscribe();
