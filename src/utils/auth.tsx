@@ -29,10 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user && !syncedRef.current && !localStorage.getItem('hbr_sync_done')) {
+      if (session?.user && !syncedRef.current) {
         syncedRef.current = true;
-        localStorage.setItem('hbr_sync_done', '1');
-        syncOnLogin().finally(() => { window.location.reload(); });
+        if (!localStorage.getItem('hbr_sync_v2')) {
+          localStorage.setItem('hbr_sync_v2', '1');
+          syncOnLogin().finally(() => { window.location.reload(); });
+        }
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
