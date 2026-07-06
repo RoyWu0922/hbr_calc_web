@@ -32,9 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user && !syncedRef.current && !localStorage.getItem('hbr_sync_done')) {
         syncedRef.current = true;
         localStorage.setItem('hbr_sync_done', '1');
-        pushLocalToCloud().then(() => pullFromCloud()).then(() => {
-          window.location.reload();
-        });
+        pushLocalToCloud()
+          .then(() => pullFromCloud())
+          .catch(() => {})
+          .finally(() => { window.location.reload(); });
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
