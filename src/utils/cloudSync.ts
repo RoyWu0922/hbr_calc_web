@@ -11,6 +11,20 @@ function getCalcDB() {
   return openDB<CloudSyncDB>('hbr-calc-db', 5);
 }
 
+async function safeGetAll(table: string): Promise<any[]> {
+  try {
+    const db = await getCalcDB();
+    return await db.getAll(table);
+  } catch { return []; }
+}
+
+async function safeGetAllWS(): Promise<any[]> {
+  try {
+    const db = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
+    return await db.getAll('entries');
+  } catch { return []; }
+}
+
 // ─── Push all local data to cloud on login ───────────────────
 
 export async function pushLocalToCloud() {
@@ -29,15 +43,9 @@ export async function pushLocalToCloud() {
     }
   }
 
-  const db = await getCalcDB();
-  await syncTable('calc_history', await db.getAll('history'));
-  await syncTable('planner_axles', (await db.getAll('planner_saves')) as any[]);
-
-  // White stats (separate DB)
-  try {
-    const wsDb = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
-    await syncTable('white_stats', await wsDb.getAll('entries'));
-  } catch { /* DB may not exist yet */ }
+  await syncTable('calc_history', await safeGetAll('history'));
+  await syncTable('planner_axles', await safeGetAll('planner_saves'));
+  await syncTable('white_stats', await safeGetAllWS());
 
   // Custom skills
   const data: Record<string, unknown> = {};
@@ -59,7 +67,7 @@ export async function pullFromCloud() {
     const { data: cloudHistory } = await supabase.from('calc_history').select('*').eq('user_id', user.id).order('timestamp', { ascending: false });
     if (cloudHistory && cloudHistory.length > 0) {
       const db = await getCalcDB();
-      const local = await db.getAll('history');
+      const local = await safeGetAll('history');
       const localTs = new Set(local.map(e => e.timestamp));
       const tx = db.transaction('history', 'readwrite');
       for (const row of cloudHistory) {
@@ -77,7 +85,7 @@ export async function pullFromCloud() {
     const { data: cloudAxles } = await supabase.from('planner_axles').select('*').eq('user_id', user.id).order('timestamp', { ascending: false });
     if (cloudAxles && cloudAxles.length > 0) {
       const db = await getCalcDB();
-      const local = await db.getAll('planner_saves');
+      const local = await safeGetAll('planner_saves');
       const localTs = new Set(local.map(e => e.timestamp));
       const tx = db.transaction('planner_saves', 'readwrite');
       for (const row of cloudAxles) {
@@ -92,9 +100,9 @@ export async function pullFromCloud() {
     try {
       const { data: cloudWS } = await supabase.from('white_stats').select('*').eq('user_id', user.id).order('timestamp', { ascending: false });
       if (cloudWS && cloudWS.length > 0) {
-        const wsDb = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
-        const local = await wsDb.getAll('entries');
+        const local = await safeGetAllWS();
         const localTs = new Set(local.map(e => e.timestamp));
+        const wsDb = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
         const tx = wsDb.transaction('entries', 'readwrite');
         for (const row of cloudWS) {
           if (!localTs.has(row.timestamp)) {
