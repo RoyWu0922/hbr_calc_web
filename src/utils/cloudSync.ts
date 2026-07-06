@@ -67,7 +67,10 @@ export async function pullFromCloud() {
       const tx = db.transaction(table as any, 'readwrite');
       for (const row of cloudRows) {
         if (!localTs.has(row.timestamp)) {
-          await tx.store.add({ ...row.data, timestamp: row.timestamp });
+          const copy = JSON.parse(JSON.stringify(row.data));
+          delete copy.id;
+          copy.timestamp = row.timestamp;
+          await tx.store.add(copy);
         }
       }
       await tx.done;
@@ -91,8 +94,10 @@ export async function pullFromCloud() {
         const tx = wsDb.transaction('entries', 'readwrite');
         for (const row of cloudWS) {
           if (!localTs.has(row.timestamp)) {
-            delete row.data.id;
-            await tx.store.add({ ...row.data, timestamp: row.timestamp });
+            const copy = JSON.parse(JSON.stringify(row.data));
+            delete copy.id;
+            copy.timestamp = row.timestamp;
+            await tx.store.add(copy);
           }
         }
         await tx.done;
