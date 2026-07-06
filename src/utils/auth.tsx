@@ -29,9 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user && !syncedRef.current && !sessionStorage.getItem('hbr_synced')) {
+      if (session?.user && !syncedRef.current && !localStorage.getItem('hbr_sync_done')) {
         syncedRef.current = true;
-        sessionStorage.setItem('hbr_synced', '1');
+        localStorage.setItem('hbr_sync_done', '1');
         if (confirm('检测到登录成功，是否将本地数据同步到云端？')) {
           pushLocalToCloud().finally(() => pullFromCloud().finally(() => window.location.reload()));
         } else {
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabaseSignIn(email, password);
     return error ? error.message : null;
   };
-  const handleSignOut = async () => { await supabaseSignOut(); };
+  const handleSignOut = async () => { localStorage.removeItem('hbr_sync_done'); await supabaseSignOut(); };
 
   return (
     <AuthContext.Provider value={{ user, loading, signInWithGoogle: handleSignInWithGoogle, signUp: handleSignUp, signIn: handleSignIn, signOut: handleSignOut }}>
