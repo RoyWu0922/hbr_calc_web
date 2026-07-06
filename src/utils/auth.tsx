@@ -29,8 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user && !syncedRef.current) {
+      if (session?.user && !syncedRef.current && !sessionStorage.getItem('hbr_synced')) {
         syncedRef.current = true;
+        sessionStorage.setItem('hbr_synced', '1');
         if (confirm('检测到登录成功，是否将本地数据同步到云端？')) {
           pushLocalToCloud().finally(() => pullFromCloud().finally(() => window.location.reload()));
         } else {
