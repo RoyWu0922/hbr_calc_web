@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabaseSignIn(email, password);
     return error ? error.message : null;
   };
-  const handleSignOut = async () => { localStorage.removeItem('hbr_sync_done'); await supabaseSignOut(); };
+  const handleSignOut = async () => { localStorage.removeItem('hbr_sync_v2'); await supabaseSignOut(); };
 
   return (
     <AuthContext.Provider value={{ user, loading, signInWithGoogle: handleSignInWithGoogle, signUp: handleSignUp, signIn: handleSignIn, signOut: handleSignOut }}>
