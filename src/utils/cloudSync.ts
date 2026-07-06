@@ -10,7 +10,7 @@ interface CloudSyncDB extends DBSchema {
 function getCalcDB() { return openDB<CloudSyncDB>('hbr-calc-db', 5); }
 
 async function safeGetAll(table: string): Promise<any[]> {
-  try { const db = await getCalcDB(); return await db.getAll(table); }
+  try { const db = await getCalcDB(); return await db.getAll(table as any); }
   catch { return []; }
 }
 
