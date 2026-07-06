@@ -32,11 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user && !syncedRef.current && !localStorage.getItem('hbr_sync_done')) {
         syncedRef.current = true;
         localStorage.setItem('hbr_sync_done', '1');
-        if (confirm('检测到登录成功，是否将本地数据同步到云端？')) {
-          pushLocalToCloud().finally(() => pullFromCloud().finally(() => window.location.reload()));
-        } else {
-          pullFromCloud().finally(() => window.location.reload());
-        }
+        pushLocalToCloud().then(() => pullFromCloud()).then(() => {
+          window.location.reload();
+        });
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
