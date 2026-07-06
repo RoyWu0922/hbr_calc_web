@@ -1,6 +1,15 @@
 import { supabase } from './supabase';
-import { openDB } from 'idb';
+import { openDB, type DBSchema } from 'idb';
 import type { CalcHistoryEntry } from '../types';
+
+interface CloudSyncDB extends DBSchema {
+  history: { key: number; value: CalcHistoryEntry; indexes: { timestamp: number } };
+  planner_saves: { key: number; value: any; indexes: { timestamp: number } };
+}
+
+function getCalcDB() {
+  return openDB<CloudSyncDB>('hbr-calc-db', 5);
+}
 
 // ─── Push all local data to cloud on login ───────────────────
 
@@ -9,7 +18,6 @@ export async function pushLocalToCloud() {
   if (!user) return;
   const uid = user.id;
 
-  // Helper: sync table — fetch cloud timestamps, insert only new local entries
   async function syncTable(table: string, localEntries: any[]) {
     if (localEntries.length === 0) return;
     const { data: cloud } = await supabase.from(table).select('timestamp').eq('user_id', uid);
@@ -21,18 +29,17 @@ export async function pushLocalToCloud() {
     }
   }
 
-  // 1) Calc history
-  const db1 = await openDB<{ history: { key: number; value: CalcHistoryEntry; indexes: { timestamp: number } } }>('hbr-calc-db', 5);
-  await syncTable('calc_history', await db1.getAll('history'));
+  const db = await getCalcDB();
+  await syncTable('calc_history', await db.getAll('history'));
+  await syncTable('planner_axles', (await db.getAll('planner_saves')) as any[]);
 
-  // 2) Planner axles
-  await syncTable('planner_axles', (await db1.getAll('planner_saves')) as any[]);
+  // White stats (separate DB)
+  try {
+    const wsDb = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
+    await syncTable('white_stats', await wsDb.getAll('entries'));
+  } catch { /* DB may not exist yet */ }
 
-  // 3) White stats
-  const db2 = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
-  await syncTable('white_stats', await db2.getAll('entries'));
-
-  // 4) Custom skills — always upsert latest
+  // Custom skills
   const data: Record<string, unknown> = {};
   for (const cat of ['buff', 'debuff', 'weakness'] as const) {
     data['skills_' + cat] = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
@@ -49,9 +56,9 @@ export async function pullFromCloud() {
 
   try {
     // 1) Calc history
-    const { data: cloudHistory } = await supabase.from('calc_history').select('*').order('timestamp', { ascending: false });
+    const { data: cloudHistory } = await supabase.from('calc_history').select('*').eq('user_id', user.id).order('timestamp', { ascending: false });
     if (cloudHistory && cloudHistory.length > 0) {
-      const db = await openDB<{ history: { key: number; value: CalcHistoryEntry; indexes: { timestamp: number } } }>('hbr-calc-db', 5);
+      const db = await getCalcDB();
       const local = await db.getAll('history');
       const localTs = new Set(local.map(e => e.timestamp));
       const tx = db.transaction('history', 'readwrite');
@@ -67,9 +74,9 @@ export async function pullFromCloud() {
     }
 
     // 2) Planner axles
-    const { data: cloudAxles } = await supabase.from('planner_axles').select('*').order('timestamp', { ascending: false });
+    const { data: cloudAxles } = await supabase.from('planner_axles').select('*').eq('user_id', user.id).order('timestamp', { ascending: false });
     if (cloudAxles && cloudAxles.length > 0) {
-      const db = await openDB<{ planner_saves: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-calc-db', 5);
+      const db = await getCalcDB();
       const local = await db.getAll('planner_saves');
       const localTs = new Set(local.map(e => e.timestamp));
       const tx = db.transaction('planner_saves', 'readwrite');
@@ -82,23 +89,25 @@ export async function pullFromCloud() {
     }
 
     // 3) White stats
-    const { data: cloudWS } = await supabase.from('white_stats').select('*').order('timestamp', { ascending: false });
-    if (cloudWS && cloudWS.length > 0) {
-      const db = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
-      const local = await db.getAll('entries');
-      const localTs = new Set(local.map(e => e.timestamp));
-      const tx = db.transaction('entries', 'readwrite');
-      for (const row of cloudWS) {
-        if (!localTs.has(row.timestamp)) {
-          delete row.data.id;
-          await tx.store.add({ ...row.data, timestamp: row.timestamp });
+    try {
+      const { data: cloudWS } = await supabase.from('white_stats').select('*').eq('user_id', user.id).order('timestamp', { ascending: false });
+      if (cloudWS && cloudWS.length > 0) {
+        const wsDb = await openDB<{ entries: { key: number; value: any; indexes: { timestamp: number } } }>('hbr-white-stats', 1);
+        const local = await wsDb.getAll('entries');
+        const localTs = new Set(local.map(e => e.timestamp));
+        const tx = wsDb.transaction('entries', 'readwrite');
+        for (const row of cloudWS) {
+          if (!localTs.has(row.timestamp)) {
+            delete row.data.id;
+            await tx.store.add({ ...row.data, timestamp: row.timestamp });
+          }
         }
+        await tx.done;
       }
-      await tx.done;
-    }
+    } catch { /* DB may not exist yet */ }
 
     // 4) Custom skills
-    const { data: cloudSkills } = await supabase.from('custom_skills').select('*').eq('user_id', user.id).single();
+    const { data: cloudSkills } = await supabase.from('custom_skills').select('*').eq('user_id', user.id).maybeSingle();
     if (cloudSkills?.data) {
       for (const cat of ['buff', 'debuff', 'weakness'] as const) {
         const skills = cloudSkills.data['skills_' + cat];
