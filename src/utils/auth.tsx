@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase, signInWithGoogle, signUp as supabaseSignUp, signIn as supabaseSignIn, signOut as supabaseSignOut } from './supabase';
 import { pullFromCloud, pushLocalToCloud } from './cloudSync';
 import type { User } from '@supabase/supabase-js';
@@ -23,24 +23,23 @@ const AuthContext = createContext<AuthState>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const syncedRef = useRef(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
+      if (session?.user && !syncedRef.current) {
+        syncedRef.current = true;
+        if (confirm('检测到登录成功，是否将本地数据同步到云端？')) {
+          pushLocalToCloud().finally(() => pullFromCloud().finally(() => window.location.reload()));
+        } else {
+          pullFromCloud().finally(() => window.location.reload());
+        }
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) {
-        const doSync = async () => {
-          if (confirm('检测到登录成功，是否将本地数据同步到云端？')) {
-            await pushLocalToCloud();
-          }
-          await pullFromCloud();
-          window.location.reload();
-        };
-        doSync();
-      }
     });
     return () => subscription.unsubscribe();
   }, []);
