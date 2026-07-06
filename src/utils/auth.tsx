@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase, signInWithGoogle, signUp as supabaseSignUp, signIn as supabaseSignIn, signOut as supabaseSignOut } from './supabase';
-import { pullFromCloud, pushLocalToCloud } from './cloudSync';
+import { syncOnLogin } from './cloudSync';
 import type { User } from '@supabase/supabase-js';
 
 interface AuthState {
@@ -32,10 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user && !syncedRef.current && !localStorage.getItem('hbr_sync_done')) {
         syncedRef.current = true;
         localStorage.setItem('hbr_sync_done', '1');
-        pushLocalToCloud()
-          .then(() => pullFromCloud())
-          .catch(() => {})
-          .finally(() => { window.location.reload(); });
+        syncOnLogin().finally(() => { window.location.reload(); });
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
