@@ -614,9 +614,10 @@ function DetailTable({
     setState({ ...state, turns: next });
   };
 
-  const [addTurnCount, setAddTurnCount] = useState(1);
-  const addTurn = (count = addTurnCount) => {
-    const newTurns: PlannerTurn[] = Array.from({ length: count }, () => ({
+  const [addTurnText, setAddTurnText] = useState('1');
+  const addTurn = () => {
+    const n = parseInt(addTurnText) || 1;
+    const newTurns: PlannerTurn[] = Array.from({ length: n }, () => ({
       roundLabel: '', turnType: 'normal' as const,
       frontActions: [emptyFA(), emptyFA(), emptyFA()],
       backSPGain: [0, 0, 0],
@@ -634,6 +635,32 @@ function DetailTable({
   };
 
   let normalCounter = 0;
+
+  // Pre-compute OD color blocks
+  type ODStyle = '' | 'od-block' | 'od-block2' | 'od-block3';
+  const odStyles: ODStyle[] = new Array(turns.length).fill('');
+  if (!showEncounter) {
+    let currentStyle: ODStyle = '';
+    let blockIndex = 0;
+    for (let i = 0; i < turns.length; i++) {
+      const t = turns[i];
+      if (isODRound(t.roundLabel) && !t.roundLabel.includes('OD内')) {
+        blockIndex++;
+        currentStyle = (['', 'od-block', 'od-block2', 'od-block3'] as const)[blockIndex % 3 || 3];
+      } else if (t.roundLabel.includes('OD内')) {
+        blockIndex++;
+        currentStyle = (['', 'od-block', 'od-block2', 'od-block3'] as const)[blockIndex % 3 || 3];
+      } else if (isExtraRound(t.roundLabel)) {
+        // inherit
+      } else {
+        currentStyle = '';
+      }
+      odStyles[i] = currentStyle;
+    }
+  }
+  const odBlockBg = 'rgba(59,130,246,0.12)';
+  const odBlockBg2 = 'rgba(147,51,234,0.12)';
+  const odBlockBg3 = 'rgba(234,88,12,0.10)';
 
   // Skill search
   const [skillSearch, setSkillSearch] = useState('');
@@ -809,7 +836,11 @@ function DetailTable({
               }
             }
             const extraIsRed = redChain;
-            const rowBgA = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
+            const odStyle = odStyles[ti];
+            const rowBgA = odStyle === 'od-block' ? odBlockBg
+              : odStyle === 'od-block2' ? odBlockBg2
+              : odStyle === 'od-block3' ? odBlockBg3
+              : (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
             const backChars = [0, 1, 2, 3, 4, 5].filter(i => !frontIdxSet.has(i));
             // Auto-number modifier rows
@@ -1020,11 +1051,16 @@ function DetailTable({
         </tbody>
       </table>
 
-      <div className="flex items-center gap-1 mt-2">
-        <button className="btn btn-secondary btn-xs" onClick={() => addTurn()}>+ 添加回合</button>
-        <input className="input-field text-[10px] py-0.5 w-10 text-center" type="text" inputMode="numeric"
-          value={addTurnCount} onChange={e => setAddTurnCount(parseInt(e.target.value) || 1)}
-          onKeyDown={e => { if (e.key === 'Enter') addTurn(); }} />
+      <div className="flex items-center mt-2">
+        <button className="btn btn-secondary btn-xs flex items-center gap-0.5 whitespace-nowrap" onClick={() => addTurn()}>
+          + 添加
+          <input className="bg-transparent border-0 text-[10px] py-0 px-0.5 w-6 text-center" type="text" inputMode="numeric"
+            value={addTurnText} onClick={e => e.stopPropagation()}
+            onChange={e => setAddTurnText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); addTurn(); } }}
+            onBlur={() => { if (!addTurnText.trim()) setAddTurnText('1'); }} />
+          行
+        </button>
       </div>
     </div>
   );
@@ -1053,6 +1089,20 @@ function SimpleTable({
   notes: string; setNotes: (v: string) => void;
 }) {
   const { characters, turns } = state;
+
+  // Pre-compute OD color blocks
+  const sOdStyles: string[] = new Array(turns.length).fill('');
+  if (!state.showEncounter) {
+    let cur = '', bi = 0;
+    for (let i = 0; i < turns.length; i++) {
+      const t = turns[i];
+      if (isODRound(t.roundLabel) && !t.roundLabel.includes('OD内')) { bi++; cur = (['','s1','s2','s3'] as const)[bi % 3 || 3]; }
+      else if (t.roundLabel.includes('OD内')) { bi++; cur = (['','s1','s2','s3'] as const)[bi % 3 || 3]; }
+      else if (!isExtraRound(t.roundLabel)) { cur = ''; }
+      sOdStyles[i] = cur;
+    }
+  }
+  const sBg1 = 'rgba(59,130,246,0.10)', sBg2 = 'rgba(147,51,234,0.10)', sBg3 = 'rgba(234,88,12,0.08)';
 
   const timelineRef = useRef<HTMLDivElement>(null);
 
@@ -1255,7 +1305,11 @@ function SimpleTable({
                 }
                 const extraIsRed = redChain3;
                 const result = computed[ti];
-                const rowBg = (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
+                const sOdStyle = sOdStyles[ti];
+                const rowBg = sOdStyle === 's1' ? sBg1
+                  : sOdStyle === 's2' ? sBg2
+                  : sOdStyle === 's3' ? sBg3
+                  : (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
                 let modNum = 0;
                 if (isModifier) { for (let k = 0; k <= ti; k++) { if (turns[k].encounterModifier !== undefined) modNum++; } }
 

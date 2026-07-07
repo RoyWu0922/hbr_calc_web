@@ -169,6 +169,17 @@ function AppInner() {
           </a>
         </div>
         {showAuth && <AuthDialog onClose={() => setShowAuth(false)} />}
+        {/* Scroll buttons */}
+        <div className="fixed right-4 bottom-4 flex flex-col gap-1 z-40">
+          <button className="btn btn-secondary btn-xs w-7 h-7 flex items-center justify-center p-0 opacity-50 hover:opacity-100"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title="回到顶部">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+          </button>
+          <button className="btn btn-secondary btn-xs w-7 h-7 flex items-center justify-center p-0 opacity-50 hover:opacity-100"
+            onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} title="回到底部">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
     </div>
   );
 }
