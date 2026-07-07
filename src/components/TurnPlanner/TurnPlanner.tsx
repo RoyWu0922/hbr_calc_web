@@ -614,14 +614,15 @@ function DetailTable({
     setState({ ...state, turns: next });
   };
 
-  const addTurn = () => {
-    const newTurn: PlannerTurn = {
-      roundLabel: '', turnType: 'normal',
+  const [addTurnCount, setAddTurnCount] = useState(1);
+  const addTurn = (count = addTurnCount) => {
+    const newTurns: PlannerTurn[] = Array.from({ length: count }, () => ({
+      roundLabel: '', turnType: 'normal' as const,
       frontActions: [emptyFA(), emptyFA(), emptyFA()],
       backSPGain: [0, 0, 0],
       jailOD: 0, passiveOD: 0, pursuitOD: 0, bossDR: 0,
-    };
-    const next = syncNormalLabels([...turns, newTurn]);
+    }));
+    const next = syncNormalLabels([...turns, ...newTurns]);
     setState({ ...state, turns: next });
   };
 
@@ -1019,7 +1020,12 @@ function DetailTable({
         </tbody>
       </table>
 
-      <button className="btn btn-secondary btn-xs mt-2" onClick={addTurn}>+ 添加回合</button>
+      <div className="flex items-center gap-1 mt-2">
+        <button className="btn btn-secondary btn-xs" onClick={() => addTurn()}>+ 添加回合</button>
+        <input className="input-field text-[10px] py-0.5 w-10 text-center" type="text" inputMode="numeric"
+          value={addTurnCount} onChange={e => setAddTurnCount(parseInt(e.target.value) || 1)}
+          onKeyDown={e => { if (e.key === 'Enter') addTurn(); }} />
+      </div>
     </div>
   );
 }
