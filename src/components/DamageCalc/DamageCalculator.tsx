@@ -238,6 +238,19 @@ export default function DamageCalculator({ initialData }: Props) {
             title="保存到历史" style={{ padding: '6px 10px' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3V13a.5.5 0 01-.5.5h-9A.5.5 0 013 13V2.5z" stroke="currentColor" strokeWidth="1.2"/><path d="M10 2.5V5a.5.5 0 00.5.5H13" stroke="currentColor" strokeWidth="1.2"/><path d="M5.5 8.5h5M5.5 11h5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>
           </button>
+          <button className="btn btn-secondary btn-sm" title="新建计算" style={{ padding: '6px 8px' }}
+            onClick={async () => {
+              if (result && confirm('当前有计算结果，是否保存后再新建？')) await handleSave();
+              setSkill(defaultSkill); setBuffs([]); setDebuffs([]); setWeaknesses([]);
+              setEquipment(defaultEquipment); setBonus(defaultBonus);
+              setOd(defaultOD); setBreakParams(defaultBreak);
+              setChainMul(1); setBreakMul(100); setOdMul(1); setFloatVal(1); setBonusDmg(0);
+              setScore(defaultScore); setCalcLabel(''); setCalcNotes('');
+              setSuperChainHits(0); setBigChainHits(0); setMidChainHits(0); setSmallChainHits(0);
+              setBodyWeightStr(''); setResult(null); setLoadedEntryId(null);
+            }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+          </button>
           <button className="btn btn-secondary btn-sm" onClick={handleShare} title="导出分享码"
             style={{ padding: '6px 10px' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="4.5" r="1.8" stroke="currentColor" strokeWidth="1.1"/><circle cx="5" cy="11.5" r="1.8" stroke="currentColor" strokeWidth="1.1"/><circle cx="11" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.1"/><line x1="6.7" y1="5.5" x2="9.3" y2="7.2" stroke="currentColor" strokeWidth="1.1"/><line x1="6.7" y1="10.5" x2="9.3" y2="8.8" stroke="currentColor" strokeWidth="1.1"/></svg>

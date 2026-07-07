@@ -1666,6 +1666,24 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
                   <polyline points="7 3 7 8 15 8"/>
                 </svg>
               </button>
+              <button className="btn btn-secondary btn-xs ml-1 px-2" title="新建排轴"
+                onClick={async () => {
+                  if (state.turns.length > 1 && confirm('当前有排轴数据，是否保存后再新建？')) {
+                    const label = axleTitle.trim() || new Date().toLocaleString('zh-CN');
+                    if (loadedAxleId != null) {
+                      await updateAxle(loadedAxleId, label, state, axleScore, axleTurns, simpleAuthor, simpleNotes);
+                      pushPlannerAxle({ label, state, score: axleScore, turns: axleTurns, author: simpleAuthor, notes: simpleNotes, timestamp: Date.now() }).catch(() => {});
+                    } else {
+                      await saveAxle(label, state, axleScore, axleTurns, simpleAuthor, simpleNotes);
+                      pushPlannerAxle({ label, state, score: axleScore, turns: axleTurns, author: simpleAuthor, notes: simpleNotes, timestamp: Date.now() }).catch(() => {});
+                    }
+                  }
+                  setState({ ...createDefaultState(), turns: syncNormalLabels(createDefaultState().turns) });
+                  setLoadedAxleId(null); setAxleTitle(''); setSimpleTitle(''); setSimpleAuthor('');
+                  setSimpleNotes(''); setAxleScore(0); setAxleTurns(0);
+                }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
             </div>
           </div>
           {subTab === 'detail' ? <DetailTable state={state} setState={setState} computed={computed} /> :
