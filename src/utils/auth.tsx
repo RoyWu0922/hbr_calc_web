@@ -29,12 +29,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user && !syncedRef.current) {
+      if (session?.user && !syncedRef.current && !localStorage.getItem('hbr_sync_v3')) {
         syncedRef.current = true;
-        if (!localStorage.getItem('hbr_sync_v2')) {
-          localStorage.setItem('hbr_sync_v2', '1');
-          syncOnLogin().finally(() => { window.location.reload(); });
-        }
+        localStorage.setItem('hbr_sync_v3', '1');
+        syncOnLogin().finally(() => { window.location.reload(); });
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -52,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabaseSignIn(email, password);
     return error ? error.message : null;
   };
-  const handleSignOut = async () => { localStorage.removeItem('hbr_sync_v2'); await supabaseSignOut(); };
+  const handleSignOut = async () => { localStorage.removeItem('hbr_sync_v3'); await supabaseSignOut(); };
 
   return (
     <AuthContext.Provider value={{ user, loading, signInWithGoogle: handleSignInWithGoogle, signUp: handleSignUp, signIn: handleSignIn, signOut: handleSignOut }}>
