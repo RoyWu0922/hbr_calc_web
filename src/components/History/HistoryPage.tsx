@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { CalcHistoryEntry, DamageResultData } from '../../types';
 import { getHistory, deleteHistoryEntry, deleteHistoryEntries, clearHistory, duplicateHistoryEntry, updateHistoryLabel, updateHistoryNotes, getAllHistory, importHistoryEntries, createFolder, getFolders, updateFolder, deleteFolder, setHistoryFolder } from '../../utils/storage';
 import { decodeShareData } from '../../utils/shareUrl';
-import { pullHistory } from '../../utils/cloudSync';
 import type { Folder } from '../../types';
 
 type SortKey = 'time' | 'label' | 'score' | 'turns';
@@ -36,7 +35,6 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
   const loadHistory = async () => {
     setLoading(true);
     try {
-      await pullHistory(); // fetch new cloud entries first
       setAllEntries(await getHistory());
       setFolders(await getFolders('calc'));
     } catch { /* */ }
