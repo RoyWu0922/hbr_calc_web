@@ -883,8 +883,22 @@ function DetailTable({
               <Fragment key={ti}>
                 {/* Row A: 角色 + 行动 */}
                 <tr className={(isOD && !isODin) ? 'planner-od-start' : ''}>
-                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
+                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card relative ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
                     style={{ background: rowBgA || undefined }} rowSpan={2}>
+                    <div className="absolute left-0 top-0 bottom-0 flex items-center">
+                      <button className="text-text-muted hover:text-accent text-[10px] leading-none px-0.5 opacity-0 hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const next = [...turns];
+                          next.splice(origTi, 0, {
+                            roundLabel: '', turnType: 'normal' as const,
+                            frontActions: [emptyFA(), emptyFA(), emptyFA()],
+                            backSPGain: [0, 0, 0],
+                            jailOD: 0, passiveOD: 0, pursuitOD: 0, bossDR: 0,
+                          });
+                          setState({ ...state, turns: syncNormalLabels(next) });
+                        }} title="在上方插入">+</button>
+                    </div>
                     <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer"
                       style={{ color: 'inherit', fontSize: 'inherit' }}
                       value={typeKey} onChange={e => updateTurnType(ti, e.target.value, normalCounter)}>
