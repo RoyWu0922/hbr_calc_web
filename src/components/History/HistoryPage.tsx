@@ -3,7 +3,6 @@ import { CalcHistoryEntry, DamageResultData } from '../../types';
 import { getHistory, deleteHistoryEntry, deleteHistoryEntries, clearHistory, duplicateHistoryEntry, updateHistoryLabel, updateHistoryNotes, getAllHistory, importHistoryEntries, createFolder, getFolders, updateFolder, deleteFolder, setHistoryFolder } from '../../utils/storage';
 import { decodeShareData } from '../../utils/shareUrl';
 import { supabase } from '../../utils/supabase';
-import { pullHistory } from '../../utils/cloudSync';
 import type { Folder } from '../../types';
 
 type SortKey = 'time' | 'label' | 'score' | 'turns';
@@ -39,9 +38,8 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await pullHistory(); // sync cloud → local cache
-        // Show combined: local cache (now synced) + any untracked local
-        setAllEntries(await getHistory());
+        const { data } = await supabase.from('calc_history').select('*').eq('user_id', user.id).order('timestamp', { ascending: false });
+        setAllEntries((data || []).map((r: any) => ({ ...r.data, timestamp: r.timestamp, id: r.id })));
       } else {
         setAllEntries(await getHistory());
       }
