@@ -117,11 +117,12 @@ export async function saveToHistory(
   label: string,
   input: DamageInput,
   result: DamageResultData,
-  notes = ''
+  notes = '',
+  timestamp?: number
 ): Promise<number> {
   const db = await getDB();
   const entry: CalcHistoryEntry = {
-    timestamp: Date.now(),
+    timestamp: timestamp || Date.now(),
     label,
     input,
     result,
