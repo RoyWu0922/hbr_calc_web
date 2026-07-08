@@ -46,6 +46,9 @@ export default function AuthDialog({ onClose }: { onClose: () => void }) {
             {mode === 'login' ? '没有账号？注册' : '已有账号？登录'}
           </button>
         </div>
+        <div className="text-center mt-3 pt-3 border-t border-white/10">
+          <p className="text-[11px] text-amber-400/70">⚠ 云端同步功能仍有bug，建议先不要登录使用</p>
+        </div>
       </div>
     </div>
   );
