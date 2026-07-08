@@ -38,8 +38,13 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) await pullHistory();
-      setAllEntries(await getHistory());
+      if (user) {
+        await pullHistory(); // sync cloud → local cache
+        // Show combined: local cache (now synced) + any untracked local
+        setAllEntries(await getHistory());
+      } else {
+        setAllEntries(await getHistory());
+      }
       setFolders(await getFolders('calc'));
     } catch { /* */ }
     setLoading(false);
