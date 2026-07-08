@@ -612,6 +612,17 @@ function DetailTable({
     setState({ ...state, turns: next });
   };
 
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [delStart, setDelStart] = useState<number | null>(null);
+  const [delEnd, setDelEnd] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!deleteMode) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setDeleteMode(false); setDelStart(null); setDelEnd(null); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [deleteMode]);
+
   const [addTurnText, setAddTurnText] = useState('1');
   const addTurn = () => {
     const n = parseInt(addTurnText) || 1;
@@ -703,6 +714,27 @@ function DetailTable({
             </div>
             遭遇战
           </label>
+          <button className={`btn btn-xs px-1.5 ${deleteMode ? (delStart != null && delEnd != null ? 'bg-red-500/30 text-red-400' : 'bg-red-400/20 text-red-400') : 'btn-secondary'}`}
+            title={deleteMode ? (delStart != null && delEnd != null ? '点击删除选中区间' : '点击回合标记起止点') : '区间删除'}
+            onClick={() => {
+              if (deleteMode && delStart != null && delEnd != null) {
+                const lo = Math.min(delStart, delEnd);
+                const hi = Math.max(delStart, delEnd);
+                const count = hi - lo + 1;
+                if (!confirm(`删除第 ${lo + 1} 到第 ${hi + 1} 行，共 ${count} 行？`)) return;
+                let next = [...turns];
+                next.splice(lo, count);
+                next = syncNormalLabels(next);
+                setState({ ...state, turns: next });
+                setDeleteMode(false); setDelStart(null); setDelEnd(null);
+              } else {
+                setDeleteMode(!deleteMode);
+                setDelStart(null); setDelEnd(null);
+              }
+            }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            {delStart != null && delEnd != null && <span className="ml-0.5 text-[10px]">{Math.abs(delEnd - delStart) + 1}</span>}
+          </button>
           <button className={`px-1 ${showSkillSearch ? 'text-accent' : 'text-text-muted hover:text-accent'}`} title="搜索技能"
             onClick={() => { setShowSkillSearch(p => !p); setSkillSearch(''); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -882,8 +914,19 @@ function DetailTable({
               <Fragment key={ti}>
                 {/* Row A: 角色 + 行动 */}
                 <tr className={(isOD && !isODin) ? 'planner-od-start' : ''}>
-                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
-                    style={{ background: rowBgA || undefined }} rowSpan={2}>
+                  <td className={`text-center sticky left-0 z-10 font-bold text-[12px] bg-bg-card ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''} ${deleteMode && delStart === origTi ? 'ring-1 ring-red-400' : ''} ${deleteMode && delEnd === origTi ? 'ring-1 ring-red-400' : ''}`}
+                    style={{ background: rowBgA || undefined, paddingLeft: deleteMode ? 22 : undefined }} rowSpan={2}
+                    onClick={deleteMode ? () => {
+                      if (delStart == null) { setDelStart(origTi); setDelEnd(null); }
+                      else if (delEnd == null) { setDelEnd(origTi); }
+                      else { setDelStart(origTi); setDelEnd(null); }
+                    } : undefined}>
+                    {deleteMode && (
+                      <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[10px] text-red-400 select-none pointer-events-none">
+                        {delStart === origTi ? '▼' : delEnd === origTi ? '▲' : ''}
+                      </span>
+                    )}
+                    {!deleteMode && (
                     <button className="absolute -left-3 top-1/2 -translate-y-1/2 text-text-muted/40 hover:text-accent text-xs leading-none w-3 h-3 flex items-center justify-center"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -896,6 +939,7 @@ function DetailTable({
                         });
                         setState({ ...state, turns: syncNormalLabels(next) });
                       }} title="在下方插入">+</button>
+                    )}
                     <select className="w-full h-full border-0 bg-transparent text-center font-bold appearance-none cursor-pointer"
                       style={{ color: 'inherit', fontSize: 'inherit' }}
                       value={typeKey} onChange={e => updateTurnType(ti, e.target.value, normalCounter)}>
