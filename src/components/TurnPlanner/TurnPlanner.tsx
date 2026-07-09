@@ -1434,9 +1434,15 @@ function SavedAxles({
 
   const load = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await pullAll();
     const all = await getSavedAxles();
+    // Background sync if logged in
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) pullAll().then(async () => {
+        const synced = await getSavedAxles();
+        setAllEntries(synced);
+        setEntries(synced);
+      });
+    });
     setAllEntries(all);
     setEntries(all);
     setFolders(await getFolders('planner'));
