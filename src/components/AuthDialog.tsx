@@ -22,7 +22,7 @@ export default function AuthDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="card w-full max-w-sm p-6">
         <h3 className="text-lg font-bold mb-4">{mode === 'login' ? '登录' : '注册'}</h3>
 
@@ -40,6 +40,9 @@ export default function AuthDialog({ onClose }: { onClose: () => void }) {
           <button className="text-xs text-accent hover:underline" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}>
             {mode === 'login' ? '没有账号？注册' : '已有账号？登录'}
           </button>
+        </div>
+        <div className="text-center mt-2 pt-2 border-t border-white/10">
+          <p className="text-[10px] text-amber-400/80">⚠ 标签同步功能尚未完成</p>
         </div>
       </div>
     </div>
