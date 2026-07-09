@@ -27,17 +27,18 @@ function getDb() {
 
 export async function getWhiteStatsHistory(): Promise<WhiteStatsEntry[]> {
   const db = await getDb();
-  return db.getAll('history');
+  return (await db.getAll('history')).filter((e: any) => !e.deleted);
 }
 
 export async function saveWhiteStatsEntry(entry: WhiteStatsEntry): Promise<number> {
   const db = await getDb();
-  return db.add('history', { ...entry, timestamp: Date.now() }) as Promise<number>;
+  return db.add('history', { ...entry, uuid: crypto.randomUUID(), timestamp: Date.now(), deleted: false }) as Promise<number>;
 }
 
 export async function deleteWhiteStatsEntry(id: number): Promise<void> {
   const db = await getDb();
-  await db.delete('history', id);
+  const e = await db.get('history', id);
+  if (e) { (e as any).deleted = true; (e as any).timestamp = Date.now(); await db.put('history', e); }
 }
 
 export async function clearWhiteStatsHistory(): Promise<void> {

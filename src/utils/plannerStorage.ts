@@ -230,14 +230,14 @@ export interface SavedAxle {
 
 export async function saveAxle(label: string, state: TurnPlannerState, score = 0, turns = 0, author = '', notes = ''): Promise<number> {
   const db = await getDB();
-  const entry: SavedAxle = { label, timestamp: Date.now(), state: JSON.parse(JSON.stringify(state)), score, turns, author, notes };
+  const entry: any = { uuid: crypto.randomUUID(), label, timestamp: Date.now(), state: JSON.parse(JSON.stringify(state)), score, turns, author, notes, deleted: false };
   return db.add('planner_saves', entry) as Promise<number>;
 }
 
 export async function getSavedAxles(): Promise<SavedAxle[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('planner_saves', 'timestamp');
-  return all.reverse();
+  return all.filter(e => !(e as any).deleted).reverse();
 }
 
 export async function updateAxleLabel(id: number, label: string): Promise<void> {
@@ -282,13 +282,17 @@ export async function clearAllAxles(): Promise<void> {
 
 export async function deleteAxle(id: number): Promise<void> {
   const db = await getDB();
-  await db.delete('planner_saves', id);
+  const entry: any = await db.get('planner_saves', id);
+  if (entry) { entry.deleted = true; entry.timestamp = Date.now(); await db.put('planner_saves', entry); }
 }
 
 export async function deleteAxles(ids: number[]): Promise<void> {
   const db = await getDB();
   const tx = db.transaction('planner_saves', 'readwrite');
-  for (const id of ids) await tx.store.delete(id);
+  for (const id of ids) {
+    const entry: any = await tx.store.get(id);
+    if (entry) { entry.deleted = true; entry.timestamp = Date.now(); await tx.store.put(entry); }
+  }
   await tx.done;
 }
 

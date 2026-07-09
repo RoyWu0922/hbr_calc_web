@@ -5,6 +5,8 @@ import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner
 import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, deleteAxles, clearAllAxles, getAllAxles, importAxles, setAxleFolder, type SavedAxle } from '../../utils/plannerStorage';
 import { getFolders, createFolder, updateFolder, deleteFolder } from '../../utils/storage';
 import { copyToClipboard } from '../../utils/copyToast';
+import { supabase } from '../../utils/supabase';
+import { pullAll } from '../../utils/syncEngine';
 import type { Folder } from '../../types';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
@@ -1432,6 +1434,8 @@ function SavedAxles({
 
   const load = async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await pullAll();
     const all = await getSavedAxles();
     setAllEntries(all);
     setEntries(all);

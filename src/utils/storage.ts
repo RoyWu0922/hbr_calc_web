@@ -121,12 +121,14 @@ export async function saveToHistory(
   timestamp?: number
 ): Promise<number> {
   const db = await getDB();
-  const entry: CalcHistoryEntry = {
+  const entry: any = {
+    uuid: crypto.randomUUID(),
     timestamp: timestamp || Date.now(),
     label,
     input,
     result,
     notes: notes || undefined,
+    deleted: false,
   };
   const id = await db.add('history', entry);
   return id as number;
@@ -135,7 +137,7 @@ export async function saveToHistory(
 export async function getHistory(): Promise<CalcHistoryEntry[]> {
   const db = await getDB();
   const entries = await db.getAllFromIndex('history', 'timestamp');
-  return entries.reverse();
+  return entries.filter(e => !(e as any).deleted).reverse();
 }
 
 export async function getHistoryEntry(id: number): Promise<CalcHistoryEntry | undefined> {
@@ -194,7 +196,12 @@ export async function updateHistoryNotes(id: number, notes: string): Promise<voi
 
 export async function deleteHistoryEntry(id: number): Promise<void> {
   const db = await getDB();
-  await db.delete('history', id);
+  const entry = await db.get('history', id);
+  if (entry) {
+    (entry as any).deleted = true;
+    (entry as any).timestamp = Date.now();
+    await db.put('history', entry);
+  }
 }
 
 export async function deleteHistoryEntries(ids: number[]): Promise<void> {
