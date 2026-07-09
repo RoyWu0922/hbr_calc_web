@@ -13,15 +13,26 @@ function ensureUUID(entry: any) {
 }
 
 // ─── Upload one table ──────────────────────────────────────────
-async function uploadTable(table: string, storeName: string, dbName: string) {
+async function uploadTable(table: string, storeName: string, dbName: string, folderType?: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   const db = await openDB(dbName, dbName === 'hbr-white-stats' ? 1 : 5);
   const all = await db.getAll(storeName).catch(() => [] as any[]);
+  // Build folder name lookup
+  const idToName = new Map<number, string>();
+  if (folderType && dbName === 'hbr-calc-db') {
+    const folders = await db.getAll('folders').catch(() => [] as any[]);
+    for (const f of folders) { if (f.type === folderType) idToName.set(f.id, f.name); }
+  }
   for (const entry of all) {
     ensureUUID(entry);
+    // Attach folder name for cross-device matching
+    if (entry.folderId != null && idToName.has(entry.folderId)) {
+      entry._folder_name = idToName.get(entry.folderId);
+    } else if (entry.folderId != null) {
+      entry._folder_name = undefined; // unknown folder, don't carry stale ID
+    }
     await db.put(storeName, entry);
-    // Upsert by uuid
     await supabase.from(table).upsert({
       user_id: user.id, uuid: entry.uuid, data: entry,
       timestamp: entry.timestamp || Date.now(),
@@ -31,12 +42,18 @@ async function uploadTable(table: string, storeName: string, dbName: string) {
 }
 
 // ─── Pull & merge one table ────────────────────────────────────
-async function pullTable(table: string, storeName: string, dbName: string) {
+async function pullTable(table: string, storeName: string, dbName: string, folderType?: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return 0;
   const { data: cloud } = await supabase.from(table).select('*').eq('user_id', user.id);
   if (!cloud?.length) return 0;
   const db = await openDB(dbName, dbName === 'hbr-white-stats' ? 1 : 5);
+  // Build local folder name→id lookup
+  const nameToId = new Map<string, number>();
+  if (folderType && dbName === 'hbr-calc-db') {
+    const folders = await db.getAll('folders').catch(() => [] as any[]);
+    for (const f of folders) { if (f.type === folderType) nameToId.set(f.name, f.id); }
+  }
   const local = await db.getAll(storeName).catch(() => [] as any[]);
   const localByUuid = new Map(local.map(e => [e.uuid, e]));
   let changes = 0;
@@ -45,19 +62,25 @@ async function pullTable(table: string, storeName: string, dbName: string) {
   for (const row of cloud) {
     const uuid = row.uuid;
     const existing = localByUuid.get(uuid);
+    // Resolve _folder_name from cloud to local folderId
+    const cloudData: any = { ...row.data };
+    if (cloudData._folder_name && nameToId.has(cloudData._folder_name)) {
+      cloudData.folderId = nameToId.get(cloudData._folder_name);
+    }
+    delete cloudData._folder_name;
     if (existing) {
       localByUuid.delete(uuid);
       if (row.deleted) {
         await tx.store.delete(existing.id!);
         changes++;
       } else if (row.timestamp > (existing.timestamp || 0)) {
-        const merged = { ...row.data, uuid, timestamp: row.timestamp };
+        const merged = { ...cloudData, uuid, timestamp: row.timestamp };
         delete merged.id;
         await tx.store.put(merged);
         changes++;
       }
     } else if (!row.deleted) {
-      const entry = { ...row.data, uuid, timestamp: row.timestamp };
+      const entry = { ...cloudData, uuid, timestamp: row.timestamp };
       delete entry.id;
       await tx.store.add(entry);
       changes++;
@@ -122,15 +145,15 @@ async function syncCustomSkills() {
 }
 
 export async function uploadAll() {
-  await uploadTable('calc_history', 'history', 'hbr-calc-db');
-  await uploadTable('planner_axles', 'planner_saves', 'hbr-calc-db');
+  await uploadTable('calc_history', 'history', 'hbr-calc-db', 'calc');
+  await uploadTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
   await uploadTable('white_stats', 'history', 'hbr-white-stats');
   await syncCustomSkills();
 }
 
 export async function pullAll() {
-  await pullTable('calc_history', 'history', 'hbr-calc-db');
-  await pullTable('planner_axles', 'planner_saves', 'hbr-calc-db');
+  await pullTable('calc_history', 'history', 'hbr-calc-db', 'calc');
+  await pullTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
   await pullTable('white_stats', 'history', 'hbr-white-stats');
   await syncCustomSkills();
 }
