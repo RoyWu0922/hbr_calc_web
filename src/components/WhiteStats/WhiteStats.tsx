@@ -3,7 +3,6 @@ import { CHAR_GROWTH, EQUIP_PRESETS, BIAS_TYPES, BADGE_BONUS, WEAPON_BONUS } fro
 import { calcWhiteStats, type WhiteStatsInput } from '../../engine/whiteStats';
 import CollapsibleSection from '../CollapsibleSection';
 import { getWhiteStatsHistory, saveWhiteStatsEntry, deleteWhiteStatsEntry, type WhiteStatsEntry } from '../../utils/whiteStatsStorage';
-import { pushWhiteStats } from '../../utils/supabase';
 
 function fmt(n: number): string { return Math.round(n).toLocaleString('zh-CN'); }
 
@@ -46,9 +45,12 @@ export default function WhiteStats() {
   const handleSave = async () => {
     const char = CHAR_GROWTH.find(c => c.shortId === shortId);
     const label = char ? `${shortId} — ${char.name}` : `ID: ${shortId}`;
-    const entry = { timestamp: Date.now(), label, input: { ...input }, totalStats: { ...result.totalStats }, resonanceEff: { ...result.resonanceEff } };
-    await saveWhiteStatsEntry(entry);
-    pushWhiteStats(entry).catch(() => {});
+    await saveWhiteStatsEntry({
+      timestamp: Date.now(), label,
+      input: { ...input },
+      totalStats: { ...result.totalStats },
+      resonanceEff: { ...result.resonanceEff },
+    });
     setHistory(await getWhiteStatsHistory());
   };
 

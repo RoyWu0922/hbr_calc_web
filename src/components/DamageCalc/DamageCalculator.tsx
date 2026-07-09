@@ -9,7 +9,6 @@ import { copyToClipboard } from '../../utils/copyToast';
 import { BUFF_SKILLS, DEBUFF_SKILLS, WEAKNESS_SKILLS, SCORE_TABLE, TURN_COEFF } from '../../engine/skillDb';
 import { getCustomSkills, getDeletedBuiltins, getBuiltinOverrides } from '../../engine/customSkills';
 import { saveToHistory, updateHistoryEntry } from '../../utils/storage';
-import { pushCalcHistory } from '../../utils/supabase';
 import { saveUserDefaults, loadUserDefaults, clearUserDefaults, UserDefaults } from '../../engine/userDefaults';
 import { encodeShareData, decodeShareData } from '../../utils/shareUrl';
 import DamageResult from './DamageResult';
@@ -113,22 +112,17 @@ export default function DamageCalculator({ initialData }: Props) {
     const ts = Date.now();
     const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg, superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr };
     try {
-      const { supabase } = await import('../../utils/supabase');
-      const { data: { user } } = await supabase.auth.getUser();
       if (loadedEntryId) {
         const action = confirm('检测到从历史记录加载的数据。\n点击"确定"更新原记录，点击"取消"另存为新记录。');
         if (action) {
-          if (user) await pushCalcHistory({ label, notes, input, result, timestamp: ts });
-          else await updateHistoryEntry(loadedEntryId, label, input, result, notes);
+          await updateHistoryEntry(loadedEntryId, label, input, result, notes);
           alert('已更新原历史记录');
         } else {
-          if (user) await pushCalcHistory({ label, notes, input, result, timestamp: ts });
-          else await saveToHistory(label, input, result, notes, ts);
+          await saveToHistory(label, input, result, notes);
           alert('已另存为新历史记录');
         }
       } else {
-        if (user) await pushCalcHistory({ label, notes, input, result, timestamp: ts });
-        else await saveToHistory(label, input, result, notes, ts);
+        await saveToHistory(label, input, result, notes);
         alert('已保存到历史记录');
       }
     } catch (e) {
