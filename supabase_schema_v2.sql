@@ -43,6 +43,17 @@ CREATE TABLE IF NOT EXISTS white_stats (
 );
 CREATE INDEX IF NOT EXISTS idx_ws_user ON white_stats(user_id);
 
+-- Folders (grouping)
+CREATE TABLE IF NOT EXISTS folders (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id UUID REFERENCES auth.users NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  timestamp BIGINT NOT NULL DEFAULT 0,
+  sort_order INT DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id);
+
 -- Custom skills (one row per user, localStorage sync)
 CREATE TABLE IF NOT EXISTS custom_skills (
   user_id UUID REFERENCES auth.users PRIMARY KEY,
@@ -52,6 +63,7 @@ CREATE TABLE IF NOT EXISTS custom_skills (
 
 -- RLS
 ALTER TABLE calc_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE folders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE custom_skills ENABLE ROW LEVEL SECURITY;
 ALTER TABLE planner_axles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE white_stats ENABLE ROW LEVEL SECURITY;
@@ -62,6 +74,7 @@ DROP POLICY IF EXISTS "Users own planner_axles" ON planner_axles;
 DROP POLICY IF EXISTS "Users own white_stats" ON white_stats;
 
 CREATE POLICY "Users own custom_skills" ON custom_skills FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users own folders" ON folders FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users own calc_history" ON calc_history FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users own planner_axles" ON planner_axles FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users own white_stats" ON white_stats FOR ALL USING (auth.uid() = user_id);

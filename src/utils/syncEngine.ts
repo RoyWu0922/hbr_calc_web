@@ -144,7 +144,32 @@ async function syncCustomSkills() {
   }
 }
 
+async function syncFolders() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const db = await openDB('hbr-calc-db', 5);
+  // Upload local folders not in cloud
+  const local = await db.getAll('folders').catch(() => [] as any[]);
+  for (const f of local) {
+    const { data: exist } = await supabase.from('folders').select('id').eq('user_id', user.id).eq('name', f.name).eq('type', f.type).maybeSingle();
+    if (!exist) await supabase.from('folders').insert({ user_id: user.id, name: f.name, type: f.type, timestamp: f.timestamp || 0, sort_order: f.sortOrder || 0 });
+  }
+  // Pull cloud folders not in local
+  const { data: cloud } = await supabase.from('folders').select('*').eq('user_id', user.id);
+  if (cloud) {
+    const localNames = new Set(local.map(f => f.type + ':' + f.name));
+    const tx = db.transaction('folders', 'readwrite');
+    for (const row of cloud) {
+      if (!localNames.has(row.type + ':' + row.name)) {
+        await tx.store.add({ name: row.name, type: row.type, timestamp: row.timestamp || 0, sortOrder: row.sort_order || 0 });
+      }
+    }
+    await tx.done;
+  }
+}
+
 export async function uploadAll() {
+  await syncFolders();
   await uploadTable('calc_history', 'history', 'hbr-calc-db', 'calc');
   await uploadTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
   await uploadTable('white_stats', 'history', 'hbr-white-stats');
@@ -152,6 +177,7 @@ export async function uploadAll() {
 }
 
 export async function pullAll() {
+  await syncFolders();
   await pullTable('calc_history', 'history', 'hbr-calc-db', 'calc');
   await pullTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
   await pullTable('white_stats', 'history', 'hbr-white-stats');
