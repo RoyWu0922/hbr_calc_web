@@ -79,16 +79,37 @@ async function pullTable(table: string, storeName: string, dbName: string) {
 
 // ─── Public API ────────────────────────────────────────────────
 
+// Custom skills sync (localStorage)
+async function syncCustomSkills() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const data: Record<string, any> = {};
+  for (const cat of ['buff', 'debuff', 'weakness'] as const) {
+    data['skills_' + cat] = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
+    data['overrides_' + cat] = JSON.parse(localStorage.getItem('hbr-builtin-overrides-' + cat) || '{}');
+  }
+  await supabase.from('custom_skills').upsert({ user_id: user.id, data, updated_at: Date.now() });
+  const { data: cloud } = await supabase.from('custom_skills').select('*').eq('user_id', user.id).maybeSingle();
+  if (cloud?.data) {
+    for (const cat of ['buff', 'debuff', 'weakness'] as const) {
+      if (cloud.data['skills_' + cat]) localStorage.setItem('hbr-custom-skills-' + cat, JSON.stringify(cloud.data['skills_' + cat]));
+      if (cloud.data['overrides_' + cat]) localStorage.setItem('hbr-builtin-overrides-' + cat, JSON.stringify(cloud.data['overrides_' + cat]));
+    }
+  }
+}
+
 export async function uploadAll() {
   await uploadTable('calc_history', 'history', 'hbr-calc-db');
   await uploadTable('planner_axles', 'planner_saves', 'hbr-calc-db');
   await uploadTable('white_stats', 'history', 'hbr-white-stats');
+  await syncCustomSkills();
 }
 
 export async function pullAll() {
   await pullTable('calc_history', 'history', 'hbr-calc-db');
   await pullTable('planner_axles', 'planner_saves', 'hbr-calc-db');
-  await pullTable('white_stats', 'entries', 'hbr-white-stats');
+  await pullTable('white_stats', 'history', 'hbr-white-stats');
+  await syncCustomSkills();
 }
 
 export async function fullSync() {
