@@ -10,7 +10,7 @@ import { useTheme } from './utils/theme';
 import { decodeShareData } from './utils/shareUrl';
 import { setToastHandler } from './utils/copyToast';
 import { AuthProvider, useAuth } from './utils/auth';
-import { attachSyncTriggers, uploadAll } from './utils/syncEngine';
+import { attachSyncTriggers, uploadAll, pullAll } from './utils/syncEngine';
 import { CalcHistoryEntry, DamageResultData } from './types';
 
 type PrimaryTab = 'damage' | 'white' | 'extra' | 'planner';
@@ -52,9 +52,35 @@ function AppInner() {
       if (confirm('登录成功！是否将本地记录上传到云端？')) {
         uploadAll().finally(() => window.location.reload());
       } else {
-        import('./utils/syncEngine').then(m => m.pullAll().finally(() => window.location.reload()));
+        pullAll().finally(() => window.location.reload());
       }
     }
+  }, [user]);
+
+  // Periodic cloud check (every 2 min) + manual refresh
+  const checkCloud = async () => {
+    if (!user) return;
+    const { supabase } = await import('./utils/supabase');
+    const tables = ['calc_history', 'planner_axles', 'white_stats'];
+    let newCount = 0;
+    for (const t of tables) {
+      const { data } = await supabase.from(t).select('timestamp').eq('user_id', user.id).order('timestamp', { ascending: false }).limit(1);
+      if (data?.length) {
+        const lastSync = localStorage.getItem('hbr_last_sync');
+        if (!lastSync || data[0].timestamp > parseInt(lastSync)) newCount++;
+      }
+    }
+    if (newCount > 0 && confirm(`云端有 ${newCount} 类新记录，是否更新？`)) {
+      await pullAll();
+      localStorage.setItem('hbr_last_sync', String(Date.now()));
+      window.location.reload();
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    const timer = setInterval(checkCloud, 120000);
+    return () => clearInterval(timer);
   }, [user]);
 
   useEffect(() => {
@@ -130,6 +156,11 @@ function AppInner() {
               </div>
             )}
             <div className="flex-1" />
+            {user && (
+              <button className="btn btn-secondary btn-xs px-1.5" onClick={checkCloud} title="检查云端更新">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </button>
+            )}
             {user ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-text-muted">{user.email?.replace('@hbrcalc.dev', '')}</span>
