@@ -44,10 +44,11 @@ function AppInner() {
   // Sync triggers on page leave/visibility change
   useEffect(() => { attachSyncTriggers(); }, []);
 
-  // First login: prompt to upload local records
+  // First login: prompt to upload local records (only once per session)
   useEffect(() => {
-    if (user && !syncedRef.current) {
+    if (user && !syncedRef.current && !localStorage.getItem('hbr_sync_done')) {
       syncedRef.current = true;
+      localStorage.setItem('hbr_sync_done', '1');
       if (confirm('登录成功！是否将本地记录上传到云端？')) {
         uploadAll().finally(() => window.location.reload());
       } else {
@@ -132,7 +133,7 @@ function AppInner() {
             {user ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-text-muted">{user.email?.replace('@hbrcalc.dev', '')}</span>
-                <button className="btn btn-secondary btn-xs" onClick={() => { syncedRef.current = false; signOut(); }}>登出</button>
+                <button className="btn btn-secondary btn-xs" onClick={() => { localStorage.removeItem('hbr_sync_done'); syncedRef.current = false; signOut(); }}>登出</button>
               </div>
             ) : (
               <button className="btn btn-accent btn-xs" onClick={() => setShowAuth(true)}>登录</button>
