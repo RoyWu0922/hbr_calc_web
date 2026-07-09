@@ -1170,7 +1170,7 @@ function SimpleTable({
         scale: 2,
         useCORS: true,
         logging: false,
-        onclone(_clonedDoc) {
+        onclone(_clonedDoc: Document) {
           // Set light theme
           _clonedDoc.documentElement.setAttribute('data-theme', 'light');
           // Force vertical center in table cells (html2canvas sometimes misaligns)
@@ -1178,7 +1178,7 @@ function SimpleTable({
           fixCss.textContent = `td, th { vertical-align: middle !important; line-height: 1.2 !important; padding-top: 4px !important; padding-bottom: 4px !important; }`;
           _clonedDoc.head.appendChild(fixCss);
           // Strip oklch() colors (unsupported by html2canvas) from all elements
-          _clonedDoc.querySelectorAll('*').forEach(el => {
+          _clonedDoc.querySelectorAll('*').forEach((el: Element) => {
             const s = (el as HTMLElement).style;
             for (let i = s.length - 1; i >= 0; i--) {
               const val = s.getPropertyValue(s[i]);
@@ -1193,12 +1193,12 @@ function SimpleTable({
             }
           });
           // Also strip from <style> tags
-          _clonedDoc.querySelectorAll('style').forEach(st => {
+          _clonedDoc.querySelectorAll('style').forEach((st: HTMLStyleElement) => {
             st.textContent = (st.textContent || '').replace(/oklch\([^)]+\)/gi, '#666');
           });
         },
       });
-      canvas.toBlob(blob => {
+      canvas.toBlob((blob: Blob | null) => {
         if (!blob) { alert('生成图片失败'); return; }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
