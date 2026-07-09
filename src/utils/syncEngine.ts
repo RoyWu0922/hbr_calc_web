@@ -88,7 +88,7 @@ async function syncCustomSkills() {
   const cloudTs = cloud?.updated_at || 0;
 
   if (cloudTs > localTs) {
-    // Cloud newer — pull
+    // Cloud newer — pull down
     if (cloud?.data) {
       for (const cat of ['buff', 'debuff', 'weakness'] as const) {
         if (cloud.data['skills_' + cat]) localStorage.setItem('hbr-custom-skills-' + cat, JSON.stringify(cloud.data['skills_' + cat]));
@@ -96,16 +96,28 @@ async function syncCustomSkills() {
       }
       localStorage.setItem('hbr_skills_ts', String(cloudTs));
     }
-  } else if (localTs > cloudTs) {
-    // Local newer — push
+  } else {
+    // Local newer or first sync — push up
     const data: Record<string, any> = {};
+    let hasContent = false;
     for (const cat of ['buff', 'debuff', 'weakness'] as const) {
-      data['skills_' + cat] = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
-      data['overrides_' + cat] = JSON.parse(localStorage.getItem('hbr-builtin-overrides-' + cat) || '{}');
+      const s = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
+      const o = JSON.parse(localStorage.getItem('hbr-builtin-overrides-' + cat) || '{}');
+      data['skills_' + cat] = s;
+      data['overrides_' + cat] = o;
+      if (s.length > 0 || Object.keys(o).length > 0) hasContent = true;
     }
     const ts = Date.now();
     await supabase.from('custom_skills').upsert({ user_id: user.id, data, updated_at: ts });
     localStorage.setItem('hbr_skills_ts', String(ts));
+    // Only pull cloud if local was empty and cloud has data
+    if (!hasContent && cloud?.data) {
+      for (const cat of ['buff', 'debuff', 'weakness'] as const) {
+        if (cloud.data['skills_' + cat]) localStorage.setItem('hbr-custom-skills-' + cat, JSON.stringify(cloud.data['skills_' + cat]));
+        if (cloud.data['overrides_' + cat]) localStorage.setItem('hbr-builtin-overrides-' + cat, JSON.stringify(cloud.data['overrides_' + cat]));
+      }
+      localStorage.setItem('hbr_skills_ts', String(cloudTs));
+    }
   }
 }
 
