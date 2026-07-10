@@ -39,9 +39,9 @@ export function computeTurnPlanner(state: TurnPlannerState): ComputedTurnResult[
     const frontOD = turn.frontActions.reduce((s, a) => s + a.odGain, 0);
     const isOD = isODRound(turn.roundLabel);
 
-    // OD turn: deduct cost
+    // OD turn: deduct cost from raw odAssist (preserves overflow)
     if (isOD) {
-      odAssist = odCap - odCost;
+      odAssist = odAssist - odCost;
     }
 
     // Add gains
