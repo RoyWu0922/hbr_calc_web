@@ -776,15 +776,14 @@ function DetailTable({
         const colIdx = rowInputs.indexOf(target as any);
         if (e.key === 'Enter') {
           e.preventDefault();
-          // Next input in same row, or first input of next row
-          if (colIdx >= 0 && colIdx < rowInputs.length - 1) {
-            (rowInputs[colIdx + 1] as HTMLElement).focus();
-          } else {
-            // Find first input in next row
-            for (let r = rowIdx + 1; r < rowEls.length; r++) {
-              const nextInputs = inputs.filter(inp => rowEls[r].contains(inp));
-              if (nextInputs.length > 0) { (nextInputs[0] as HTMLElement).focus(); break; }
-            }
+          // Go to cell below in next row at same-ish column, or wrap to next turn
+          for (let r = rowIdx + 1; r < rowEls.length; r++) {
+            const nextInputs = inputs.filter(inp => rowEls[r].contains(inp));
+            if (nextInputs.length === 0) continue;
+            // Find closest column match
+            const matchIdx = Math.min(colIdx, nextInputs.length - 1);
+            (nextInputs[matchIdx] as HTMLElement).focus();
+            break;
           }
         } else if (e.key === 'ArrowDown') {
           e.preventDefault();
