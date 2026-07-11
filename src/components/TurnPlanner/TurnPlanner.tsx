@@ -757,7 +757,55 @@ function DetailTable({
         </div>
       </div>
 
-      <table className="planner-table" onBlur={e => {
+      <table className="planner-table" onKeyDown={e => {
+        if (!['Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+        const target = e.target as HTMLElement;
+        if (!target.closest('input, select')) return;
+        const inputs = Array.from(e.currentTarget.querySelectorAll('input:not([type="checkbox"]), select'));
+        const idx = inputs.indexOf(target as any);
+        if (idx < 0) return;
+        const rowEls = Array.from(e.currentTarget.querySelectorAll('tr'));
+        // Find which row the current input is in
+        let rowIdx = -1;
+        for (let i = 0; i < rowEls.length; i++) {
+          if (rowEls[i].contains(target)) { rowIdx = i; break; }
+        }
+        if (rowIdx < 0) return;
+        // Get inputs in the same row
+        const rowInputs = inputs.filter(inp => rowEls[rowIdx].contains(inp));
+        const colIdx = rowInputs.indexOf(target as any);
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          // Next input in same row, or first input of next row
+          if (colIdx >= 0 && colIdx < rowInputs.length - 1) {
+            (rowInputs[colIdx + 1] as HTMLElement).focus();
+          } else {
+            // Find first input in next row
+            for (let r = rowIdx + 1; r < rowEls.length; r++) {
+              const nextInputs = inputs.filter(inp => rowEls[r].contains(inp));
+              if (nextInputs.length > 0) { (nextInputs[0] as HTMLElement).focus(); break; }
+            }
+          }
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          for (let r = rowIdx + 1; r < rowEls.length; r++) {
+            const nextRow = inputs.filter(inp => rowEls[r].contains(inp));
+            if (nextRow.length > colIdx) { (nextRow[colIdx] as HTMLElement).focus(); break; }
+          }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          for (let r = rowIdx - 1; r >= 0; r--) {
+            const prevRow = inputs.filter(inp => rowEls[r].contains(inp));
+            if (prevRow.length > colIdx) { (prevRow[colIdx] as HTMLElement).focus(); break; }
+          }
+        } else if (e.key === 'ArrowRight' && colIdx < rowInputs.length - 1) {
+          e.preventDefault();
+          (rowInputs[colIdx + 1] as HTMLElement).focus();
+        } else if (e.key === 'ArrowLeft' && colIdx > 0) {
+          e.preventDefault();
+          (rowInputs[colIdx - 1] as HTMLElement).focus();
+        }
+      }} onBlur={e => {
         const t = e.target as unknown as HTMLInputElement;
         if (!t || !t.classList || !t.classList.contains('eval-num')) return;
         const val = parseInputExpr(t.value);
