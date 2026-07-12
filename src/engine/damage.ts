@@ -114,9 +114,11 @@ export function calcBuffPowerDetail(buff: BuffSkill): BuffPowerDetail {
     basePower = maxPower * skillScale;
   }
 
-  // Orb power
+  // Orb power (指挥宝珠默认吃满)
   let orbPower: number;
-  if (combinedAttr > 0 && combinedAttr - 100 <= border) {
+  if (buff.name === '指挥(别改)') {
+    orbPower = maxPower * orb * 0.04;
+  } else if (combinedAttr > 0 && combinedAttr - 100 <= border) {
     orbPower = (combinedAttr / (border + 100)) * maxPower * orb * 0.04;
   } else {
     orbPower = maxPower * orb * 0.04;
