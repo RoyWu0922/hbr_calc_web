@@ -39,13 +39,9 @@ export function computeTurnPlanner(state: TurnPlannerState): ComputedTurnResult[
     const frontOD = turn.frontActions.reduce((s, a) => s + a.odGain, 0);
     const isOD = isODRound(turn.roundLabel);
 
-    // OD turn: OD3 zeroes out completely (cost = all accumulated)
+    // OD turn: reset to remaining bars after cost (ignore overflow)
     if (isOD) {
-      if (getODLevel(turn.roundLabel) >= 3) {
-        odAssist = 0;
-      } else {
-        odAssist = odAssist - odCost;
-      }
+      odAssist = odMode - odCost;
     }
 
     // Add gains
