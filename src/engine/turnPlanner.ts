@@ -35,18 +35,21 @@ export function computeTurnPlanner(state: TurnPlannerState): ComputedTurnResult[
       }
     }
 
-    // ── OD (前/后置无区别，统一在回合中扣减) ──────────────
+    // ── OD ──────────────────────────────────────────────────
     const frontOD = turn.frontActions.reduce((s, a) => s + a.odGain, 0);
     const isOD = isODRound(turn.roundLabel);
+    const isODin = turn.roundLabel.includes('OD内');
 
-    // OD turn: reset to remaining bars after cost (ignore overflow)
-    if (isOD) {
-      odAssist = odMode - odCost;
+    // OD turn: discard overflow, then subtract cost
+    if (isOD && !isODin) {
+      odAssist = Math.min(odAssist, odMode) - odCost;
     }
 
-    // Add gains
-    const passiveBonus = ti === 0 ? defaultPassiveOD : 0;
-    odAssist += frontOD + turn.jailOD + turn.passiveOD + (turn.pursuitOD ?? 0) + passiveBonus;
+    // Add gains (skip for OD内)
+    const passiveBonus = (ti === 0 && !isODin) ? defaultPassiveOD : 0;
+    if (!isODin) {
+      odAssist += frontOD + turn.jailOD + turn.passiveOD + (turn.pursuitOD ?? 0) + passiveBonus;
+    }
 
     // Cap
     odCap = Math.min(odAssist, odMode);
