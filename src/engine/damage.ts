@@ -558,12 +558,13 @@ export function calculateAll(input: DamageInput): DamageResultData {
 
 /** Single-round damage → score (piecewise linear, same as encounter.xlsx) */
 function roundDamageScore(dmg: number): number {
-  if (dmg > 100_000_000) return (dmg - 100_000_000) / 5000 * 0.0001 + 4450;
-  if (dmg >  75_000_000) return (dmg -  75_000_000) / 5000 * 0.01   + 4400;
-  if (dmg >  50_000_000) return (dmg -  50_000_000) / 5000 * 0.04   + 4200;
-  if (dmg >  25_000_000) return (dmg -  25_000_000) / 5000 * 0.2    + 3200;
-  if (dmg >  10_000_000) return (dmg -  10_000_000) / 5000 * 0.4    + 2000;
-  return dmg / 5000;
+  const capped = Math.min(dmg, 6_000_000_000);
+  if (capped > 100_000_000) return (capped - 100_000_000) / 5000 * 0.0001 + 4450;
+  if (capped >  75_000_000) return (capped -  75_000_000) / 5000 * 0.01   + 4400;
+  if (capped >  50_000_000) return (capped -  50_000_000) / 5000 * 0.04   + 4200;
+  if (capped >  25_000_000) return (capped -  25_000_000) / 5000 * 0.2    + 3200;
+  if (capped >  10_000_000) return (capped -  10_000_000) / 5000 * 0.4    + 2000;
+  return capped / 5000;
 }
 
 export interface EncounterInput {
