@@ -164,6 +164,7 @@ export interface PlannerTurn {
   jailOD: number;        // 牢房 (column W in TL.xlsx)
   passiveOD: number;     // 被动OD (column X)
   pursuitOD: number;     // 追击OD (default 0)
+  passiveDR: number;     // 被动破坏率 (default 0)
   bossDR: number;        // BOSS DR this turn (column AB)
   encounterModifier?: string; // 遭遇战词条文本（空=普通行，有值=词条行）
 }

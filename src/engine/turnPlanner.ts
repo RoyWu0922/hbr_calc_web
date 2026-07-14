@@ -57,7 +57,7 @@ export function computeTurnPlanner(state: TurnPlannerState): ComputedTurnResult[
       cumulativeDR = 0;
     }
     const frontDR = turn.frontActions.reduce((s, a) => s + a.dr, 0);
-    cumulativeDR += frontDR;
+    cumulativeDR += frontDR + (turn.passiveDR ?? 0);
     const remainingDR = totalBossDR > 0 ? Math.max(0, totalBossDR - cumulativeDR) : 0;
 
     results.push({
@@ -89,7 +89,7 @@ export function createDefaultState(): TurnPlannerState {
     turnType: 'normal' as const,
     frontActions: [emptyFA, emptyFA, emptyFA] as [typeof emptyFA, typeof emptyFA, typeof emptyFA],
     backSPGain: [0, 0, 0] as [number, number, number],
-    jailOD: 0, passiveOD: 0, pursuitOD: 0, bossDR: 0,
+    jailOD: 0, passiveOD: 0, pursuitOD: 0, passiveDR: 0, bossDR: 0,
   }));
 
   return {

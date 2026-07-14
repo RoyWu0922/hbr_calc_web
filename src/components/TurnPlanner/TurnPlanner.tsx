@@ -632,7 +632,7 @@ function DetailTable({
       roundLabel: '', turnType: 'normal' as const,
       frontActions: [emptyFA(), emptyFA(), emptyFA()],
       backSPGain: [0, 0, 0],
-      jailOD: 0, passiveOD: 0, pursuitOD: 0, bossDR: 0,
+      jailOD: 0, passiveOD: 0, pursuitOD: 0, passiveDR: 0, bossDR: 0,
     }));
     const next = syncNormalLabels([...turns, ...newTurns]);
     setState({ ...state, turns: next });
@@ -832,6 +832,7 @@ function DetailTable({
           </Fragment>)}
           {showPursuit && <col className="planner-col-od" style={{ width: 36 }} />}
           <col className="planner-col-od planner-col-group-start" style={{ width: 42 }} />
+          {showBreak && <col className="planner-col-od" style={{ width: 36 }} />}
           <col className="planner-col-od" style={{ width: showBreak ? 26 : 32 }} />
           {showBreak && <col className="planner-col-od" style={{ width: 26 }} />}
           {showEncounter && <col style={{ width: 22 }} />}
@@ -843,6 +844,7 @@ function DetailTable({
             {[1, 2, 3].map(n => <th key={`b${n}`} colSpan={2} className="text-center">后{n}</th>)}
             {showPursuit && <th>追击OD</th>}
             <th>被动OD</th>
+            {showBreak && <th>被动破坏</th>}
             <th>总计OD</th>
             {showBreak && <th>总计破坏</th>}
           </tr>
@@ -866,6 +868,7 @@ function DetailTable({
               <EvalInput className={`${TINY_NUM} border-0`} value={state.defaultPassiveOD} placeholder="被动"
                 setValue={v => setState({ ...state, defaultPassiveOD: v })} />
             </td>
+            {showBreak && <td></td>}
             <td></td>
             {showBreak && <td></td>}
           </tr>
@@ -949,6 +952,12 @@ function DetailTable({
                     <EvalInput className={`${TINY_NUM} border-0`} value={turn.jailOD + turn.passiveOD} placeholder="0"
                       setValue={v => updateTurn(ti, t => ({ ...t, jailOD: v, passiveOD: 0 }))} />
                   </td>
+                  {showBreak && (
+                    <td>
+                      <EvalInput className={`${TINY_NUM} border-0`} value={turn.passiveDR} placeholder="0"
+                        setValue={v => updateTurn(ti, t => ({ ...t, passiveDR: v }))} />
+                    </td>
+                  )}
                   <td className={`text-center font-mono font-bold text-xs relative ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
                     {(curResult?.odAssist ?? 0) - odMode > 0.005 ? <>{odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((curResult?.odAssist ?? 0) - odMode, 1)}</span></> : fmtFloat(curResult?.odCapped ?? 0, 2)}
                     <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
@@ -984,7 +993,7 @@ function DetailTable({
                           roundLabel: '', turnType: 'normal' as const,
                           frontActions: [emptyFA(), emptyFA(), emptyFA()],
                           backSPGain: [0, 0, 0],
-                          jailOD: 0, passiveOD: 0, pursuitOD: 0, bossDR: 0,
+                          jailOD: 0, passiveOD: 0, pursuitOD: 0, passiveDR: 0, bossDR: 0,
                         });
                         setState({ ...state, turns: syncNormalLabels(next) });
                       }} title="在下方插入">+</button>
@@ -1065,6 +1074,13 @@ function DetailTable({
                     <EvalInput className={`${TINY_NUM} border-0`} value={turn.jailOD + turn.passiveOD} placeholder="0"
                       setValue={v => updateTurn(ti, t => ({ ...t, jailOD: v, passiveOD: 0 }))} />
                   </td>
+                  {/* 被动破坏 (rowSpan=2) */}
+                  {showBreak && (
+                    <td rowSpan={2}>
+                      <EvalInput className={`${TINY_NUM} border-0`} value={turn.passiveDR} placeholder="0"
+                        setValue={v => updateTurn(ti, t => ({ ...t, passiveDR: v }))} />
+                    </td>
+                  )}
 
                   {/* 当前OD (rowSpan=2) */}
                   <td className={`text-center font-mono font-bold text-xs ${!showBreak ? 'relative' : ''} ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`} rowSpan={2}>
@@ -1093,7 +1109,7 @@ function DetailTable({
                             roundLabel: '', turnType: 'normal' as const,
                             frontActions: [emptyFA(), emptyFA(), emptyFA()],
                             backSPGain: [0, 0, 0],
-                            jailOD: 0, passiveOD: 0, pursuitOD: 0, bossDR: 0,
+                            jailOD: 0, passiveOD: 0, pursuitOD: 0, passiveDR: 0, bossDR: 0,
                             encounterModifier: '',
                           });
                           setState({ ...state, turns: syncNormalLabels(next) });
