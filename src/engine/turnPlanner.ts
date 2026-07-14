@@ -52,6 +52,10 @@ export function computeTurnPlanner(state: TurnPlannerState): ComputedTurnResult[
     odCap = Math.min(odAssist, odMode);
 
     // ── DR ────────────────────────────────────────────────
+    // Reset DR after encounter modifier row (new phase)
+    if (ti > 0 && turns[ti - 1].encounterModifier !== undefined) {
+      cumulativeDR = 0;
+    }
     const frontDR = turn.frontActions.reduce((s, a) => s + a.dr, 0);
     cumulativeDR += frontDR;
     const remainingDR = totalBossDR > 0 ? Math.max(0, totalBossDR - cumulativeDR) : 0;
