@@ -1163,6 +1163,7 @@ function DetailTable({
             onBlur={() => { if (!addTurnText.trim()) setAddTurnText('1'); }} />
           行
         </button>
+        <span className="text-[10px] text-text-muted ml-2">共{turns.length}行</span>
       </div>
     </div>
   );
