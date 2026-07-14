@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { DamageResultData, SkillInput } from '../../types';
 import { computeFloatDistribution, buildHitWeights, parseWeightString, FloatDistData } from '../../engine/floatProb';
 import { applyAttenuation } from '../../engine/damage';
@@ -36,10 +36,15 @@ export default function DamageResult({ result, skill, floatVal,
     () => buildHitWeights(skill.hitCount || 1, superChainHits, bigChainHits, midChainHits, smallChainHits, customBodyWeights),
     [skill.hitCount, superChainHits, bigChainHits, midChainHits, smallChainHits, customBodyWeights]
   );
-  const floatDist: FloatDistData = useMemo(
-    () => computeFloatDistribution(hitWeights, 200),
-    [hitWeights]
-  );
+  // Float distribution — manual compute (heavy calculation)
+  const [floatDist, setFloatDist] = useState<FloatDistData>(() => computeFloatDistribution(buildHitWeights(skill.hitCount || 1, 0, 0, 0, 0, null), 200));
+  const [floatDirty, setFloatDirty] = useState(true);
+  const computeFloat = useCallback(() => {
+    setFloatDist(computeFloatDistribution(hitWeights, 200));
+    setFloatDirty(false);
+  }, [hitWeights]);
+  // Auto-mark dirty when inputs change
+  useEffect(() => { setFloatDirty(true); }, [hitWeights]);
 
   const [hover, setHover] = useState<{ x: number; y: number; pdfVal: number; survivalVal: number; dmg: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -102,7 +107,12 @@ export default function DamageResult({ result, skill, floatVal,
       <div className="grid gap-4 md:grid-cols-2">
         {/* Float Visualization */}
         <div className="card">
-          <div className="card-header">浮动概率分布</div>
+          <div className="card-header flex items-center justify-between">
+            <span>浮动概率分布</span>
+            <button className={`btn btn-xs ${floatDirty ? 'btn-primary' : 'btn-secondary'}`} onClick={computeFloat}>
+              {floatDirty ? '计算' : '已计算'}
+            </button>
+          </div>
           <div className="text-xs text-text-muted mb-2">
             {customBodyWeights
               ? <span>本体权重 [{customBodyWeights.join(', ')}]</span>
