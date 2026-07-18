@@ -43,9 +43,9 @@ export function calcSkillPower(skill: SkillInput): {
     currentPower = minScaled + (maxScaled - minScaled) * ratio;
   } else if (currentWeighted + whiteBonus + critBonus - enemyAttr + baseDiff >= 0) {
     const ratio = (currentWeighted + whiteBonus + critBonus - enemyAttr + baseDiff) / baseDiff;
-    currentPower = ratio * (minScaled - 1) + 1;
+    currentPower = ratio * minScaled;
   } else {
-    currentPower = 1;
+    currentPower = 0;
   }
 
   // Orb power (I10 formula)
@@ -60,7 +60,7 @@ export function calcSkillPower(skill: SkillInput): {
     const ratio = (currentWeighted + whiteBonus + critBonus + baseDiff - enemyAttr + orbThreshold) / (baseDiff + orbThreshold);
     orbPower = ratio * minPower * 0.02 * orb;
   } else {
-    orbPower = 1;
+    orbPower = 0;
   }
 
   // Over-difference power (J10 formula)
@@ -70,7 +70,8 @@ export function calcSkillPower(skill: SkillInput): {
   }
 
   const skillPower = currentPower + orbPower + overDiffPower;
-  const multiplier = skillPower * deviation * token * special;
+  let multiplier = skillPower * deviation * token * special;
+  if (multiplier <= 1) multiplier = 1;
 
   return { minPower: minScaled, maxPower: maxScaled, currentPower, orbPower, overDiffPower, skillPower, multiplier };
 }
@@ -451,8 +452,10 @@ export function calcScore(damage: number, params: ScoreParams, bonusDmg = 0): {
   const shieldScore = hasShield ? scoreData.shield : 0;
 
   const totalDmg = damage * (targets || 1) + bonusDmg;
-  // Damage score: H*(G*ln(damage/G)+G)
-  const damageScore = damageCoeff * (threshold * Math.log(totalDmg / threshold) + threshold);
+  // 伤害未达阈值 → 线性；达到阈值 → 对数
+  const damageScore = totalDmg < threshold
+    ? damageCoeff * totalDmg
+    : damageCoeff * (threshold * Math.log(totalDmg / threshold) + threshold);
 
   const totalScore = (baseScore + damageScore + shieldScore) * turnCoeff * modifier;
 
