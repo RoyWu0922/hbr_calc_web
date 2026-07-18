@@ -5,7 +5,7 @@ import { applyAttenuation } from '../../engine/damage';
 import { copyToClipboard } from '../../utils/copyToast';
 
 function fmtRaw(n: number): string {
-  return Math.round(n).toLocaleString('zh-CN');
+  return Math.floor(n).toLocaleString('zh-CN');
 }
 
 export default function DamageResult({ result, skill, floatVal,

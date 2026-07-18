@@ -7,7 +7,7 @@ import { SCORE_TABLE, TURN_COEFF } from '../../engine/skillDb';
 import { BreakParams } from '../../types';
 import { copyToClipboard } from '../../utils/copyToast';
 
-function fmt(n: number): string { return Math.round(n).toLocaleString('zh-CN'); }
+function fmt(n: number): string { return Math.floor(n).toLocaleString('zh-CN'); }
 function fmtDec(n: number, d = 2): string { return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d }); }
 
 // Collapse toggle for card headers

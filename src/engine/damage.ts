@@ -432,8 +432,15 @@ const ATTEN_CAP = 20_000_000_00;
 
 export function applyAttenuation(damage: number, float = 1): number {
   if (damage > ATTEN_THRESHOLD) {
-    const result = ATTEN_CAP - Math.exp(0.7 - 0.7 * (damage * float / ATTEN_THRESHOLD)) * ATTEN_THRESHOLD;
-    return Math.min(result, ATTEN_CAP);
+    const exponent = 0.7 - 0.7 * (damage * float / ATTEN_THRESHOLD);
+    const expTerm = Math.exp(exponent) * ATTEN_THRESHOLD;
+    // When expTerm is below float64 ULP/2 near ATTEN_CAP, the subtraction becomes
+    // a no-op in float64 — result rounds to exactly ATTEN_CAP. Return CAP directly.
+    if (expTerm <= 0 || ATTEN_CAP - expTerm === ATTEN_CAP) {
+      return ATTEN_CAP;
+    }
+    const result = ATTEN_CAP - expTerm;
+    return roundDown(Math.min(result, ATTEN_CAP));
   }
   return damage * float;
 }

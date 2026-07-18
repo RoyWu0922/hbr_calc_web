@@ -9,7 +9,7 @@ import type { Folder } from '../../types';
 type SortKey = 'time' | 'label' | 'score' | 'turns';
 
 function fmt(n: number): string {
-  return Math.round(n).toLocaleString('zh-CN');
+  return Math.floor(n).toLocaleString('zh-CN');
 }
 
 function getEntryScore(entry: CalcHistoryEntry): number {
