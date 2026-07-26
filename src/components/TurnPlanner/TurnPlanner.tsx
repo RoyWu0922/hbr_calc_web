@@ -1239,26 +1239,66 @@ function SimpleTable({
           _clonedDoc.documentElement.setAttribute('data-theme', 'light');
           // Force vertical center in table cells (html2canvas sometimes misaligns)
           const fixCss = _clonedDoc.createElement('style');
-          fixCss.textContent = `td, th { vertical-align: middle !important; line-height: 1.2 !important; padding-top: 4px !important; padding-bottom: 4px !important; }`;
+          fixCss.textContent = [
+            'td, th {',
+            '  vertical-align: middle !important;',
+            '  line-height: 1.4 !important;',
+            '  padding-top: 6px !important;',
+            '  padding-bottom: 6px !important;',
+            '  padding-left: 3px !important;',
+            '  padding-right: 3px !important;',
+            '}',
+            'td > *, th > * { vertical-align: middle !important; }',
+          ].join('\n');
           _clonedDoc.head.appendChild(fixCss);
-          // Strip oklch() colors (unsupported by html2canvas) from all elements
+
+          // Regex for unsupported CSS color functions (html2canvas v1.4.1 only supports rgb/rgba/hsl/hsla)
+          const UNSUPPORTED_COLOR_RE = /oklch\([^)]+\)|oklab\([^)]+\)|lch\([^)]+\)|lab\([^)]+\)|color-mix\([^)]+\)/gi;
+          const FALLBACK = '#666';
+
+          // 1. Convert <link> stylesheets to <style> so we can strip unsupported colors from CSS text.
+          //    In production builds, Tailwind v4 CSS is in a separate .css file loaded via <link>,
+          //    which means the <style>-only stripping below would miss all its oklch() values.
+          _clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach((link: Element) => {
+            const el = link as HTMLLinkElement;
+            try {
+              const sheet = el.sheet;
+              if (sheet && sheet.cssRules) {
+                const css = Array.prototype.slice.call(sheet.cssRules).map(
+                  (r: CSSRule) => (r as CSSStyleRule).cssText || ''
+                ).join('\n');
+                const cleaned = css.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
+                const style = _clonedDoc.createElement('style');
+                style.textContent = cleaned;
+                el.parentNode?.replaceChild(style, el);
+              }
+            } catch (_e) {
+              // Cross-origin or inaccessible sheet — remove the link so oklch() won't leak through
+              el.parentNode?.removeChild(el);
+            }
+          });
+
+          // 2. Strip unsupported colors from inline styles
           _clonedDoc.querySelectorAll('*').forEach((el: Element) => {
             const s = (el as HTMLElement).style;
             for (let i = s.length - 1; i >= 0; i--) {
               const val = s.getPropertyValue(s[i]);
-              if (val.includes('oklch(')) {
+              if (UNSUPPORTED_COLOR_RE.test(val)) {
                 s.removeProperty(s[i]);
               }
             }
             if (el.hasAttribute('style')) {
               const attr = el.getAttribute('style') || '';
-              const cleaned = attr.replace(/oklch\([^)]+\)/gi, '#666');
+              const cleaned = attr.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
               if (cleaned !== attr) el.setAttribute('style', cleaned);
             }
           });
-          // Also strip from <style> tags
+
+          // 3. Strip unsupported colors from <style> tag text content
           _clonedDoc.querySelectorAll('style').forEach((st: HTMLStyleElement) => {
-            st.textContent = (st.textContent || '').replace(/oklch\([^)]+\)/gi, '#666');
+            if (st.textContent) {
+              st.textContent = st.textContent.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
+            }
           });
         },
       });
