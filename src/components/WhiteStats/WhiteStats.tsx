@@ -356,7 +356,7 @@ function StatBox({ label, value, highlight }: { label: string; value: string; hi
   return (
     <div className="stat-box">
       <div className="text-xs text-text-muted">{label}</div>
-      <div className={`font-semibold text-sm ${highlight ? 'text-gold' : ''}`}>{value}</div>
+      <div className={`font-semibold text-sm num ${highlight ? 'text-gold' : ''}`}>{value}</div>
     </div>
   );
 }

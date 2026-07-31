@@ -127,8 +127,15 @@ export default function DamageResult({ result, skill, floatVal,
             <line x1={L} y1={T + ph} x2={L + pw} y2={T + ph} stroke="var(--app-glass-border)" strokeWidth={1} />
             {/* Zero vertical */}
             <line x1={sx(0)} y1={T} x2={sx(0)} y2={T + ph} stroke="rgba(245,158,11,0.3)" strokeWidth={1} strokeDasharray="4,2" />
+            {/* PDF gradient definition */}
+            <defs>
+              <linearGradient id="pdfGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="rgba(91,155,213,0.25)" />
+                <stop offset="100%" stopColor="rgba(91,155,213,0.05)" />
+              </linearGradient>
+            </defs>
             {/* PDF fill + line */}
-            <path d={pdfPathD} fill="rgba(99,102,241,0.15)" stroke="rgba(99,102,241,0.6)" strokeWidth={1.2} />
+            <path d={pdfPathD} fill="url(#pdfGradient)" stroke="rgba(91,155,213,0.7)" strokeWidth={1.2} />
             {/* Survival curve — solid, thicker */}
             <path d={survivalPathD} fill="none" stroke="rgba(245,158,11,0.8)" strokeWidth={2} />
             {/* Right Y-axis labels for survival probability */}
@@ -156,7 +163,7 @@ export default function DamageResult({ result, skill, floatVal,
           <div className="flex justify-between text-[10px] text-text-muted mt-1">
             <span>-10%</span>
             <span className="flex items-center gap-2">
-              <span className="inline-block w-2.5 h-0.5 bg-indigo-400/60 rounded" /> PDF概率密度
+              <span className="inline-block w-2.5 h-0.5 rounded" style={{ background: 'rgba(91,155,213,0.7)' }} /> PDF概率密度
               <span className="inline-block w-2.5 h-0.5 bg-amber-400/70 rounded" /> P(≥浮动)
             </span>
             <span>+10%</span>
@@ -224,24 +231,24 @@ export default function DamageResult({ result, skill, floatVal,
             <div className="grid grid-cols-2 gap-3">
               <div className="text-center stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm" onClick={() => copyToClipboard(String(result.score!.baseScore))} title="点击复制">
                 <div className="input-label">基础分</div>
-                <div className="font-bold">{fmtRaw(result.score.baseScore)}</div>
+                <div className="font-bold num">{fmtRaw(result.score.baseScore)}</div>
               </div>
               <div className="text-center stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm" onClick={() => copyToClipboard(String(result.score!.damageScore))} title="点击复制">
                 <div className="input-label">伤害分</div>
-                <div className="font-bold">{fmtRaw(result.score.damageScore)}</div>
+                <div className="font-bold num">{fmtRaw(result.score.damageScore)}</div>
               </div>
               <div className="text-center stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm" onClick={() => copyToClipboard(String(result.score!.shieldScore))} title="点击复制">
                 <div className="input-label">盾分</div>
-                <div className="font-bold">{fmtRaw(result.score.shieldScore)}</div>
+                <div className="font-bold num">{fmtRaw(result.score.shieldScore)}</div>
               </div>
               <div className="text-center stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm" onClick={() => copyToClipboard(result.score!.turnCoeff.toFixed(2))} title="点击复制">
                 <div className="input-label">回合系数</div>
-                <div className="font-bold">{result.score.turnCoeff.toFixed(2)}</div>
+                <div className="font-bold num">{result.score.turnCoeff.toFixed(2)}</div>
               </div>
             </div>
             <div className="text-center pt-3 mt-3 border-t divider">
               <div className="text-xs text-text-muted mb-1">预估总分</div>
-              <div className="result-value text-gold cursor-pointer hover:opacity-80 transition-opacity"
+              <div className="result-value text-gold num cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => copyToClipboard(String(result.score!.totalScore))} title="点击复制">
                 {fmtRaw(result.score.totalScore)}</div>
             </div>

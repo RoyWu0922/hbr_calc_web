@@ -385,9 +385,9 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
                   </td>
                   <td>{s.difficulty}</td>
                   <td>{s.turns}</td>
-                  <td className="font-mono text-gold">{fmt(r.postAttenuation)}</td>
-                  <td className="font-mono">{r.score ? fmt(r.score.damageScore) : '—'}</td>
-                  <td className="font-mono text-gold font-bold">{r.score ? fmt(r.score.totalScore) : '—'}</td>
+                  <td className="font-mono num text-gold">{fmt(r.postAttenuation)}</td>
+                  <td className="font-mono num">{r.score ? fmt(r.score.damageScore) : '—'}</td>
+                  <td className="font-mono num text-gold font-bold">{r.score ? fmt(r.score.totalScore) : '—'}</td>
                   <td className="text-text-muted text-xs">{new Date(entry.timestamp).toLocaleString('zh-CN')}</td>
                   <td>
                     <div className="flex gap-1.5 items-center">

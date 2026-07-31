@@ -288,26 +288,26 @@ export default function DamageCalculator({ initialData }: Props) {
           onRemove={i => setBuffs(buffs.filter((_, j) => j !== i))} type="buff" enemyAttr={skill.enemyAttr} />
       </CollapsibleSection>
 
-      <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen>
+      <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen={false}>
         <SkillListCard skills={debuffs} lookup={buildLookup(DEBUFF_SKILLS, 'debuff')}
           onUpdate={(i, s) => { const n = [...debuffs]; n[i] = s as DebuffSkill; setDebuffs(n); }}
           onAdd={() => setDebuffs([...debuffs, emptyDebuff()])}
           onRemove={i => setDebuffs(debuffs.filter((_, j) => j !== i))} type="debuff" enemyAttr={skill.enemyAttr} />
       </CollapsibleSection>
 
-      <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen>
+      <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen={false}>
         <SkillListCard skills={weaknesses} lookup={buildLookup(WEAKNESS_SKILLS, 'weakness')}
           onUpdate={(i, s) => { const n = [...weaknesses]; n[i] = s as WeaknessSkill; setWeaknesses(n); }}
           onAdd={() => setWeaknesses([...weaknesses, emptyWeakness()])}
           onRemove={i => setWeaknesses(weaknesses.filter((_, j) => j !== i))} type="weakness" enemyAttr={skill.enemyAttr} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="被动加攻/减防 & 装备" defaultOpen>
+      <CollapsibleSection title="被动加攻/减防 & 装备" defaultOpen={false}>
         <BonusSection bonus={bonus} setBonus={setBonus} equipment={equipment} setEquipment={setEquipment}
           skill={skill} updateSkill={updateSkill} atkSum={atkSum} defSum={defSum} critSum={critSum} earringBonus={earringBonus} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="其它乘区" defaultOpen>
+      <CollapsibleSection title="其它乘区" defaultOpen={false}>
         <div className="grid grid-cols-4 gap-3">
           <Field label="连击 (例: 3特大=(1+3*0.5)=2.5)" value={chainMul} onChange={setChainMul} step={0.01} />
           <Field label="破坏率%" value={breakMul} onChange={setBreakMul} step={1} />
@@ -324,12 +324,14 @@ export default function DamageCalculator({ initialData }: Props) {
         </div>
       </CollapsibleSection>
 
-      {/* Result header row - moved above score */}
+      {/* Result header row - sticky for visibility while scrolling */}
       {result && (
-        <ResultHeaderRow result={result} />
+        <div className="sticky top-[57px] z-30" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+          <ResultHeaderRow result={result} />
+        </div>
       )}
 
-      <CollapsibleSection title={<span>打分计算 <ImageInfoTip src={saPic} alt="打分计算说明" /></span>} defaultOpen>
+      <CollapsibleSection title={<span>打分计算 <ImageInfoTip src={saPic} alt="打分计算说明" /></span>} defaultOpen={false}>
         <ScoreSection score={score} updateScore={updateScore} bonusDmg={bonusDmg} setBonusDmg={setBonusDmg} />
       </CollapsibleSection>
 
@@ -370,7 +372,7 @@ function ResultHeaderRow({ result }: { result: DamageResultData }) {
         </div>
         <div className="text-right flex-shrink-0 relative">
           <div className="text-xs text-text-muted">最终伤害 {copyBtn(String(Math.floor(result.postAttenuation)))}</div>
-          <div className="text-3xl font-bold text-gold">
+          <div className="text-3xl font-bold text-gold num">
             {Math.floor(result.postAttenuation).toLocaleString('zh-CN')}</div>
           {result.attenuationApplied && (
             <div className="text-[10px] text-danger absolute -bottom-3 right-0 whitespace-nowrap">

@@ -494,7 +494,7 @@ function StatBox({ label, value, highlight, copyValue }: { label: string; value:
     <div className="stat-box cursor-pointer hover:bg-bg-input/30 transition-colors rounded-sm px-1 -mx-1"
       onClick={handleCopy} title="点击复制到剪贴板">
       <div className="text-xs text-text-muted">{label}</div>
-      <div className={`font-semibold text-sm ${highlight ? 'text-gold' : ''}`}>{value}</div>
+      <div className={`font-semibold text-sm num ${highlight ? 'text-gold' : ''}`}>{value}</div>
     </div>
   );
 }
