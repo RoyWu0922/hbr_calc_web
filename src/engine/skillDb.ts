@@ -87,7 +87,7 @@ export const WEAKNESS_SKILLS: DebuffSkillDef[] = [
   { name: '无限光晕', max: 60, min: 45, border: 143 },
   { name: '国士无双', max: 60, min: 45, border: 137 },
   { name: '纯洁之吻', max: 60, min: 45, border: 141 },
-  { name: '再炸一波', max: 60, min: 45, border: 150 },
+  { name: '青春舞台', max: 60, min: 45, border: 150 },
   { name: '混沌诡骗师', max: 60, min: 45, border: 153 },
   { name: '大球恐慌亂烘烘', max: 60, min: 45, border: 147 },
   { name: '吾爱', max: 60, min: 45, border: 138 },
