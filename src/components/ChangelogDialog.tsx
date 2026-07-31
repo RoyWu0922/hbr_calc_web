@@ -9,7 +9,7 @@ interface ChangelogEntry {
 
 export default function ChangelogDialog({ entry, onClose }: { entry: ChangelogEntry; onClose: (dontShowAgain: boolean) => void }) {
   const [visible, setVisible] = useState(true);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(true);
 
   const dismiss = () => {
     setVisible(false);

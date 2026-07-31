@@ -46,7 +46,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
         });
       });
       setFolders(await getFolders('calc'));
-    } catch { /* */ }
+    } catch (e) { console.error('loadHistory failed:', e); }
     setLoading(false);
   };
 
@@ -133,7 +133,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
     try {
       await updateHistoryLabel(editingId, editLabel.trim());
       setAllEntries(prev => prev.map(e => e.id === editingId ? { ...e, label: editLabel.trim() } : e));
-    } catch { /* */ }
+    } catch (e) { console.error('saveEdit failed:', e); }
     setEditingId(null);
   };
 
@@ -142,7 +142,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
     try {
       await updateHistoryNotes(editingNotesId, editNotes.trim());
       setAllEntries(prev => prev.map(e => e.id === editingNotesId ? { ...e, notes: editNotes.trim() } : e));
-    } catch { /* */ }
+    } catch (e) { console.error('saveNotesEdit failed:', e); }
     setEditingNotesId(null);
   };
 
@@ -312,7 +312,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="card overflow-x-auto">
         <table>
           <thead>
             <tr>
@@ -449,7 +449,7 @@ function CompareModal({ entries, onClose }: { entries: CalcHistoryEntry[]; onClo
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white"
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="card max-w-[95vw] max-h-[90vh] overflow-auto">
         <div className="flex items-center justify-between mb-4">

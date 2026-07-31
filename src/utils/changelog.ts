@@ -22,3 +22,8 @@ export function getUnseenAnnouncement(): ChangelogEntry | null {
 export function markAnnouncementSeen(id: string): void {
   localStorage.setItem(SEEN_KEY, id);
 }
+
+/** Get current announcement regardless of seen status (for manual re-open) */
+export function getCurrentAnnouncement(): ChangelogEntry | null {
+  return (changelogData as any).current as ChangelogEntry | null;
+}

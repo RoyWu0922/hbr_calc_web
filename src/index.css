@@ -4,6 +4,7 @@
 :root {
   color-scheme: dark;
   --app-bg: #0a0e1a;
+  --app-component-bg: #111827;
   --app-bg-card: rgba(30, 41, 59, 0.6);
   --app-bg-input: rgba(51, 65, 85, 0.5);
   --app-text-primary: #f1f5f9;
@@ -61,6 +62,7 @@
 [data-theme="light"] {
   color-scheme: light;
   --app-bg: #f1f5f9;
+  --app-component-bg: #ffffff;
   --app-bg-card: rgba(255, 255, 255, 0.85);
   --app-bg-input: rgba(255, 255, 255, 0.8);
   --app-text-primary: #1e293b;
@@ -184,7 +186,7 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-bg);
+  background: var(--app-component-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   opacity: var(--card-opacity, 1);
@@ -205,7 +207,7 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-bg);
+  background: var(--app-component-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   opacity: var(--card-opacity, 1);
@@ -290,7 +292,7 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-bg);
+  background: var(--app-component-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   opacity: var(--card-opacity, 1);
@@ -318,7 +320,7 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-bg);
+  background: var(--app-component-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   opacity: var(--card-opacity, 1);
@@ -383,6 +385,15 @@ select option {
   background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.85);
   box-shadow: 0 3px 8px rgba(0,0,0,0.35), 0 0 12px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.2);
 }
+.btn-accent {
+  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.8);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.btn-accent:hover {
+  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.95);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.35), 0 0 12px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.25);
+}
 .btn-secondary {
   background: var(--app-btn-secondary-bg);
   color: var(--app-text-secondary);
@@ -433,7 +444,7 @@ tr { transition: background 0.2s; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-bg);
+  background: var(--app-component-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   opacity: var(--card-opacity, 1);
@@ -453,7 +464,7 @@ tr { transition: background 0.2s; }
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--app-bg);
+  background: var(--app-component-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   opacity: var(--card-opacity, 1);
@@ -475,6 +486,18 @@ input[type="checkbox"] {
 input[type="checkbox"]:checked {
   background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.7);
   border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.8);
+  position: relative;
+}
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* ─── Theme-aware utility overrides ────────────────────── */

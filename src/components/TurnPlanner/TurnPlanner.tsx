@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useRef, Fragment, useCallback } from 'react';
-import html2canvas from '../../utils/html2canvas.esm.js';
 import { TurnPlannerState, PlannerTurn, FrontAction, ODMode, ComputedTurnResult } from '../../types';
 import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner';
 import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, deleteAxles, clearAllAxles, getAllAxles, importAxles, setAxleFolder, type SavedAxle } from '../../utils/plannerStorage';
@@ -1229,6 +1228,7 @@ function SimpleTable({
     const el = timelineRef.current;
     if (!el) { alert('未找到时间线元素'); return; }
     try {
+      const html2canvas = (await import('../../utils/html2canvas.esm.js')).default;
       const canvas = await html2canvas(el, {
         backgroundColor: '#ffffff',
         scale: 2,
