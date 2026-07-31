@@ -1499,7 +1499,7 @@ function SimpleTable({
                       {actionPairs.map((pair, ai) => (
                         <Fragment key={ai}>
                           <td className="font-medium text-xs text-right pr-1">{pair.name}</td>
-                          <td className="text-xs text-left pl-1 text-text-muted">{pair.act}</td>
+                          <td className="text-xs text-left pl-1">{pair.act}</td>
                         </Fragment>
                       ))}
                       <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
