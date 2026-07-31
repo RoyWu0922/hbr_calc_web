@@ -156,12 +156,14 @@ export async function updateHistoryEntry(
   const existing = await db.get('history', id);
   const entry: CalcHistoryEntry = {
     id,
+    uuid: existing?.uuid,
     timestamp: Date.now(),
     label,
     input,
     result,
     notes: notes || undefined,
     folderId: existing?.folderId,
+    deleted: existing?.deleted || false,
   };
   await db.put('history', entry);
 }
@@ -207,7 +209,14 @@ export async function deleteHistoryEntry(id: number): Promise<void> {
 export async function deleteHistoryEntries(ids: number[]): Promise<void> {
   const db = await getDB();
   const tx = db.transaction('history', 'readwrite');
-  for (const id of ids) await tx.store.delete(id);
+  for (const id of ids) {
+    const entry = await tx.store.get(id);
+    if (entry) {
+      (entry as any).deleted = true;
+      (entry as any).timestamp = Date.now();
+      await tx.store.put(entry);
+    }
+  }
   await tx.done;
 }
 

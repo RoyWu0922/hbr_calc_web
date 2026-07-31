@@ -6,6 +6,15 @@ import { openDB } from 'idb';
 
 function uuid() { return crypto.randomUUID(); }
 
+// ─── Sync lock (prevents concurrent pullAll/uploadAll races) ─────
+let syncBusy = false;
+function acquireLock(): boolean {
+  if (syncBusy) return false;
+  syncBusy = true;
+  return true;
+}
+function releaseLock() { syncBusy = false; }
+
 // ─── Record helper ─────────────────────────────────────────────
 function ensureUUID(entry: any) {
   if (!entry.uuid) entry.uuid = uuid();
@@ -231,19 +240,25 @@ async function syncFolders() {
 }
 
 export async function uploadAll() {
-  await syncFolders();
-  await uploadTable('calc_history', 'history', 'hbr-calc-db', 'calc');
-  await uploadTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
-  await uploadTable('white_stats', 'history', 'hbr-white-stats');
-  await syncCustomSkills();
+  if (!acquireLock()) return;
+  try {
+    await syncFolders();
+    await uploadTable('calc_history', 'history', 'hbr-calc-db', 'calc');
+    await uploadTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
+    await uploadTable('white_stats', 'history', 'hbr-white-stats');
+    await syncCustomSkills();
+  } finally { releaseLock(); }
 }
 
 export async function pullAll() {
-  await syncFolders();
-  await pullTable('calc_history', 'history', 'hbr-calc-db', 'calc');
-  await pullTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
-  await pullTable('white_stats', 'history', 'hbr-white-stats');
-  await syncCustomSkills();
+  if (!acquireLock()) return;
+  try {
+    await syncFolders();
+    await pullTable('calc_history', 'history', 'hbr-calc-db', 'calc');
+    await pullTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
+    await pullTable('white_stats', 'history', 'hbr-white-stats');
+    await syncCustomSkills();
+  } finally { releaseLock(); }
 }
 
 export async function fullSync() {
@@ -251,9 +266,14 @@ export async function fullSync() {
   await pullAll();
 }
 
-// Attach sync on page leave
+// Attach sync on page leave (only when logged in)
 export function attachSyncTriggers() {
-  const handler = () => { if (document.visibilityState === 'hidden') uploadAll(); };
+  const doUpload = () => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) uploadAll();
+    }).catch(() => {});
+  };
+  const handler = () => { if (document.visibilityState === 'hidden') doUpload(); };
   document.addEventListener('visibilitychange', handler);
-  window.addEventListener('beforeunload', () => uploadAll());
+  window.addEventListener('beforeunload', doUpload);
 }

@@ -267,12 +267,14 @@ export interface DamageResultData {
 // ─── History ─────────────────────────────────────────────────
 export interface CalcHistoryEntry {
   id?: number;
+  uuid?: string;
   timestamp: number;
   label: string;
   input: DamageInput;
   result: DamageResultData;
   notes?: string;
   folderId?: number;
+  deleted?: boolean;
 }
 
 export interface Folder {

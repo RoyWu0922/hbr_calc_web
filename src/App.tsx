@@ -72,10 +72,13 @@ function AppInner() {
         if (!lastSync || data[0].timestamp > parseInt(lastSync)) newCount++;
       }
     }
-    if (newCount > 0 && confirm(`云端有 ${newCount} 类新记录，是否更新？`)) {
-      await pullAll();
+    if (newCount > 0) {
+      // Always bump last_sync so cancelled prompts don't re-fire every 2 min
       localStorage.setItem('hbr_last_sync', String(Date.now()));
-      window.location.reload();
+      if (confirm(`云端有 ${newCount} 类新记录，是否更新？`)) {
+        await pullAll();
+        window.location.reload();
+      }
     }
   };
 
