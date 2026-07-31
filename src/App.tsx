@@ -6,6 +6,7 @@ import ExtraFeatures from './components/ExtraFeatures/ExtraFeatures';
 import WhiteStats from './components/WhiteStats/WhiteStats';
 import TurnPlanner from './components/TurnPlanner/TurnPlanner';
 import AuthDialog from './components/AuthDialog';
+import SettingsDialog from './components/SettingsDialog';
 import { useTheme } from './utils/theme';
 import { decodeShareData } from './utils/shareUrl';
 import { setToastHandler } from './utils/copyToast';
@@ -37,6 +38,7 @@ function AppInner() {
   const { theme, toggle: toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const syncedRef = useRef(false);
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -128,7 +130,7 @@ function AppInner() {
   }, []);
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--app-bg)' }}>
+    <div className="min-h-screen">
         {/* Copy toast */}
         <div className={`fixed top-3 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 rounded-lg bg-accent/90 text-white text-sm font-medium transition-all duration-200 pointer-events-none ${toastVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
           已复制到剪贴板
@@ -143,19 +145,28 @@ function AppInner() {
               <button onClick={() => switchPrimary('planner')} className={`nav-tab ${primaryTab === 'planner' ? 'active' : ''}`}>排轴</button>
             </nav>
             {primaryTab === 'damage' && (
-              <div className="flex gap-0 ml-2 border-l border-white/10 pl-3">
+              <div className="flex gap-1 ml-2 border-l border-white/10 pl-3">
                 {SUB_TABS.map(t => (
                   <button key={t.key} onClick={() => setSubTab(t.key)} className={`sub-tab text-xs ${subTab === t.key ? 'active' : ''}`}>{t.label}</button>
                 ))}
               </div>
             )}
             {primaryTab === 'planner' && (
-              <div className="flex gap-0 ml-2 border-l border-white/10 pl-3">
+              <div className="flex gap-1 ml-2 border-l border-white/10 pl-3">
                 <button onClick={() => setPlannerSubTab('editor')} className={`sub-tab text-xs ${plannerSubTab === 'editor' ? 'active' : ''}`}>排轴编辑</button>
                 <button onClick={() => setPlannerSubTab('saved')} className={`sub-tab text-xs ${plannerSubTab === 'saved' ? 'active' : ''}`}>轴表记录</button>
               </div>
             )}
             <div className="flex-1" />
+            <button className="btn btn-secondary btn-sm flex items-center gap-1" onClick={() => setShowSettings(true)} title="外观设置">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 19l-1.5-4L3 8.5V7l7.5-1L12 2l1.5 4L21 7v1.5l-7.5 6.5L12 19z" />
+                <path d="M9.5 11.5l3 3" />
+                <circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
+                <path d="M2 22l2.5-7" />
+                <path d="M22 22l-4-11" />
+              </svg>
+            </button>
             {user && (
               <button className="btn btn-secondary btn-xs px-1.5" onClick={checkCloud} title="检查云端更新">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -218,6 +229,7 @@ function AppInner() {
           </a>
         </div>
         {showAuth && <AuthDialog onClose={() => setShowAuth(false)} />}
+        {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
         {/* Scroll buttons */}
         <div className="fixed right-4 bottom-4 flex flex-col gap-1 z-40">
           <button className="btn btn-secondary btn-xs w-7 h-7 flex items-center justify-center p-0 opacity-50 hover:opacity-100"
