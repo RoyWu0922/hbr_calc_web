@@ -251,12 +251,12 @@ export function calcOD(params: ODParams): { odPercent: number; odHit: number; ea
 
   // Earring actual coefficient (AD formula)
   let earringActual: number;
-  if (origHit > 9) {
+  if (earringCoeff === 0) {
+    earringActual = 0;
+  } else if (origHit > 9) {
     earringActual = earringCoeff;
   } else if (origHit === 0) {
     earringActual = 5;
-  } else if (earringCoeff === 0) {
-    earringActual = 0;
   } else {
     earringActual = ((origHit - 1) / 9 * (earringCoeff - 5) + 5);
   }

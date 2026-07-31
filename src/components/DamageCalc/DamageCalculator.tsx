@@ -8,6 +8,7 @@ import { calculateAll, calcPassiveAtkSum, calcPassiveDefSum, calcBuffPower, calc
 import { copyToClipboard } from '../../utils/copyToast';
 import { BUFF_SKILLS, DEBUFF_SKILLS, WEAKNESS_SKILLS, SCORE_TABLE, TURN_COEFF } from '../../engine/skillDb';
 import { getCustomSkills, getDeletedBuiltins, getBuiltinOverrides } from '../../engine/customSkills';
+import { getSkillOrder, sortByOrder } from '../../engine/skillOrder';
 import { saveToHistory, updateHistoryEntry } from '../../utils/storage';
 import { saveUserDefaults, loadUserDefaults, clearUserDefaults, UserDefaults } from '../../engine/userDefaults';
 import { encodeShareData, decodeShareData } from '../../utils/shareUrl';
@@ -38,11 +39,13 @@ const defaultScore: ScoreParams = { difficulty: 40, turns: 2, hasShield: true, d
 
 function buildLookup(builtins: any[], category: 'buff' | 'debuff' | 'weakness') {
   const deleted = getDeletedBuiltins(category); const overrides = getBuiltinOverrides(category);
-  return [...builtins.filter(s => !deleted.has(s.name)).map(s => {
+  const merged = [...builtins.filter(s => !deleted.has(s.name)).map(s => {
     const ov = overrides[s.name];
     if (ov && !ov.deleted) return { ...s, max: ov.max ?? s.max, min: ov.min ?? s.min, border: ov.border ?? s.border };
     return s;
   }), ...getCustomSkills(category)];
+  const order = getSkillOrder(category);
+  return sortByOrder(merged, order);
 }
 
 interface Props { initialData: CalcHistoryEntry | null; }

@@ -7,6 +7,7 @@ import {
   getDeletedBuiltins, getBuiltinOverrides, overrideBuiltinSkill,
   deleteBuiltinSkill, restoreBuiltinSkill,
 } from '../../engine/customSkills';
+import { getSkillOrder, setSkillOrder, removeFromOrder, sortByOrder } from '../../engine/skillOrder';
 
 type TabKey = 'buff' | 'debuff' | 'weakness';
 
@@ -26,6 +27,11 @@ export default function SkillDatabase() {
   const [builtinOverrides, setBuiltinOverrides] = useState<Record<TabKey, Record<string, any>>>({
     buff: {}, debuff: {}, weakness: {},
   });
+  const [skillOrder, setSkillOrderState] = useState<Record<TabKey, string[]>>({
+    buff: [], debuff: [], weakness: [],
+  });
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const refresh = () => {
     setCustomSkills({
@@ -42,6 +48,11 @@ export default function SkillDatabase() {
       buff: getBuiltinOverrides('buff'),
       debuff: getBuiltinOverrides('debuff'),
       weakness: getBuiltinOverrides('weakness'),
+    });
+    setSkillOrderState({
+      buff: getSkillOrder('buff'),
+      debuff: getSkillOrder('debuff'),
+      weakness: getSkillOrder('weakness'),
     });
   };
 
@@ -71,10 +82,62 @@ export default function SkillDatabase() {
     });
 
   const allData = [...overriddenBuiltins, ...customSkills[tab]];
+  const sortedAllData = sortByOrder(allData, skillOrder[tab]);
 
-  const filtered = search.trim()
-    ? allData.filter(s => s.name.toLowerCase().includes(search.toLowerCase()))
-    : allData;
+  const isSearching = search.trim().length > 0;
+  const filtered = isSearching
+    ? sortedAllData.filter(s => s.name.toLowerCase().includes(search.toLowerCase()))
+    : sortedAllData;
+
+  // ── Drag-and-drop handlers ────────────────────────────────
+
+  const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, index: number) => {
+    if (isSearching) { e.preventDefault(); return; }
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>, index: number) => {
+    e.preventDefault();
+    if (dragIndex === null || isSearching) return;
+    e.dataTransfer.dropEffect = 'move';
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mid = (rect.bottom - rect.top) / 2;
+    const offset = e.clientY - rect.top;
+    setDragOverIndex(offset < mid ? index - 0.5 : index + 0.5);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLTableRowElement>) => {
+    // Only clear if leaving the row entirely (not entering a child cell)
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      // Keep dragOverIndex — next row's dragOver will update it
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, targetVisualIndex: number) => {
+    e.preventDefault();
+    if (dragIndex === null || isSearching) return;
+
+    const items = [...sortedAllData];
+    const [moved] = items.splice(dragIndex, 1);
+    const adjustedTarget = dragIndex < targetVisualIndex ? targetVisualIndex - 1 : targetVisualIndex;
+    items.splice(adjustedTarget, 0, moved);
+
+    const newOrder = items.map(s => s.name);
+    setSkillOrder(tab, newOrder);
+    setSkillOrderState(prev => ({ ...prev, [tab]: newOrder }));
+
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
+  // ── Form handlers ──────────────────────────────────────────
 
   const resetForm = () => {
     setAddName(''); setAddMax(0); setAddMin(0); setAddBorder(0);
@@ -103,6 +166,11 @@ export default function SkillDatabase() {
           ? { name: addName.trim(), max: addMax, border: addBorder, _custom: true }
           : { name: addName.trim(), max: addMax, min: addMin, border: addBorder, _custom: true };
         addCustomSkill(tab, newSkill);
+        removeFromOrder(tab, editingName);
+        setSkillOrderState(prev => ({
+          ...prev,
+          [tab]: prev[tab].filter(n => n !== editingName),
+        }));
       } else {
         // Same name → override values
         overrideBuiltinSkill(tab, editingName, { max: addMax, min: isBuff ? undefined : addMin, border: addBorder });
@@ -133,6 +201,11 @@ export default function SkillDatabase() {
     } else {
       deleteBuiltinSkill(tab, skill.name);
     }
+    removeFromOrder(tab, skill.name);
+    setSkillOrderState(prev => ({
+      ...prev,
+      [tab]: prev[tab].filter(n => n !== skill.name),
+    }));
     refresh();
   };
 
@@ -187,6 +260,7 @@ export default function SkillDatabase() {
         <table>
           <thead>
             <tr>
+              <th style={{ width: 32 }}></th>
               <th>技能名</th>
               <th>Max (1级)</th>
               {!isBuff && <th>Min (1级)</th>}
@@ -195,12 +269,33 @@ export default function SkillDatabase() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(s => {
+            {filtered.map((s, i) => {
               const isCustom = (s as any)._custom;
               const isOverridden = (s as any)._overridden;
               const editing = editingName === s.name;
+              const isDragging = dragIndex === i;
+              const showDropAbove = dragOverIndex === i - 0.5;
+              const showDropBelow = dragOverIndex === i + 0.5;
               return (
-                <tr key={s.name} className={`hover:bg-white/5 ${isCustom ? 'bg-accent/5' : ''} ${isOverridden ? 'bg-gold/5' : ''}`}>
+                <tr key={s.name}
+                  draggable={!isSearching}
+                  onDragStart={(e) => handleDragStart(e, i)}
+                  onDragOver={(e) => handleDragOver(e, i)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, i)}
+                  onDragEnd={handleDragEnd}
+                  className={`hover:bg-white/5 ${isCustom ? 'bg-accent/5' : ''} ${isOverridden ? 'bg-gold/5' : ''} ${isDragging ? 'dragging' : ''} ${showDropAbove ? 'drop-indicator-above' : ''} ${showDropBelow ? 'drop-indicator-below' : ''}`}>
+                  <td style={{ padding: 0, width: 28, textAlign: 'center', cursor: isSearching ? 'default' : 'grab' }}>
+                    <svg width="12" height="20" viewBox="0 0 12 20" fill="none"
+                      style={{ opacity: isSearching ? 0.2 : 0.4, verticalAlign: 'middle', pointerEvents: 'none' }}>
+                      <circle cx="3" cy="4" r="1.2" fill="currentColor" />
+                      <circle cx="9" cy="4" r="1.2" fill="currentColor" />
+                      <circle cx="3" cy="10" r="1.2" fill="currentColor" />
+                      <circle cx="9" cy="10" r="1.2" fill="currentColor" />
+                      <circle cx="3" cy="16" r="1.2" fill="currentColor" />
+                      <circle cx="9" cy="16" r="1.2" fill="currentColor" />
+                    </svg>
+                  </td>
                   <td className="font-medium">
                     {editing ? (
                       <input className="input-field text-xs py-1 w-full" value={addName}
