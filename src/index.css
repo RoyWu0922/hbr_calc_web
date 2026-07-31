@@ -184,7 +184,7 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-glass-bg);
+  background: var(--app-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   opacity: var(--card-opacity, 1);
@@ -205,7 +205,7 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-glass-bg-strong);
+  background: var(--app-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   opacity: var(--card-opacity, 1);
@@ -290,7 +290,7 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-card-bg);
+  background: var(--app-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   opacity: var(--card-opacity, 1);
@@ -318,7 +318,7 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-input-bg);
+  background: var(--app-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   opacity: var(--card-opacity, 1);
@@ -433,7 +433,7 @@ tr { transition: background 0.2s; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--app-row-bg);
+  background: var(--app-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   opacity: var(--card-opacity, 1);
@@ -453,7 +453,7 @@ tr { transition: background 0.2s; }
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--app-header-bg);
+  background: var(--app-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   opacity: var(--card-opacity, 1);
