@@ -7,6 +7,8 @@ import WhiteStats from './components/WhiteStats/WhiteStats';
 import TurnPlanner from './components/TurnPlanner/TurnPlanner';
 import AuthDialog from './components/AuthDialog';
 import SettingsDialog from './components/SettingsDialog';
+import ChangelogDialog from './components/ChangelogDialog';
+import { getUnseenAnnouncement, markAnnouncementSeen, type ChangelogEntry } from './utils/changelog';
 import { useTheme } from './utils/theme';
 import { decodeShareData } from './utils/shareUrl';
 import { setToastHandler } from './utils/copyToast';
@@ -42,6 +44,13 @@ function AppInner() {
   const syncedRef = useRef(false);
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(null);
+  const [changelog, setChangelog] = useState<ChangelogEntry | null>(null);
+
+  // Check for unseen changelog announcement on mount
+  useEffect(() => {
+    const entry = getUnseenAnnouncement();
+    if (entry) setChangelog(entry);
+  }, []);
 
   // Sync triggers on page leave/visibility change
   useEffect(() => { attachSyncTriggers(); }, []);
@@ -233,6 +242,7 @@ function AppInner() {
         </div>
         {showAuth && <AuthDialog onClose={() => setShowAuth(false)} />}
         {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+        {changelog && <ChangelogDialog entry={changelog} onClose={(dontShowAgain) => { if (dontShowAgain) markAnnouncementSeen(changelog.id); setChangelog(null); }} />}
         {/* Scroll buttons */}
         <div className="fixed right-4 bottom-4 flex flex-col gap-1 z-40">
           <button className="btn btn-secondary btn-xs w-7 h-7 flex items-center justify-center p-0 opacity-50 hover:opacity-100"

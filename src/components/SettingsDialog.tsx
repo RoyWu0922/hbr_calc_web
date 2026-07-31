@@ -24,9 +24,15 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
     setAccent(hex);
   };
 
-  const handleBgApply = () => {
-    setWarning('');
-    setBackground(bgUrl, bgOpacity);
+  const handleBgOpacity = (v: number) => {
+    setBgOpacity(v);
+    if (bgUrl) setBackground(bgUrl, v);
+  };
+
+  const handleBgUrl = (url: string) => {
+    setBgUrl(url);
+    if (url) setBackground(url, bgOpacity);
+    else { setBgOpacity(0.3); clearBackground(); }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,8 +50,9 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
     reader.readAsDataURL(file);
   };
 
-  const handleClearBg = () => {
+  const handleReset = () => {
     setBgUrl('');
+    setBgOpacity(0.3);
     clearBackground();
   };
 
@@ -102,17 +109,22 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
               <input className="input-field text-xs flex-1" placeholder="输入图片 URL…"
                 value={bgUrl.startsWith('data:') ? '[本地图片]' : bgUrl}
                 onChange={e => setBgUrl(e.target.value)}
+                onBlur={e => handleBgUrl(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleBgUrl((e.target as HTMLInputElement).value); }}
                 disabled={bgUrl.startsWith('data:')}
               />
-              <button className="btn btn-secondary btn-xs whitespace-nowrap" onClick={() => fileRef.current?.click()}>
-                上传
+              <button className="btn btn-secondary btn-xs px-1.5" onClick={() => fileRef.current?.click()} title="上传图片">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               </button>
+              {bgUrl && <button className="btn btn-secondary btn-xs px-1.5" onClick={handleReset} title="重置背景">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              </button>}
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-text-muted">透明度</span>
               <input type="range" min="0.1" max="1" step="0.05" value={bgOpacity}
-                onChange={e => setBgOpacity(parseFloat(e.target.value))}
+                onChange={e => handleBgOpacity(parseFloat(e.target.value))}
                 className="flex-1"
                 style={{ accentColor: accent }}
               />
@@ -120,8 +132,6 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             </div>
             {warning && <div className="text-[10px] text-amber-400">{warning}</div>}
             <div className="flex gap-2 mt-1">
-              <button className="btn btn-primary btn-xs" onClick={handleBgApply}>应用背景</button>
-              {bgUrl && <button className="btn btn-secondary btn-xs" onClick={handleClearBg}>清除背景</button>}
             </div>
           </div>
         </div>
