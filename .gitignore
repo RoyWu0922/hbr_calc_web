@@ -27,3 +27,7 @@ dist-ssr
 
 # Cursor source packs (huge, WPF binaries — not committed)
 cursor/
+
+# Tutorial source (local only — regenerate guide.html via scripts/gen-guide.mjs)
+public/tutorial/*.md
+public/tutorial/*.png

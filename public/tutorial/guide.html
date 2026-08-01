@@ -1,0 +1,126 @@
+<div class="guide-content">
+<blockquote class="guide-quote">本教程写于2026.08.01, 不保证时效性</blockquote>
+<h2 class="guide-h2">伤害计算器</h2>
+<h4 class="guide-h4">队伍举例: 冰白迷宫打训练场(冰弱, 斩弱, 750白值 999%破坏)boss 出伤满士气buff&amp;debuff</h4>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801144933.png" loading="lazy" class="guide-img" /></div>
+<h5 class="guide-h5">队伍白值(无天气):</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801145117.png" width="200" loading="lazy" class="guide-img" /><img src="/tutorial/Pasted%20image%2020260801145139.png" width="200" loading="lazy" class="guide-img" /><img src="/tutorial/Pasted%20image%2020260801145159.png" width="200" loading="lazy" class="guide-img" /></div>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801145244.png" width="200" loading="lazy" class="guide-img" /><img src="/tutorial/Pasted%20image%2020260801145255.png" width="200" loading="lazy" class="guide-img" /></div>
+<h5 class="guide-h5">敌方信息区</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801150153.png" width="300" loading="lazy" class="guide-img" /><img src="/tutorial/Pasted%20image%2020260801150228.png" width="300" loading="lazy" class="guide-img" /></div>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801145634.png" loading="lazy" class="guide-img" /></div>
+<p>填写敌方初始白值(防御状态值, 有的boss比如ex异时层攻击和防御白值不一样)和弱点(可长按敌人查看), 弱点为50%时则填写0.5, 打分为150%弱点则填写1.5</p>
+<h5 class="guide-h5">出伤技能区</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801151110.png" width="400" loading="lazy" class="guide-img" /></div>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801160520.png" loading="lazy" class="guide-img" /></div>
+<p>去<a href="https://hbr.quest" target="_blank" rel="noopener">hbr.quest</a>打开冰白ex技能, 可见技能强度在1级的时候最大强度=10875, 力偏(2力1灵), 额外hp+50, 技能差值=150</p>
+<p>可知冰白力=921, 灵=681, 根据: <div class="guide-formula">力偏加权=<span class="frac"><span class="frac-num">2 ×力量 +1 × 灵巧</span><span class="frac-den">3</span></span></div></p>
+<ul class="guide-list">
+<li>可知冰白的迷宫力灵加权为841, 填入初始加权(这个可在右边的属性计算浮窗里便捷计算)</li>
+<li>由于带了冰aoi(有滑水道+50己方白值)和冰tama(灵符-100对方白值), 在暴击时又默认-50对方白值而加/减白值分别取大, 所以在白值加成处填写100(当然也可以不勾暴击, 白值加成那里=150, 这样更符合直觉)</li>
+<li>1级最大威力, 基础差值, 偏向, 均可从quest查出, 直接填入最大威力=10875, 基础差值=150, 偏向=1.5</li>
+<li>出伤为10级技能, 所以技能等级填入10</li>
+<li>hit数如果不算hp耳环或浮动概率的话, 就可以不用填</li>
+<li>暴击默认勾选上就好</li>
+<li>翻看冰白的宝珠效果(战术形态-&gt;强化-&gt;宝珠强化), 为<em>提升技能伤害值的威力</em>, 且点满为5级, 故填入(如果不是则0)</li>
+<li>没有token和特殊增伤, 均保持默认1即可</li>
+</ul>
+<h5 class="guide-h5">主动加攻区</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801153626.png" width="300" loading="lazy" class="guide-img" /><img src="/tutorial/Pasted%20image%2020260801153848.png" width="300" loading="lazy" class="guide-img" /></div>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801153409.png" loading="lazy" class="guide-img" /></div>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801154016.png" loading="lazy" class="guide-img" /></div>
+<ul class="guide-list">
+<li>主动加攻区包含弧(普加攻, 心眼), 泪雨(冰加攻), 蓄力珠</li>
+<li>从技能库里找到并选上, 如果没有则<em>添加自定义技能</em>, 拿max值和技能差值填入即可</li>
+<li>胜利之弧的心眼虽然在加攻区, 但不吃宝珠不吃被动, 且没有等级, 所以填入初始属性和白值加成(士气)的即可; 弧的普加攻则是<strong>有宝珠</strong>(冰月哥的宝珠是加攻量上升), <strong>无等级</strong>的<strong>回合单独发动大加攻</strong>, 被动包含爆裂20%, 勿忘20%, 冰洛丽塔2破共鸣25%, 故填入1+0.2+0.2+0.25=1.65</li>
+<li>泪雨则是冰司的有等级有宝珠冰加攻, 且由于没有共鸣被动, 故填入1.4</li>
+<li>蓄力珠则是冰白自己开的, 所以没有宝珠, 但被动仍然可以吃到</li>
+</ul>
+<h5 class="guide-h5">主动降防区</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801155027.png" loading="lazy" class="guide-img" /></div>
+<ul class="guide-list">
+<li>由于默认全部dbf都吃满士气和灵符, 而dbf是没有暴击-50这个说法的, 所以灵符的-100和滑水道的+50均可以吃到, 故白值加成=150</li>
+<li>技能都从技能库里拿取, 没有则<em>添加自定义技能</em></li>
+<li>冰鲱鱼和冰tama均为dbf宝珠, 全部填5即可</li>
+<li>除了脆弱外的dbf技能均为2智1运, 脆弱为1智2运, 算出来加权后填入</li>
+<li>冰tama有冰天音共鸣, 且灵符的冰减和软化珠可以吃到, 遂被动=1+0.2+0.22=1.42</li>
+<li>脆弱吃爆裂和樱花箭, 但不吃共鸣, 所以被动只有1.2</li>
+<li>另一个软化珠是冰鲱鱼打的, 没有别的侵蚀被动所以就只有1.2</li>
+<li>再填入对应的层数即可</li>
+</ul>
+<h5 class="guide-h5">弱点区</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801155710.png" loading="lazy" class="guide-img" /></div>
+<ul class="guide-list">
+<li>弱点区一样从技能库拿取即可, 目前已经内置所有一代二代弱点</li>
+<li>弱点加深吃宝珠和爆裂/高阶, 然后白值按照鲱鱼的正常填就行</li>
+</ul>
+<h5 class="guide-h5">被动区</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801160132.png" loading="lazy" class="guide-img" /></div>
+<p><strong>被动加攻区:</strong></p>
+<ul class="guide-list">
+<li>被动区东西比较多容易漏, 建议存一份完整的每次查, 或者存为默认一直用</li>
+<li>爆裂启动后自带300加攻, 算在被动区</li>
+<li>场地, 阵(华村的那个)均为被动加攻, 且冰司为大场=80</li>
+<li>士气叠满后也有50加攻</li>
+<li>鲱鱼和冰白在被动里也分别有10加攻</li>
+<li>1级冰印有30加攻</li>
+<li>戒指也写这里, 目前只有雷有那个10加攻</li>
+</ul>
+<p><strong>被动减防区:</strong></p>
+<ul class="guide-list">
+<li>这个队伍没有(雷夏洛的3破被动填在这里)</li>
+</ul>
+<p><strong>爆伤区:</strong></p>
+<ul class="guide-list">
+<li>默认了两个基础暴击和暴击, 基础暴击为默认的100%,  当技能暴击时则再有50%</li>
+<li>爆裂对于对应属性技能自带100单独发动普暴</li>
+<li>冰爆伤直接填入即可</li>
+<li>5级冰印还有30爆伤</li>
+</ul>
+<p><strong>装备区:</strong></p>
+<ul class="guide-list">
+<li>冰白5hit吃hp耳环后加攻10.56(根据上面出伤技能区填的hit来计算的)</li>
+<li>带了恒星项链, 这个也有10加攻</li>
+</ul>
+<h5 class="guide-h5">额外乘区</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801160727.png" loading="lazy" class="guide-img" /></div>
+<ul class="guide-list">
+<li>这块就比较简单了, 连击根据初始1和连击量相加(3特大=1.5)</li>
+<li>破坏率初始999+爆裂额外300=1299%</li>
+<li>开od的额外乘区, 3od出伤的话选3od即可</li>
+<li>浮动默认均浮, 且浮动只会在0.9~1.1, 一般算伤时这个保持不变就好</li>
+</ul>
+<h5 class="guide-h5">出伤显示</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801161228.png" loading="lazy" class="guide-img" /></div>
+<ul class="guide-list">
+<li>左边是前面的填表总结, 右边为最终伤害, 红字为衰减前伤害(10e+的时候会进行衰减)</li>
+</ul>
+<h5 class="guide-h5">其余部分</h5>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801162237.png" loading="lazy" class="guide-img" /></div>
+<p><strong>打分计算:</strong></p>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801161725.png" width="300" loading="lazy" class="guide-img" /></div>
+<ul class="guide-list">
+<li>需要去quest查<strong>伤害分系数</strong>和<strong>伤害无惩罚上限</strong>(伤害阈值)这两个量并填入, 这里拿国际服SA88举例</li>
+<li>选择难度, 回合, 是否有盾分; 填入词条倍率, 目标数(2则总伤害\*2), 垫刀(例子里=0), 下面打分预估即可显示分数</li>
+</ul>
+<p><strong>浮动概率计算:</strong></p>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801162352.png" width="400" loading="lazy" class="guide-img" /></div>
+<ul class="guide-list">
+<li>先去quest查hit分布, 可见分布为0.1, 0.1, 0.1, 0.3, 0.4, 填入下面的权重分布</li>
+<li>点击右上角的计算即可显示浮动概率, 可用鼠标查看每个地方的</li>
+<li><em>浮动</em>为当前位置的浮动</li>
+<li><em>P</em>为大于等于这个浮动的概率总和, 因为红烧的浮动是每hit均匀分布然后叠加的(也就是极限时为正态分布), 遂求大于等于的概率</li>
+<li><em>伤害</em>则为在当前浮动的时候会有的伤害</li>
+</ul>
+<h2 class="guide-h2">技能库</h2>
+<ul class="guide-list">
+<li>因为嫌麻烦不想每两周更新一次, 遂使用自填的方式, 目前已内置一些比较常用的, 其余的需要用户自己增加</li>
+<li>可删除, 编辑, 新增</li>
+</ul>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801162957.png" loading="lazy" class="guide-img" /></div>
+<ul class="guide-list">
+<li>以这个技能为例, 这是一个joker月哥的ex技能, 拿那个永暗减来演示</li>
+</ul>
+<div class="guide-img-row"><img src="/tutorial/Pasted%20image%2020260801163142.png" loading="lazy" class="guide-img" /></div>
+<p>这么填入即可</p>
+</div>

@@ -745,6 +745,80 @@ input[type="checkbox"]:checked::after {
   background: var(--planner-row-hover);
 }
 
+/* ─── Guide (计算攻略) ──────────────────────────────────── */
+.guide-content { line-height: 1.75; color: var(--app-text-primary); }
+.guide-content p { margin: 0.6em 0; }
+/* real heading hierarchy */
+.guide-content h1, .guide-content h2, .guide-content h3,
+.guide-content h4, .guide-content h5, .guide-content h6 {
+  margin: 1.2em 0 0.5em;
+  font-weight: 700;
+  color: var(--app-text-primary);
+  line-height: 1.3;
+}
+.guide-content h1 { font-size: 1.6rem; }
+.guide-content h2 { font-size: 1.4rem; }
+.guide-content h3 { font-size: 1.2rem; }
+.guide-content h4 { font-size: 1.05rem; }
+.guide-content h5 { font-size: 0.95rem; }
+.guide-content h6 { font-size: 0.9rem; }
+.guide-content em { font-style: italic; color: #f59e0b; }
+.guide-content strong { font-weight: 700; color: var(--color-accent); }
+/* image rows: consecutive embeds laid out horizontally */
+.guide-img-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0.75em 0;
+}
+.guide-img, .guide-img-inline {
+  border-radius: 8px;
+  border: 1px solid var(--app-glass-border);
+  max-width: 100%;
+  height: auto;
+}
+.guide-list { margin: 0.5em 0; padding-left: 1.4em; list-style: disc; }
+.guide-list li { margin: 0.3em 0; }
+.guide-quote {
+  margin: 0.75em 0;
+  padding: 0.5em 0.9em;
+  border-left: 3px solid rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.5);
+  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.06);
+  border-radius: 0 8px 8px 0;
+  color: var(--app-text-secondary);
+}
+.guide-code {
+  font-family: var(--font-num);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.guide-formula {
+  display: block;
+  margin: 0.75em 0;
+  padding: 0.7em 1em;
+  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.08);
+  border: 1px solid rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.25);
+  border-radius: 8px;
+  font-family: var(--font-num);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  font-size: 1.05rem;
+}
+/* stacked fraction */
+.guide-formula .frac {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: middle;
+  text-align: center;
+  margin: 0 0.3em;
+  line-height: 1.25;
+}
+.guide-formula .frac-num { border-bottom: 1px solid currentColor; padding: 0 0.4em; }
+.guide-formula .frac-den { padding: 0 0.4em; }
+
 /* ─── Drag-and-Drop Sorting ──────────────────────────────── */
 
 tr.dragging td {

@@ -755,7 +755,7 @@ const INFO_NOTES: Record<string, string> = {
 速查: 勿忘+：20％ 高阶增强/boost：20％ 机灵：25%，樱花箭: 20%, 初始共鸣:15/18/20/22/25, 条件共鸣:20/22/25/27/30
 脆弱可享受樱花箭, 宝珠, 月光+，高阶，boost, 不享受共鸣被动，侵蚀`,
   weakness: `弱点可享受宝珠以及爆裂和高阶增强的加深区`,
-  passiveAtk: `包括高阶/爆裂的加攻、场地、角色被动等`,
+  passiveAtk: `包括高阶/爆裂的加攻、场地、角色被动、印记、士气、戒指等`,
 };
 
 function InfoTip({ id }: { id: string }) {

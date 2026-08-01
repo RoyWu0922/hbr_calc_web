@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import DamageCalculator from './components/DamageCalc/DamageCalculator';
 import HistoryPage from './components/History/HistoryPage';
 import SkillDatabase from './components/SkillDb/SkillDatabase';
+import GuidePage from './components/Guide/GuidePage';
 import ExtraFeatures from './components/ExtraFeatures/ExtraFeatures';
 import WhiteStats from './components/WhiteStats/WhiteStats';
 import TurnPlanner from './components/TurnPlanner/TurnPlanner';
@@ -18,11 +19,12 @@ import { attachSyncTriggers, uploadAll, pullAll } from './utils/syncEngine';
 import { CalcHistoryEntry, DamageResultData } from './types';
 
 type PrimaryTab = 'damage' | 'white' | 'extra' | 'planner';
-type SubTab = 'calculator' | 'skills' | 'history';
+type SubTab = 'calculator' | 'skills' | 'history' | 'guide';
 const SUB_TABS: { key: SubTab; label: string }[] = [
   { key: 'calculator', label: '伤害计算' },
   { key: 'skills', label: '技能库' },
   { key: 'history', label: '计算历史' },
+  { key: 'guide', label: '计算攻略' },
 ];
 
 export default function App() {
@@ -233,6 +235,7 @@ function AppInner() {
           {primaryTab === 'damage' && subTab === 'history' && (
             <HistoryPage onLoad={(entry) => { setHistoryToLoad(entry); setSubTab('calculator'); setPrimaryTab('damage'); }} />
           )}
+          {primaryTab === 'damage' && subTab === 'guide' && <GuidePage />}
           <div style={{ display: primaryTab === 'white' ? 'block' : 'none' }}>
             <WhiteStats />
           </div>
