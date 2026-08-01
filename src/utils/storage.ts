@@ -185,6 +185,7 @@ export async function updateHistoryLabel(id: number, label: string): Promise<voi
   const entry = await db.get('history', id);
   if (!entry) throw new Error('Entry not found');
   entry.label = label;
+  entry.timestamp = Date.now(); // bump so sync sees this as newer
   await db.put('history', entry);
 }
 
@@ -193,6 +194,7 @@ export async function updateHistoryNotes(id: number, notes: string): Promise<voi
   const entry = await db.get('history', id);
   if (!entry) throw new Error('Entry not found');
   entry.notes = notes;
+  entry.timestamp = Date.now(); // bump so sync sees this as newer
   await db.put('history', entry);
 }
 
@@ -255,28 +257,47 @@ export async function createFolder(name: string, type: 'calc' | 'planner'): Prom
 export async function getFolders(type: 'calc' | 'planner'): Promise<Folder[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('folders', 'type', type);
-  return all.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  return all.filter(f => !(f as any).deleted).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }
 
 export async function updateFolder(id: number, updates: Partial<Pick<Folder, 'name' | 'sortOrder'>>): Promise<void> {
   const db = await getDB();
   const folder = await db.get('folders', id);
   if (!folder) throw new Error('Folder not found');
+  if (updates.name && updates.name !== folder.name) {
+    (folder as any)._prevName = folder.name; // mark rename so sync removes old cloud row
+  }
   Object.assign(folder, updates);
+  folder.timestamp = Date.now();
   await db.put('folders', folder);
 }
 
 export async function deleteFolder(id: number): Promise<void> {
   const db = await getDB();
-  // Unlink entries from this folder
+  const folder = await db.get('folders', id);
+  if (!folder) throw new Error('Folder not found');
+  // Unlink history entries from this folder
   const historyEntries = await db.getAll('history');
   for (const e of historyEntries) {
     if (e.folderId === id) {
       e.folderId = undefined;
+      e.timestamp = Date.now(); // bump so folder reassignment syncs
       await db.put('history', e);
     }
   }
-  await db.delete('folders', id);
+  // Unlink planner saves from this folder
+  const axles = await db.getAll('planner_saves');
+  for (const a of axles) {
+    if (a.folderId === id) {
+      a.folderId = undefined;
+      a.timestamp = Date.now();
+      await db.put('planner_saves', a);
+    }
+  }
+  // Soft-delete so syncFolders can propagate deletion to cloud
+  folder.deleted = true;
+  folder.timestamp = Date.now();
+  await db.put('folders', folder);
 }
 
 export async function setHistoryFolder(entryId: number, folderId: number | undefined): Promise<void> {
@@ -284,6 +305,7 @@ export async function setHistoryFolder(entryId: number, folderId: number | undef
   const entry = await db.get('history', entryId);
   if (!entry) throw new Error('Entry not found');
   entry.folderId = folderId;
+  entry.timestamp = Date.now(); // bump so sync sees this as newer
   await db.put('history', entry);
 }
 

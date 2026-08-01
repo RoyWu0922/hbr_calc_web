@@ -283,6 +283,7 @@ export interface Folder {
   type: 'calc' | 'planner';
   timestamp: number;
   sortOrder: number;
+  deleted?: boolean;
 }
 
 export interface PresetTemplate {

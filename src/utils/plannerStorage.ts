@@ -245,6 +245,7 @@ export async function updateAxleLabel(id: number, label: string): Promise<void> 
   const entry = await db.get('planner_saves', id);
   if (!entry) return;
   entry.label = label;
+  entry.timestamp = Date.now(); // bump so sync sees this as newer
   await db.put('planner_saves', entry);
 }
 
@@ -322,5 +323,6 @@ export async function setAxleFolder(axleId: number, folderId: number | undefined
   const entry = await db.get('planner_saves', axleId);
   if (!entry) throw new Error('Axle not found');
   entry.folderId = folderId;
+  entry.timestamp = Date.now(); // bump so sync sees this as newer
   await db.put('planner_saves', entry);
 }

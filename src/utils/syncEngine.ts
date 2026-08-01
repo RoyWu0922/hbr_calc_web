@@ -216,10 +216,22 @@ async function syncFolders() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const db = await openDB('hbr-calc-db', 5);
-    // Upload local folders not in cloud
+    // Upload local folders not in cloud (handle rename + delete)
     const local = await db.getAll('folders').catch(() => [] as any[]);
     for (const f of local) {
       try {
+        // Folder renamed: remove old cloud row so it doesn't resurrect
+        const prevName = f._prevName as string | undefined;
+        if (prevName && prevName !== f.name) {
+          await supabase.from('folders').delete().eq('user_id', user.id).eq('name', prevName).eq('type', f.type);
+          delete f._prevName;
+          await db.put('folders', f);
+        }
+        // Folder deleted: remove cloud row, don't re-insert
+        if (f.deleted) {
+          await supabase.from('folders').delete().eq('user_id', user.id).eq('name', f.name).eq('type', f.type);
+          continue;
+        }
         const { data: exist } = await supabase.from('folders').select('id').eq('user_id', user.id).eq('name', f.name).eq('type', f.type).maybeSingle();
         if (!exist) await supabase.from('folders').insert({ user_id: user.id, name: f.name, type: f.type, timestamp: f.timestamp || 0, sort_order: f.sortOrder || 0 });
       } catch (e) { console.error('syncFolders upload entry failed:', e); }
