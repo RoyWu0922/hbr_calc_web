@@ -536,6 +536,7 @@ function parseInputExpr(v: string): number {
   if (s === '' || s === '-') return 0;
   if (/[+\-*/]/.test(s) && s.length > 1 && !/^-\d+$/.test(s)) {
     try {
+      if (!/^[0-9+\-*/.() ]+$/.test(s)) return parseFloat(s) || 0;
       const r = Function('return (' + s + ')')();
       if (typeof r === 'number' && isFinite(r)) return r;
     } catch { /* fall through */ }
