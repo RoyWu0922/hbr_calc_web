@@ -1,0 +1,1 @@
+{"label":"小凤","states":{"stand":{"frames":20,"interval":60,"ox":-12,"oy":-11},"touch":{"frames":12,"interval":60,"ox":-17,"oy":-10},"text":{"frames":8,"interval":75,"ox":-12,"oy":-9},"drag":{"frames":12,"interval":60,"ox":-17,"oy":-10}}}

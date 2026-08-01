@@ -1,0 +1,32 @@
+{
+  "packs": [
+    {
+      "slug": "yuni",
+      "label": "优妮"
+    },
+    {
+      "slug": "kyaru",
+      "label": "公主凯露"
+    },
+    {
+      "slug": "mahiru",
+      "label": "夏日真步"
+    },
+    {
+      "slug": "kyouka",
+      "label": "夏日镜华"
+    },
+    {
+      "slug": "xiaofeng",
+      "label": "小凤"
+    },
+    {
+      "slug": "hatsune",
+      "label": "新春初音"
+    },
+    {
+      "slug": "amesu",
+      "label": "爱梅斯"
+    }
+  ]
+}

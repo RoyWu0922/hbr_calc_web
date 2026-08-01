@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useAppSettings } from '../utils/appSettings';
+import { CURSOR_PACKS } from '../assets/cursors';
 
 const PRESETS = [
   { label: '天蓝', hex: '#5b9bd5' },
@@ -11,7 +12,7 @@ const PRESETS = [
 ];
 
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
-  const { settings, setAccent, setBackground, clearBackground, setCardOpacity } = useAppSettings();
+  const { settings, setAccent, setBackground, clearBackground, setCardOpacity, setCursorStyle } = useAppSettings();
   const [accent, setAccentLocal] = useState(settings.accentColor);
   const [bgUrl, setBgUrl] = useState(settings.bgImage || '');
   const [bgOpacity, setBgOpacity] = useState(settings.bgOpacity);
@@ -114,10 +115,10 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
                 disabled={bgUrl.startsWith('data:')}
               />
               <button className="btn btn-secondary btn-xs px-1.5" onClick={() => fileRef.current?.click()} title="上传图片">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
               </button>
               {bgUrl && <button className="btn btn-secondary btn-xs px-1.5" onClick={handleReset} title="重置背景">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg>
               </button>}
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
             </div>
@@ -149,6 +150,39 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             <span className="text-xs text-text-muted">实色</span>
             <span className="text-xs text-text-muted w-8 text-right">{Math.round(cardOpacity * 100)}%</span>
           </div>
+        </div>
+
+        {/* ── Mouse Cursor ──────────────────────────────────── */}
+        <div className="mt-5 pt-4 border-t" style={{ borderColor: 'var(--app-glass-border)' }}>
+          <div className="text-sm font-semibold mb-2">
+            鼠标指针
+            <span className="font-normal text-xs text-gray-400">
+              (别问为什么是pcr的, 没找到烧的指针)
+            </span>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              className={`w-16 h-16 rounded-lg border-2 transition-all flex flex-col items-center justify-center gap-1 ${settings.cursorStyle === '' ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
+              onClick={() => setCursorStyle('')}
+              title="默认圆点光标"
+            >
+              <span className="w-3 h-3 rounded-full bg-accent" />
+              <span className="w-7 h-7 rounded-full border-2 border-accent/60" />
+              <span className="text-[10px] text-text-muted">默认</span>
+            </button>
+            {CURSOR_PACKS.map(p => (
+              <button
+                key={p.slug}
+                className={`w-16 h-16 rounded-lg border-2 transition-all flex flex-col items-center justify-center gap-0.5 overflow-hidden ${settings.cursorStyle === p.slug ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
+                onClick={() => setCursorStyle(p.slug)}
+                title={p.label}
+              >
+                <img src={p.preview} alt={p.label} className="w-10 h-10 object-contain" draggable={false} />
+                <span className="text-[10px] text-text-muted leading-none">{p.label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-text-muted mt-2">选择角色后，光标会变为对应的角色形象并跟随鼠标</p>
         </div>
       </div>
     </div>

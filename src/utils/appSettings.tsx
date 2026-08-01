@@ -5,6 +5,7 @@ export interface AppSettings {
   bgImage: string;       // data URI or URL, empty = none
   bgOpacity: number;     // 0.1 – 1.0
   cardOpacity: number;   // 0.3 – 1.0
+  cursorStyle: string;   // '' = dot+ring, else pack slug e.g. 'yuni'
 }
 
 const DEFAULTS: AppSettings = {
@@ -12,6 +13,7 @@ const DEFAULTS: AppSettings = {
   bgImage: '',
   bgOpacity: 0.3,
   cardOpacity: 1,
+  cursorStyle: '',
 };
 
 const STORAGE_KEY = 'hbr_app_settings';
@@ -26,6 +28,7 @@ function load(): AppSettings {
         bgImage: parsed.bgImage || '',
         bgOpacity: typeof parsed.bgOpacity === 'number' ? parsed.bgOpacity : DEFAULTS.bgOpacity,
         cardOpacity: typeof parsed.cardOpacity === 'number' ? parsed.cardOpacity : DEFAULTS.cardOpacity,
+        cursorStyle: typeof parsed.cursorStyle === 'string' ? parsed.cursorStyle : DEFAULTS.cursorStyle,
       };
     }
   } catch { /* ignore */ }
@@ -60,6 +63,7 @@ interface SettingsCtx {
   setBackground: (image: string, opacity: number) => void;
   clearBackground: () => void;
   setCardOpacity: (v: number) => void;
+  setCursorStyle: (slug: string) => void;
 }
 
 const SettingsContext = createContext<SettingsCtx>({
@@ -68,6 +72,7 @@ const SettingsContext = createContext<SettingsCtx>({
   setBackground: () => {},
   clearBackground: () => {},
   setCardOpacity: () => {},
+  setCursorStyle: () => {},
 });
 
 export function AppSettingsProvider({ children }: { children: ReactNode }) {
@@ -134,8 +139,16 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const setCursorStyle = (cursorStyle: string) => {
+    setSettings(prev => {
+      const next = { ...prev, cursorStyle };
+      save(next);
+      return next;
+    });
+  };
+
   return (
-    <SettingsContext.Provider value={{ settings, setAccent, setBackground, clearBackground, setCardOpacity }}>
+    <SettingsContext.Provider value={{ settings, setAccent, setBackground, clearBackground, setCardOpacity, setCursorStyle }}>
       {children}
     </SettingsContext.Provider>
   );

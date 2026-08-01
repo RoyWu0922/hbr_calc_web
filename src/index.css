@@ -253,6 +253,7 @@ input[type="number"] { -moz-appearance: textfield; }
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
   transform: translateY(-1px);
 }
+.nav-tab:active { transform: scale(0.95); }
 
 /* Sub-tab: underline style */
 .sub-tab {
@@ -285,7 +286,13 @@ input[type="number"] { -moz-appearance: textfield; }
   background: transparent;
   border: 1px solid var(--app-card-border);
   box-shadow: 0 4px 24px var(--app-shadow-card);
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.25s ease;
+  animation: cardIn 0.4s ease both;
+}
+.card:hover {
+  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.35);
+  box-shadow: 0 8px 32px var(--app-shadow-card), 0 0 0 1px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.06);
+  transform: translateY(-2px);
 }
 .card::before {
   content: '';
@@ -304,6 +311,12 @@ input[type="number"] { -moz-appearance: textfield; }
   color: var(--app-text-primary);
   position: relative;
   z-index: 1;
+}
+
+/* Entrance: subtle fade + rise on mount */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* ─── Inputs ───────────────────────────────────────────── */
@@ -364,6 +377,10 @@ select option {
 /* ─── Buttons ──────────────────────────────────────────── */
 .btn {
   @apply px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer border-0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
@@ -380,10 +397,30 @@ select option {
   background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.7);
   color: white;
   border: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
 }
 .btn-primary:hover {
   background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.85);
   box-shadow: 0 3px 8px rgba(0,0,0,0.35), 0 0 12px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.2);
+}
+.btn-primary:hover::after { animation: btnShine 0.6s ease; }
+
+/* Highlight sweep across accent buttons on hover */
+@keyframes btnShine {
+  0%   { left: -60%; }
+  100% { left: 130%; }
 }
 .btn-accent {
   background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.8);
@@ -437,8 +474,13 @@ tr { transition: background 0.2s; }
   background: transparent;
   border: 1px solid var(--app-row-border);
   border-radius: 8px;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, transform 0.2s ease;
 }
+.glass-row:hover {
+  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.3);
+  transform: translateX(2px);
+}
+.glass-row:hover::before { filter: brightness(1.15); }
 .glass-row::before {
   content: '';
   position: absolute;
@@ -449,7 +491,7 @@ tr { transition: background 0.2s; }
   -webkit-backdrop-filter: blur(8px);
   opacity: var(--card-opacity, 1);
   z-index: -1;
-  transition: opacity 0.3s;
+  transition: opacity 0.3s, filter 0.3s;
 }
 
 /* ─── Header ───────────────────────────────────────────── */
@@ -697,4 +739,80 @@ tr[draggable="true"] td:first-child {
 }
 tr[draggable="true"] td:first-child:active {
   cursor: grabbing;
+}
+
+/* ─── Custom Cursor ─────────────────────────────────────── */
+@media (pointer: fine) {
+  body, a, button, label, select, .nav-tab, .sub-tab { cursor: none; }
+  input, textarea { cursor: text; } /* keep native I-beam for text editing */
+}
+/* Character cursor mode hides native cursor everywhere (character is the pointer) */
+body.cursor-character, body.cursor-character * { cursor: none !important; }
+.cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 6px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.7);
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.5);
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s, width 0.2s ease, height 0.2s ease, border-color 0.2s, background-color 0.2s;
+}
+body.cursor-hover .cursor-ring {
+  width: 44px;
+  height: 44px;
+  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.9);
+  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.08);
+}
+.cursor-character-el {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 50px;
+  height: 50px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* ─── Damage number pop on change ───────────────────────── */
+.dmg-pop { animation: dmgPop 0.35s ease; }
+@keyframes dmgPop {
+  0%   { transform: scale(0.8); opacity: 0.4; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+/* ─── Scroll button hover ───────────────────────────────── */
+.fixed.right-4 button:hover { transform: scale(1.1); }
+.fixed.right-4 button { transition: transform 0.2s ease; }
+
+/* ─── Respect reduced motion ────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .card:hover, .glass-row:hover, .nav-tab:active { transform: none !important; }
 }

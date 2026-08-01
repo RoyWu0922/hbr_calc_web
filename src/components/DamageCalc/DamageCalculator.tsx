@@ -372,7 +372,7 @@ function ResultHeaderRow({ result }: { result: DamageResultData }) {
         </div>
         <div className="text-right flex-shrink-0 relative">
           <div className="text-xs text-text-muted">最终伤害 {copyBtn(String(Math.floor(result.postAttenuation)))}</div>
-          <div className="text-3xl font-bold text-gold num">
+          <div key={Math.floor(result.postAttenuation)} className="text-3xl font-bold text-gold num dmg-pop">
             {Math.floor(result.postAttenuation).toLocaleString('zh-CN')}</div>
           {result.attenuationApplied && (
             <div className="text-[10px] text-danger absolute -bottom-3 right-0 whitespace-nowrap">

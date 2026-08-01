@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 ~$encounter.xlsx
 .claude/settings.local.json
+
+# Cursor source packs (huge, WPF binaries — not committed)
+cursor/
