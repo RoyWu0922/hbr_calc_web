@@ -164,6 +164,16 @@ body::after {
   font-variant-numeric: tabular-nums;
 }
 
+/* Hero score number — gold gradient + glow (the damage result anchor) */
+.score-hero {
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 45%, #b45309 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.3));
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 3px; }
@@ -303,6 +313,7 @@ input[type="number"] { -moz-appearance: textfield; }
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   opacity: var(--card-opacity, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); /* top edge highlight */
   z-index: -1;
   transition: opacity 0.3s;
 }
@@ -311,6 +322,19 @@ input[type="number"] { -moz-appearance: textfield; }
   color: var(--app-text-primary);
   position: relative;
   z-index: 1;
+  padding-left: 10px;
+}
+.card-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--color-accent);
+  box-shadow: 0 0 6px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.5);
 }
 
 /* Entrance: subtle fade + rise on mount */
@@ -342,8 +366,9 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 .input-field:focus {
   outline: none;
-  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.5);
-  box-shadow: 0 0 0 3px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.12);
+  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.6);
+  box-shadow: 0 0 0 3px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.15),
+    0 0 14px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.12);
 }
 .input-label { @apply text-xs mb-1 font-medium; color: var(--app-text-primary); }
 

@@ -46,6 +46,20 @@ function AppInner() {
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const [changelog, setChangelog] = useState<ChangelogEntry | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const activeTabKey = `${primaryTab}-${subTab}-${plannerSubTab}`;
+
+  // Page transition: subtle fade + rise on tab switch (WAAPI — preserves state)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const el = mainRef.current;
+    if (el) {
+      el.animate(
+        [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 200, easing: 'ease-out' }
+      );
+    }
+  }, [activeTabKey]);
 
   // Check for unseen changelog announcement on mount
   useEffect(() => {
@@ -208,7 +222,7 @@ function AppInner() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 py-6">
+        <main ref={mainRef} className="max-w-7xl mx-auto px-4 py-6">
           {/* Use display:none to preserve component state */}
           <div style={{ display: primaryTab === 'damage' && subTab === 'calculator' ? 'block' : 'none' }}>
             <DamageCalculator initialData={historyToLoad} />
