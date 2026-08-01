@@ -25,6 +25,7 @@ const WPF_PACKS = [
   { slug: 'mahiru', label: '夏日真步', src: 'cursor/夏日真步指针程序版1.0(1)/MahoSummerCursor/Resource' },
   { slug: 'hatsune', label: '新春初音', src: 'cursor/新春初音指针程序版1.0/HatsuneNewyearCursor/Resource' },
   { slug: 'amesu', label: '爱梅斯', src: 'cursor/爱梅斯指针程序版1.0/AmesuCursor/Resource' },
+  { slug: 'kasumi', label: '新春香澄', src: 'cursor/新春香澄指针程序版1.0/KasumiNewyearCursor/Resource' },
 ];
 
 const WPF_STATES = {
@@ -84,16 +85,34 @@ async function genWpf(pack) {
 
 const REDRIVE_CFG = {
   kyouka: {
-    stand: { folder: 'Normal', offset: '60,55', interval: 60 },
-    touch: { folder: 'Link', offset: '60,55', interval: 60 },
-    text: { folder: 'Text', offset: '55,50', interval: 50 },
-    drag: { folder: 'Link', offset: '60,55', interval: 60 },
+    label: '夏日镜华',
+    src: 'cursor/夏日镜华指针程序版2.1/AnimationCursor/Animations',
+    states: {
+      stand: { folder: 'Normal', offset: '60,55', interval: 60 },
+      touch: { folder: 'Link', offset: '60,55', interval: 60 },
+      text: { folder: 'Text', offset: '55,50', interval: 50 },
+      drag: { folder: 'Link', offset: '60,55', interval: 60 },
+    },
   },
   xiaofeng: {
-    stand: { folder: 'Normal', offset: '55,50', interval: 60 },
-    touch: { folder: 'Link', offset: '80,45', interval: 60 },
-    text: { folder: 'Text', offset: '55,43', interval: 75 },
-    drag: { folder: 'Link', offset: '80,45', interval: 60 },
+    label: '小凤',
+    src: 'cursor/小凤指针程序版2.1/AnimationCursor/Animations',
+    states: {
+      stand: { folder: 'Normal', offset: '55,50', interval: 60 },
+      touch: { folder: 'Link', offset: '80,45', interval: 60 },
+      text: { folder: 'Text', offset: '55,43', interval: 75 },
+      drag: { folder: 'Link', offset: '80,45', interval: 60 },
+    },
+  },
+  sakuren: {
+    label: '新春咲恋',
+    src: 'cursor/新春咲恋指针程序版2.2/AnimationCursor/Animations',
+    states: {
+      stand: { folder: 'Normal', offset: '55,50', interval: 60 },
+      touch: { folder: 'Link', offset: '60,50', interval: 60 },
+      text: { folder: 'Text', offset: '55,50', interval: 60 },
+      drag: { folder: 'Link', offset: '60,50', interval: 60 },
+    },
   },
 };
 
@@ -128,14 +147,10 @@ for (const pack of WPF_PACKS) {
   results.push(`${pack.slug}(${pack.label}) → ${Object.keys(m.states).map(s => `${s}:${m.states[s].frames}`).join(' ')}`);
 }
 for (const [slug, meta] of Object.entries(REDRIVE_CFG)) {
-  const label = slug === 'kyouka' ? '夏日镜华' : '小凤';
-  const srcBase = slug === 'kyouka'
-    ? 'cursor/夏日镜华指针程序版2.1/AnimationCursor/Animations'
-    : 'cursor/小凤指针程序版2.1/AnimationCursor/Animations';
-  const m = await genRedrive(slug, label, srcBase, REDRIVE_CFG[slug]);
+  const m = await genRedrive(slug, meta.label, meta.src, meta.states);
   if (m) {
     await writeFile(join(OUT, slug, 'manifest.json'), JSON.stringify(m));
-    results.push(`${slug}(${label}) → ${Object.keys(m.states).map(s => `${s}:${m.states[s].frames}`).join(' ')}`);
+    results.push(`${slug}(${meta.label}) → ${Object.keys(m.states).map(s => `${s}:${m.states[s].frames}`).join(' ')}`);
   }
 }
 
@@ -148,6 +163,8 @@ const registry = {
     { slug: 'xiaofeng', label: '小凤' },
     { slug: 'hatsune', label: '新春初音' },
     { slug: 'amesu', label: '爱梅斯' },
+    { slug: 'sakuren', label: '新春咲恋' },
+    { slug: 'kasumi', label: '新春香澄' },
   ],
 };
 await mkdir(OUT, { recursive: true });

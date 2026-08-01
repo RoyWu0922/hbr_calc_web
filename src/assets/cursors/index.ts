@@ -12,6 +12,10 @@ import hatsune from './hatsune/manifest.json';
 import hatsunePreview from './hatsune/preview.webp';
 import amesu from './amesu/manifest.json';
 import amesuPreview from './amesu/preview.webp';
+import sakuren from './sakuren/manifest.json';
+import sakurenPreview from './sakuren/preview.webp';
+import kasumi from './kasumi/manifest.json';
+import kasumiPreview from './kasumi/preview.webp';
 
 export interface CursorStateSpec {
   frames: number;
@@ -40,6 +44,8 @@ export const CURSOR_PACKS: CursorPack[] = [
   { slug: 'xiaofeng', label: '小凤', manifest: xiaofeng, preview: xiaofengPreview },
   { slug: 'hatsune', label: '新春初音', manifest: hatsune, preview: hatsunePreview },
   { slug: 'amesu', label: '爱梅斯', manifest: amesu, preview: amesuPreview },
+  { slug: 'sakuren', label: '新春咲恋', manifest: sakuren, preview: sakurenPreview },
+  { slug: 'kasumi', label: '新春香澄', manifest: kasumi, preview: kasumiPreview },
 ];
 
 /** Lazy loaders for each state strip URL: path -> () => Promise<url> */
