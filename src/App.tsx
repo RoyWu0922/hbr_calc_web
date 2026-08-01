@@ -24,7 +24,7 @@ const SUB_TABS: { key: SubTab; label: string }[] = [
   { key: 'calculator', label: '伤害计算' },
   { key: 'skills', label: '技能库' },
   { key: 'history', label: '计算历史' },
-  { key: 'guide', label: '计算攻略' },
+  { key: 'guide', label: '计算指南' },
 ];
 
 export default function App() {

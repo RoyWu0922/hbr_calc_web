@@ -760,7 +760,7 @@ input[type="checkbox"]:checked::after {
 .guide-content h2 { font-size: 1.4rem; }
 .guide-content h3 { font-size: 1.2rem; }
 .guide-content h4 { font-size: 1.05rem; }
-.guide-content h5 { font-size: 0.95rem; }
+.guide-content h5 { font-size: 1.05rem; color: var(--color-accent); }
 .guide-content h6 { font-size: 0.9rem; }
 .guide-content em { font-style: italic; color: #f59e0b; }
 .guide-content strong { font-weight: 700; color: var(--color-accent); }
