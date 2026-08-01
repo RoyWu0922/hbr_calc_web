@@ -20,13 +20,20 @@ export default function CursorFollower() {
   const ringRef = useRef<HTMLDivElement>(null);
   const charRef = useRef<HTMLDivElement>(null);
   const pack = CURSOR_PACKS.find(p => p.slug === slug) ?? null;
-  const mode = pack ? 'char' : 'dot';
+  const mode = pack ? 'char' : slug === 'native' ? 'native' : 'dot';
 
   useEffect(() => {
     if (window.matchMedia('(pointer: coarse)').matches) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+    // Native mode: no custom cursor, restore system pointer
+    if (mode === 'native') {
+      document.body.classList.remove('cursor-custom', 'cursor-character', 'cursor-hover');
+      return;
+    }
+
     const isChar = mode === 'char';
+    document.body.classList.add('cursor-custom');
     const dot = dotRef.current;
     const ring = ringRef.current;
     const ch = charRef.current;
@@ -156,9 +163,12 @@ export default function CursorFollower() {
       window.removeEventListener('mousemove', onMove);
       document.documentElement.removeEventListener('mouseleave', onLeave);
       cancelAnimationFrame(raf);
-      document.body.classList.remove('cursor-character', 'cursor-hover');
+      document.body.classList.remove('cursor-custom', 'cursor-character', 'cursor-hover');
     };
   }, [mode, pack]);
+
+  // Native mode: render nothing, show the system cursor
+  if (mode === 'native') return null;
 
   return (
     <>

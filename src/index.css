@@ -57,6 +57,8 @@
   --simple-slot3: rgba(52, 211, 153, 0.08);
   --bg-dimmer: 0;
   --card-opacity: 1;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-num: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
 }
 
 [data-theme="light"] {
@@ -132,11 +134,13 @@
   --color-text-muted: var(--app-text-muted);
   --color-glass-border: var(--app-glass-border);
   --color-glass-highlight: var(--app-glass-highlight);
+  /* font-mono utility follows the custom number font so numeric displays use it globally */
+  --font-mono: var(--font-num);
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
   background: var(--app-bg);
   color: var(--app-text-primary);
   transition: background 0.3s, color 0.3s;
@@ -160,7 +164,7 @@ body::after {
 
 /* ─── Numeric display ──────────────────────────────────── */
 .num {
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
 }
 
@@ -767,9 +771,12 @@ tr[draggable="true"] td:first-child:active {
 }
 
 /* ─── Custom Cursor ─────────────────────────────────────── */
+/* Hide native cursor only while a custom cursor is active (dot or character) */
 @media (pointer: fine) {
-  body, a, button, label, select, .nav-tab, .sub-tab { cursor: none; }
-  input, textarea { cursor: text; } /* keep native I-beam for text editing */
+  body.cursor-custom, body.cursor-custom a, body.cursor-custom button,
+  body.cursor-custom label, body.cursor-custom select, body.cursor-custom .nav-tab,
+  body.cursor-custom .sub-tab { cursor: none; }
+  body.cursor-custom input, body.cursor-custom textarea { cursor: text; } /* keep I-beam */
 }
 /* Character cursor mode hides native cursor everywhere (character is the pointer) */
 body.cursor-character, body.cursor-character * { cursor: none !important; }
@@ -791,8 +798,8 @@ body.cursor-character, body.cursor-character * { cursor: none !important; }
   position: fixed;
   top: 0;
   left: 0;
-  width: 28px;
-  height: 28px;
+  width: var(--cursor-ring-size, 28px);
+  height: var(--cursor-ring-size, 28px);
   border-radius: 50%;
   border: 1.5px solid rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.5);
   z-index: 9998;
@@ -801,8 +808,8 @@ body.cursor-character, body.cursor-character * { cursor: none !important; }
   transition: opacity 0.2s, width 0.2s ease, height 0.2s ease, border-color 0.2s, background-color 0.2s;
 }
 body.cursor-hover .cursor-ring {
-  width: 44px;
-  height: 44px;
+  width: calc(var(--cursor-ring-size, 28px) + 16px);
+  height: calc(var(--cursor-ring-size, 28px) + 16px);
   border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.9);
   background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.08);
 }

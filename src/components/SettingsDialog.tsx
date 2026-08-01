@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useAppSettings } from '../utils/appSettings';
+import { useAppSettings, FONT_OPTIONS_TEXT, FONT_OPTIONS_NUM, resolveFont } from '../utils/appSettings';
 import { CURSOR_PACKS } from '../assets/cursors';
 
 const PRESETS = [
@@ -12,7 +12,7 @@ const PRESETS = [
 ];
 
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
-  const { settings, setAccent, setBackground, clearBackground, setCardOpacity, setCursorStyle } = useAppSettings();
+  const { settings, setAccent, setBackground, clearBackground, setCardOpacity, setCursorStyle, setRingSize, setFont } = useAppSettings();
   const [accent, setAccentLocal] = useState(settings.accentColor);
   const [bgUrl, setBgUrl] = useState(settings.bgImage || '');
   const [bgOpacity, setBgOpacity] = useState(settings.bgOpacity);
@@ -162,13 +162,21 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
           </div>
           <div className="flex gap-2 flex-wrap">
             <button
+              className={`w-16 h-16 rounded-lg border-2 transition-all flex flex-col items-center justify-center gap-1 ${settings.cursorStyle === 'native' ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
+              onClick={() => setCursorStyle('native')}
+              title="系统原生鼠标指针"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="opacity-70"><path d="M4 2l16 9-7 2-3 7z"/></svg>
+              <span className="text-[10px] text-text-muted">系统</span>
+            </button>
+            <button
               className={`w-16 h-16 rounded-lg border-2 transition-all flex flex-col items-center justify-center gap-1 ${settings.cursorStyle === '' ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
               onClick={() => setCursorStyle('')}
               title="默认圆点光标"
             >
               <span className="w-3 h-3 rounded-full bg-accent" />
               <span className="w-7 h-7 rounded-full border-2 border-accent/60" />
-              <span className="text-[10px] text-text-muted">默认</span>
+              <span className="text-[10px] text-text-muted">圆点</span>
             </button>
             {CURSOR_PACKS.map(p => (
               <button
@@ -182,7 +190,41 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </div>
+          <div className="flex items-center gap-3 mt-3">
+            <span className="text-xs text-text-muted whitespace-nowrap">圈大小</span>
+            <input type="range" min="16" max="48" step="1" value={settings.ringSize}
+              onChange={e => setRingSize(parseInt(e.target.value))}
+              className="flex-1"
+              style={{ accentColor: accent }}
+            />
+            <span className="text-xs text-text-muted w-10 text-right">{settings.ringSize}px</span>
+          </div>
           <p className="text-[10px] text-text-muted mt-2">选择角色后，光标会变为对应的角色形象并跟随鼠标</p>
+        </div>
+
+        {/* ── Fonts ─────────────────────────────────────────── */}
+        <div className="mt-5 pt-4 border-t" style={{ borderColor: 'var(--app-glass-border)' }}>
+          <div className="text-sm font-semibold mb-2">字体</div>
+          <div className="flex flex-col gap-3">
+            <div>
+              <div className="text-xs text-text-muted mb-1">文字字体</div>
+              <select className="input-field text-xs" value={settings.fontText} onChange={e => setFont('text', e.target.value)}>
+                {Object.entries(FONT_OPTIONS_TEXT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <div className="text-xs mt-1 opacity-70" style={{ fontFamily: resolveFont(settings.fontText, 'text') }}>
+                预览：这是测试文字 12345
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-text-muted mb-1">数字字体</div>
+              <select className="input-field text-xs" value={settings.fontNum} onChange={e => setFont('num', e.target.value)}>
+                {Object.entries(FONT_OPTIONS_NUM).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <div className="text-xs mt-1 opacity-70 num" style={{ fontFamily: resolveFont(settings.fontNum, 'num') }}>
+                预览：0123456789 12345.67
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
