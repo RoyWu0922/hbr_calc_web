@@ -34,7 +34,30 @@ export interface CursorPack {
   label: string;
   manifest: CursorManifest;
   preview: string; // static preview image URL
+  /** animated sprite packs (strips) vs static single-image portraits (duelo) */
+  kind?: 'animated' | 'static';
+  /** for static packs: image file name served from /duelo/ */
+  image?: string;
+  /** for static packs: source image dimensions */
+  imgW?: number;
+  imgH?: number;
 }
+
+import dueloManifest from './dueloManifest.json';
+
+const dueloPacks: CursorPack[] = (dueloManifest.images as { name: string; file: string; w: number; h: number }[]).map(img => {
+  const short = img.name.replace(/^Duel_/, '').replace(/Default$/, '');
+  return {
+    slug: 'duelo-' + short,
+    label: img.name,
+    manifest: { label: img.name, states: {} },
+    preview: img.file, // served from public/duelo/
+    kind: 'static',
+    image: img.file,
+    imgW: img.w,
+    imgH: img.h,
+  };
+});
 
 export const CURSOR_PACKS: CursorPack[] = [
   { slug: 'yuni', label: '优妮', manifest: yuni, preview: yuniPreview },
@@ -46,6 +69,7 @@ export const CURSOR_PACKS: CursorPack[] = [
   { slug: 'amesu', label: '爱梅斯', manifest: amesu, preview: amesuPreview },
   { slug: 'sakuren', label: '新春咲恋', manifest: sakuren, preview: sakurenPreview },
   { slug: 'kasumi', label: '新春香澄', manifest: kasumi, preview: kasumiPreview },
+  ...dueloPacks,
 ];
 
 /** Lazy loaders for each state strip URL: path -> () => Promise<url> */

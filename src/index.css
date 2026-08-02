@@ -852,8 +852,9 @@ tr[draggable="true"] td:first-child:active {
   body.cursor-custom .sub-tab { cursor: none; }
   body.cursor-custom input, body.cursor-custom textarea { cursor: text; } /* keep I-beam */
 }
-/* Character cursor mode hides native cursor everywhere (character is the pointer) */
-body.cursor-character, body.cursor-character * { cursor: none !important; }
+/* Character / static cursor modes hide native cursor everywhere (they are the pointer) */
+body.cursor-character, body.cursor-character *,
+body.cursor-static, body.cursor-static * { cursor: none !important; }
 .cursor-dot {
   position: fixed;
   top: 0;
@@ -899,6 +900,18 @@ body.cursor-hover .cursor-ring {
   z-index: 9999;
   opacity: 0;
   transition: opacity 0.15s;
+}
+.cursor-static-el {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 77px;
+  width: auto;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.15s;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
 }
 
 /* ─── Damage number pop on change ───────────────────────── */

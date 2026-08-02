@@ -169,5 +169,25 @@ const registry = {
 };
 await mkdir(OUT, { recursive: true });
 await writeFile(join(OUT, 'registry.json'), JSON.stringify(registry, null, 2));
-console.log(results.join('\n'));
+
+// ─── Duelo static portraits (single images) ────────────────────
+// WebP served from public/duelo/ (not bundled); manifest in src/assets/cursors
+const DUELO_SRC = 'cursor/duelo';
+const DUELO_WEB = 'public/duelo';
+const DUELO_DISP_H = 110; // display height in px
+await mkdir(DUELO_WEB, { recursive: true });
+const dueloImages = [];
+for (const f of (await readdir(DUELO_SRC)).filter(f => /\.png$/i.test(f)).sort()) {
+  const outFile = f.replace(/\.png$/i, '.webp');
+  const meta = await sharp(join(DUELO_SRC, f)).metadata();
+  const h = Math.min(DUELO_DISP_H * 2, meta.height || 220); // 2x for retina
+  await sharp(join(DUELO_SRC, f))
+    .resize({ height: h, withoutEnlargement: true })
+    .webp({ quality: 80 })
+    .toFile(join(DUELO_WEB, outFile));
+  dueloImages.push({ name: f.replace(/\.png$/i, ''), file: outFile, w: meta.width || 500, h: meta.height || 752 });
+}
+await writeFile(join(OUT, 'dueloManifest.json'), JSON.stringify({ label: 'Duel', dispH: DUELO_DISP_H, images: dueloImages }, null, 2));
+console.log(`duelo: ${dueloImages.length} static portraits → public/duelo/`);
+
 console.log('done');

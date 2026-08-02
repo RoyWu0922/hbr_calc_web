@@ -17,6 +17,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const [bgUrl, setBgUrl] = useState(settings.bgImage || '');
   const [bgOpacity, setBgOpacity] = useState(settings.bgOpacity);
   const [cardOpacity, setCardOpacityLocal] = useState(settings.cardOpacity);
+  const [cursorOpen, setCursorOpen] = useState(true);
   const [warning, setWarning] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -152,45 +153,21 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* ── Mouse Cursor ──────────────────────────────────── */}
+        {/* ── Mouse Cursor (collapsible) ───────────────────── */}
         <div className="mt-5 pt-4 border-t" style={{ borderColor: 'var(--app-glass-border)' }}>
-          <div className="text-sm font-semibold mb-2">
+          <button
+            className="text-sm font-semibold mb-2 flex items-center gap-1.5 w-full"
+            onClick={() => setCursorOpen(o => !o)}
+          >
+            <span className="text-text-muted text-xs transition-transform" style={{ transform: cursorOpen ? 'rotate(90deg)' : 'none' }}>▶</span>
             鼠标指针
             <span className="font-normal text-xs text-gray-400">
               (别问为什么是pcr的, 没找到烧的指针)
             </span>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              className={`w-16 h-16 rounded-lg border-2 transition-all flex flex-col items-center justify-center gap-1 ${settings.cursorStyle === 'native' ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
-              onClick={() => setCursorStyle('native')}
-              title="系统原生鼠标指针"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="opacity-70"><path d="M4 2l16 9-7 2-3 7z"/></svg>
-              <span className="text-[10px] text-text-muted">系统</span>
-            </button>
-            <button
-              className={`w-16 h-16 rounded-lg border-2 transition-all flex flex-col items-center justify-center gap-1 ${settings.cursorStyle === '' ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
-              onClick={() => setCursorStyle('')}
-              title="默认圆点光标"
-            >
-              <span className="w-3 h-3 rounded-full bg-accent" />
-              <span className="w-7 h-7 rounded-full border-2 border-accent/60" />
-              <span className="text-[10px] text-text-muted">圆点</span>
-            </button>
-            {CURSOR_PACKS.map(p => (
-              <button
-                key={p.slug}
-                className={`w-16 h-16 rounded-lg border-2 transition-all flex flex-col items-center justify-center gap-0.5 overflow-hidden ${settings.cursorStyle === p.slug ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
-                onClick={() => setCursorStyle(p.slug)}
-                title={p.label}
-              >
-                <img src={p.preview} alt={p.label} className="w-10 h-10 object-contain" draggable={false} />
-                <span className="text-[10px] text-text-muted leading-none">{p.label}</span>
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-3 mt-3">
+          </button>
+          {cursorOpen && (
+          <>
+          <div className="flex items-center gap-3 mb-2">
             <span className="text-xs text-text-muted whitespace-nowrap">圈大小</span>
             <input type="range" min="16" max="48" step="1" value={settings.ringSize}
               onChange={e => setRingSize(parseInt(e.target.value))}
@@ -199,6 +176,39 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             />
             <span className="text-xs text-text-muted w-10 text-right">{settings.ringSize}px</span>
           </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              className={`w-14 h-16 rounded-lg border-2 transition-all flex items-center justify-center ${settings.cursorStyle === 'native' ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
+              onClick={() => setCursorStyle('native')}
+              title="系统原生鼠标指针"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="opacity-70"><path d="M4 2l16 9-7 2-3 7z"/></svg>
+            </button>
+            <button
+              className={`w-14 h-16 rounded-lg border-2 transition-all flex items-center justify-center gap-1 ${settings.cursorStyle === '' ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
+              onClick={() => setCursorStyle('')}
+              title="默认圆点光标"
+            >
+              <span className="w-3 h-3 rounded-full bg-accent" />
+              <span className="w-7 h-7 rounded-full border-2 border-accent/60" />
+            </button>
+            {CURSOR_PACKS.map(p => (
+              <button
+                key={p.slug}
+                className={`w-14 h-16 rounded-lg border-2 transition-all flex items-center justify-center overflow-hidden ${settings.cursorStyle === p.slug ? 'border-accent bg-accent/10' : 'border-transparent hover:border-white/20'}`}
+                onClick={() => setCursorStyle(p.slug)}
+                title={p.label}
+              >
+                {p.kind === 'static' ? (
+                  <img src={import.meta.env.BASE_URL + 'duelo/' + p.preview} alt={p.label} className="h-14 w-auto object-contain" draggable={false} />
+                ) : (
+                  <img src={p.preview} alt={p.label} className="w-9 h-9 object-contain" draggable={false} />
+                )}
+              </button>
+            ))}
+          </div>
+          </>
+          )}
           <p className="text-[10px] text-text-muted mt-2">选择角色后，光标会变为对应的角色形象并跟随鼠标</p>
         </div>
 
