@@ -694,6 +694,9 @@ function DetailTable({
   const odBlockBg2 = 'rgba(147,51,234,0.12)';
   const odBlockBg3 = 'rgba(234,88,12,0.10)';
 
+  // Display option dropdown (破坏/追击/遭遇战/ex打分)
+  const [showOpts, setShowOpts] = useState(false);
+
   // Skill search
   const [skillSearch, setSkillSearch] = useState('');
   const [showSkillSearch, setShowSkillSearch] = useState(false);
@@ -719,31 +722,43 @@ function DetailTable({
             value={String(odMode)} onChange={e => setState({ ...state, odMode: parseInt(e.target.value) as ODMode })}>
             {odOptionsFor(exScore).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showBreak: !showBreak })}>
-            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showBreak ? 'bg-accent border-accent' : 'toggle-off'}`}>
-              {showBreak && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </div>
-            破坏
-          </label>
-          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showPursuit: !showPursuit })}>
-            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showPursuit ? 'bg-accent border-accent' : 'toggle-off'}`}>
-              {showPursuit && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </div>
-            追击
-          </label>
-          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showEncounter: !showEncounter })}>
-            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showEncounter ? 'bg-accent border-accent' : 'toggle-off'}`}>
-              {showEncounter && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </div>
-            遭遇战
-          </label>
-          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-accent" title="ex打分：OD上限500/200，新增OD4/OD5回合"
-            onClick={() => { const nextEx = !exScore; setState({ ...state, exScore: nextEx, odMode: migrateODMode(nextEx, odMode) as ODMode }); }}>
-            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${exScore ? 'bg-accent border-accent' : 'toggle-off'}`}>
-              {exScore && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </div>
-            ex打分
-          </label>
+          <div className="relative">
+            <button className={`btn btn-xs px-1.5 ${showOpts ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setShowOpts(o => !o)} title="显示选项">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            {showOpts && (
+              <div className="absolute right-0 top-full mt-1 z-30 rounded-lg border p-2 flex flex-col gap-1.5 min-w-[110px] shadow-lg"
+                style={{ background: 'var(--app-bg)', borderColor: 'var(--app-glass-border)' }}>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showBreak: !showBreak })}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showBreak ? 'bg-accent border-accent' : 'toggle-off'}`}>
+                    {showBreak && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  破坏
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showPursuit: !showPursuit })}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showPursuit ? 'bg-accent border-accent' : 'toggle-off'}`}>
+                    {showPursuit && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  追击
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showEncounter: !showEncounter })}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showEncounter ? 'bg-accent border-accent' : 'toggle-off'}`}>
+                    {showEncounter && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  遭遇战
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] text-accent" title="ex打分：OD上限500/200，新增OD4/OD5回合"
+                  onClick={() => { const nextEx = !exScore; setState({ ...state, exScore: nextEx, odMode: migrateODMode(nextEx, odMode) as ODMode }); }}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${exScore ? 'bg-accent border-accent' : 'toggle-off'}`}>
+                    {exScore && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  ex打分
+                </label>
+              </div>
+            )}
+          </div>
           <button className={`btn btn-xs px-1.5 ${deleteMode ? (delStart != null && delEnd != null ? 'bg-red-500/30 text-red-400' : 'bg-red-400/20 text-red-400') : 'btn-secondary'}`}
             title={deleteMode ? (delStart != null && delEnd != null ? '点击删除选中区间' : '点击回合标记起止点') : '区间删除'}
             onClick={() => {
@@ -1902,7 +1917,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
               <select className="input-field text-xs py-0.5 w-20 ml-1" value={style} onChange={e => setStyle(e.target.value as PlannerStyleName)}>
                 {Object.keys(PLANNER_STYLES).map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-              <button className="btn btn-secondary btn-xs ml-1 px-2" title="重置" onClick={() => {
+              <button className="btn btn-secondary btn-xs ml-1 px-2 h-10" title="重置" onClick={() => {
                 if (confirm('确定重置排轴？所有未保存的内容将丢失。')) {
                   setState({ ...createDefaultState(), turns: syncNormalLabels(createDefaultState().turns) });
                 }
@@ -1911,7 +1926,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
                   <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
               </button>
-              <button className="btn btn-primary btn-xs ml-1 px-2" title="保存到记录" onClick={async () => {
+              <button className="btn btn-primary btn-xs ml-1 px-2 h-10" title="保存到记录" onClick={async () => {
                 const label = axleTitle.trim() || new Date().toLocaleString('zh-CN');
                 if (loadedAxleId != null) {
                   await updateAxle(loadedAxleId, label, state, axleScore, axleTurns, simpleAuthor, simpleNotes);
@@ -1921,13 +1936,13 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
                   alert('已保存');
                 }
               }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                   <polyline points="17 21 17 13 7 13 7 21"/>
                   <polyline points="7 3 7 8 15 8"/>
                 </svg>
               </button>
-              <button className="btn btn-secondary btn-xs ml-1 px-2" title="新建排轴"
+              <button className="btn btn-secondary btn-xs ml-1 px-2 h-10" title="新建排轴"
                 onClick={async () => {
                   if (state.turns.length > 1 && confirm('当前有排轴数据，是否保存后再新建？')) {
                     const label = axleTitle.trim() || new Date().toLocaleString('zh-CN');

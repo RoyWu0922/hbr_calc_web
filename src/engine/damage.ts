@@ -4,7 +4,7 @@ import {
   ScoreParams,
   DamageResultData, DamageInput,
 } from '../types';
-import { BUFF_SKILLS, DEBUFF_SKILLS, WEAKNESS_SKILLS, getScoreData, getTurnCoeff } from './skillDb';
+import { BUFF_SKILLS, DEBUFF_SKILLS, WEAKNESS_SKILLS, getScoreData, getTurnCoeff, getExTurnCoeff } from './skillDb';
 
 // ─── Helpers ─────────────────────────────────────────────────
 function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)); }
@@ -454,15 +454,18 @@ export function calcScore(damage: number, params: ScoreParams, bonusDmg = 0): {
 
   const scoreData = getScoreData(difficulty);
   const threshold = thresholdOverride || scoreData.threshold;
-  const baseScore = params.baseScoreOverride || scoreData.base;
-  const turnCoeff = getTurnCoeff(turns);
-  const shieldScore = hasShield ? scoreData.shield : 0;
+  // ex打分: base score fixed at 10w, ex turn coefficient, no shield score
+  const baseScore = params.exScore ? (params.baseScoreOverride ?? 100000) : (params.baseScoreOverride || scoreData.base);
+  const turnCoeff = params.exScore ? getExTurnCoeff(turns) : getTurnCoeff(turns);
+  const shieldScore = hasShield && !params.exScore ? scoreData.shield : 0;
 
   const totalDmg = damage * (targets || 1) + bonusDmg;
   // 伤害未达阈值 → 线性；达到阈值 → 对数
-  const damageScore = totalDmg < threshold
+  // ex打分: damage score scaled /10000 (score in 万 units)
+  const rawDmgScore = totalDmg < threshold
     ? damageCoeff * totalDmg
     : damageCoeff * (threshold * Math.log(totalDmg / threshold) + threshold);
+  const damageScore = params.exScore ? rawDmgScore / 10000 : rawDmgScore;
 
   const totalScore = (baseScore + damageScore + shieldScore) * turnCoeff * modifier;
 
@@ -718,9 +721,9 @@ export function reverseCalcScore(
   const { difficulty, turns, hasShield, damageCoeff, thresholdOverride, modifier, targets } = params;
   const scoreData = getScoreData(difficulty);
   const threshold = thresholdOverride || scoreData.threshold;
-  const baseScore = params.baseScoreOverride || scoreData.base;
-  const turnCoeff = getTurnCoeff(turns);
-  const shieldScore = hasShield ? scoreData.shield : 0;
+  const baseScore = params.exScore ? (params.baseScoreOverride ?? 100000) : (params.baseScoreOverride || scoreData.base);
+  const turnCoeff = params.exScore ? getExTurnCoeff(turns) : getTurnCoeff(turns);
+  const shieldScore = hasShield && !params.exScore ? scoreData.shield : 0;
   const t = targets || 1;
 
   // totalScore = (baseScore + damageScore + shieldScore) * turnCoeff * modifier
@@ -729,9 +732,11 @@ export function reverseCalcScore(
   if (damageScore <= 0) return null;
 
   // damageScore = damageCoeff * (threshold * ln(totalDmg / threshold) + threshold)
+  // ex打分: forward damage score is /10000, so reverse uses rawDmgScore = damageScore * 10000
   // totalDmg = damage * targets + bonusDmg
   // => damage = (threshold * exp(...) - bonusDmg) / targets
-  const totalDmg = threshold * Math.exp((damageScore / damageCoeff - threshold) / threshold);
+  const rawDmgScore = params.exScore ? damageScore * 10000 : damageScore;
+  const totalDmg = threshold * Math.exp((rawDmgScore / damageCoeff - threshold) / threshold);
   let requiredDamage = (totalDmg - bonusDmg) / t;
   if (requiredDamage <= 0) return null;
 

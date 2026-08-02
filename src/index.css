@@ -543,6 +543,35 @@ tr { transition: background 0.2s; }
   transition: opacity 0.3s;
 }
 
+/* ─── iOS-style Switch ─────────────────────────────────── */
+.switch {
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+.switch-on {
+  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.9);
+  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.9);
+}
+.switch-knob {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.switch-on .switch-knob { left: 16px; }
+
 /* ─── Toggle / Checkbox ────────────────────────────────── */
 input[type="checkbox"] {
   appearance: none;

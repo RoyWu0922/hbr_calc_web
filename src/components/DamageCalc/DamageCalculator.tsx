@@ -15,6 +15,7 @@ import { encodeShareData, decodeShareData } from '../../utils/shareUrl';
 import DamageResult from './DamageResult';
 import ImageInfoTip from '../ImageInfoTip';
 import FloatingBiasCalc from '../FloatingBiasCalc';
+import Switch from '../Switch';
 import saPic from '/SA_pic.png';
 
 const defaultSkill: SkillInput = {
@@ -36,6 +37,20 @@ const defaultBonus: BonusArea = { passiveAtkEntries: [], passiveDefEntries: [], 
 const defaultOD: ODParams = { origHit: 0, addHit: 0, fixedOD: 0, earringCoeff: 0 };
 const defaultBreak: BreakParams = { skillDR: 0, enemyDR: 0, origHits: 0, earring: 0, necklace: 0, otherDR: 0, superChain: 0, bigChain: 0, midChain: 0, smallChain: 0, maxDR: undefined, initDR: undefined, dists: [] };
 const defaultScore: ScoreParams = { difficulty: 40, turns: 2, hasShield: true, damageCoeff: 0.01, modifier: 1.35, targets: 1 };
+
+/** Migrate odMul between normal (1.1/1.2/1.3) and ex (1.5/2.5/3/3.5/4) scales */
+function migrateODMul(exOd: boolean, odMul: number): number {
+  if (exOd) {
+    if (odMul === 1.1) return 1.5;
+    if (odMul === 1.2) return 2.5;
+    if (odMul === 1.3) return 3;
+    return odMul;
+  }
+  if (odMul === 1.5) return 1.1;
+  if (odMul === 2.5) return 1.2;
+  if (odMul === 3) return 1.3;
+  return 1.0;
+}
 
 function buildLookup(builtins: any[], category: 'buff' | 'debuff' | 'weakness') {
   const deleted = getDeletedBuiltins(category); const overrides = getBuiltinOverrides(category);
@@ -79,6 +94,7 @@ export default function DamageCalculator({ initialData }: Props) {
     return raw < 50 ? raw * 100 : raw;
   });
   const [odMul, setOdMul] = useState(init?.odMul ?? 1);
+  const [exOd, setExOd] = useState(false);
   const [floatVal, setFloatVal] = useState(init?.floatVal ?? 1);
   const [bonusDmg, setBonusDmg] = useState(init?.bonusDmg ?? 0);
   const [superChainHits, setSuperChainHits] = useState(init?.superChainHits ?? 0);
@@ -212,6 +228,21 @@ export default function DamageCalculator({ initialData }: Props) {
   const updateSkill = (k: keyof SkillInput, v: unknown) => setSkill(s => ({ ...s, [k]: v }));
   const updateScore = (k: keyof ScoreParams, v: unknown) => setScore(s => ({ ...s, [k]: v }));
 
+  // ex打分 toggle: apply ex defaults (threshold 20亿, coeff 1, modifier 3), revert on off
+  const toggleScoreEx = () => {
+    const next = !score.exScore;
+    updateScore('exScore', next);
+    if (next) {
+      updateScore('damageCoeff', 1);
+      updateScore('modifier', 3);
+      updateScore('thresholdOverride', 2000000000);
+    } else {
+      updateScore('damageCoeff', defaultScore.damageCoeff);
+      updateScore('modifier', defaultScore.modifier);
+      updateScore('thresholdOverride', undefined);
+    }
+  };
+
   const atkSum = calcPassiveAtkSum(bonus);
   const defSum = calcPassiveDefSum(bonus);
   const critSum = bonus.critDmgExtraEntries.reduce((s, e) => s + e.value, 0);
@@ -307,17 +338,38 @@ export default function DamageCalculator({ initialData }: Props) {
           skill={skill} updateSkill={updateSkill} atkSum={atkSum} defSum={defSum} critSum={critSum} earringBonus={earringBonus} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="其它乘区" defaultOpen={false}>
+      <CollapsibleSection title={
+        <span className="flex items-center justify-between w-full gap-3">
+          <span>其它乘区</span>
+          <span className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+            <span className="text-xs text-text-muted">ex打分</span>
+            <Switch value={exOd} onChange={() => { const next = !exOd; setOdMul(migrateODMul(next, odMul)); setExOd(next); }} />
+          </span>
+        </span>
+      } defaultOpen={false}>
         <div className="grid grid-cols-4 gap-3">
           <Field label="连击 (例: 3特大=(1+3*0.5)=2.5)" value={chainMul} onChange={setChainMul} step={0.01} />
           <Field label="破坏率%" value={breakMul} onChange={setBreakMul} step={1} />
           <div>
             <div className="input-label">OD</div>
             <select className="input-field" value={odMul} onChange={e => setOdMul(parseFloat(e.target.value))}>
-              <option value={1}>无</option>
-              <option value={1.1}>1OD (1.1x)</option>
-              <option value={1.2}>2OD (1.2x)</option>
-              <option value={1.3}>3OD (1.3x)</option>
+              {exOd ? (
+                <>
+                  <option value={1}>无</option>
+                  <option value={1.5}>1OD (1.5x)</option>
+                  <option value={2.5}>2OD (2.5x)</option>
+                  <option value={3}>3OD (3x)</option>
+                  <option value={3.5}>4OD (3.5x)</option>
+                  <option value={4}>5OD (4x)</option>
+                </>
+              ) : (
+                <>
+                  <option value={1}>无</option>
+                  <option value={1.1}>1OD (1.1x)</option>
+                  <option value={1.2}>2OD (1.2x)</option>
+                  <option value={1.3}>3OD (1.3x)</option>
+                </>
+              )}
             </select>
           </div>
           <Field label="浮动(0.9~1.1)" value={floatVal} onChange={setFloatVal} step={0.01} />
@@ -331,7 +383,15 @@ export default function DamageCalculator({ initialData }: Props) {
         </div>
       )}
 
-      <CollapsibleSection title={<span>打分计算 <ImageInfoTip src={saPic} alt="打分计算说明" /></span>} defaultOpen={false}>
+      <CollapsibleSection title={
+        <span className="flex items-center justify-between w-full gap-3">
+          <span>打分计算 <ImageInfoTip src={saPic} alt="打分计算说明" /></span>
+          <span className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+            <span className="text-xs text-text-muted">ex打分</span>
+            <Switch value={!!score.exScore} onChange={toggleScoreEx} />
+          </span>
+        </span>
+      } defaultOpen={false}>
         <ScoreSection score={score} updateScore={updateScore} bonusDmg={bonusDmg} setBonusDmg={setBonusDmg} />
       </CollapsibleSection>
 
@@ -640,12 +700,14 @@ function ScoreSection({ score, updateScore, bonusDmg, setBonusDmg }: {
 }) {
   return (
     <div className="grid grid-cols-8 gap-2 items-end">
-      <div>
-        <div className="input-label">难度</div>
-        <select className="input-field text-xs py-1.5" value={score.difficulty} onChange={e => updateScore('difficulty', parseInt(e.target.value))}>
-          {Object.keys(SCORE_TABLE).map(k => <option key={k} value={k}>{k}</option>)}
-        </select>
-      </div>
+      {!score.exScore && (
+        <div>
+          <div className="input-label">难度</div>
+          <select className="input-field text-xs py-1.5" value={score.difficulty} onChange={e => updateScore('difficulty', parseInt(e.target.value))}>
+            {Object.keys(SCORE_TABLE).map(k => <option key={k} value={k}>{k}</option>)}
+          </select>
+        </div>
+      )}
       <div>
         <div className="input-label">回合</div>
         <select className="input-field text-xs py-1.5" value={score.turns} onChange={e => updateScore('turns', parseInt(e.target.value))}>
@@ -677,10 +739,12 @@ function ScoreSection({ score, updateScore, bonusDmg, setBonusDmg }: {
         <input className="input-field text-xs py-1.5" type="number" value={bonusDmg || ''}
           onChange={e => { const v = e.target.value; setBonusDmg(v === '' ? 0 : parseFloat(v) || 0); }} />
       </div>
-      <div>
-        <div className="input-label">&nbsp;</div>
-        <Toggle label="盾分" value={score.hasShield} onChange={v => updateScore('hasShield', v)} />
-      </div>
+      {!score.exScore && (
+        <div>
+          <div className="input-label">&nbsp;</div>
+          <Toggle label="盾分" value={score.hasShield} onChange={v => updateScore('hasShield', v)} />
+        </div>
+      )}
     </div>
   );
 }

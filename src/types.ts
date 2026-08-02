@@ -136,6 +136,7 @@ export interface ScoreParams {
   modifier: number; // 词条
   baseScoreOverride?: number;
   targets: number; // 目标数，默认1
+  exScore?: boolean; // ex打分：回合系数改用 ex 公式，无盾分
 }
 
 // ─── Turn Planner ───────────────────────────────────────────

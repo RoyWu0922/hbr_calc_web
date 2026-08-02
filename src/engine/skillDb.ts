@@ -123,3 +123,11 @@ export function getScoreData(difficulty: number) {
 export function getTurnCoeff(turns: number): number {
   return TURN_COEFF[turns] || 1.0;
 }
+
+/** ex打分 turn coefficient: 1-5t=2, 6-10t each -0.01, 11-30t each -0.03, 31t+=1 */
+export function getExTurnCoeff(turns: number): number {
+  if (turns <= 5) return 2;
+  if (turns <= 10) return 2 - 0.01 * (turns - 5);
+  if (turns <= 30) return 2 - 0.01 * 5 - 0.03 * (turns - 10);
+  return 1;
+}

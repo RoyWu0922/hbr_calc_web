@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import ImageInfoTip from '../ImageInfoTip';
+import Switch from '../Switch';
 import saPic from '/SA_pic.png';
 import defensePic from '/defense.png';
 import { calcScore, calcBreakDetail, calcEncounterScore, calcIncomingDamage } from '../../engine/damage';
@@ -208,29 +209,55 @@ function QuickScoreCard() {
   const [hasShield, setHasShield] = useState(true);
   const [modifier, setModifier] = useState(1.35);
   const [thresholdOverride, setThresholdOverride] = useState<number | undefined>(undefined);
+  const [exScore, setExScore] = useState(false);
   const [open, setOpen] = useState(false);
+
+  // ex打分 toggle: apply ex defaults (threshold 20亿, coeff 1, modifier 3), revert on off
+  const toggleEx = () => {
+    const next = !exScore;
+    setExScore(next);
+    if (next) {
+      setDamageCoeff(1);
+      setModifier(3);
+      setThresholdOverride(2000000000);
+    } else {
+      setDamageCoeff(0.01);
+      setModifier(1.35);
+      setThresholdOverride(undefined);
+    }
+  };
 
   const result = useMemo(() => {
     if (!totalDmg) return null;
     return calcScore(totalDmg, {
       difficulty: diff, turns, hasShield, damageCoeff, modifier, targets: 1,
-      thresholdOverride,
+      thresholdOverride, exScore,
     });
-  }, [totalDmg, damageCoeff, diff, turns, hasShield, modifier, thresholdOverride]);
+  }, [totalDmg, damageCoeff, diff, turns, hasShield, modifier, thresholdOverride, exScore]);
 
   return (
     <div className="card border-gold/20">
-      <CollapseHeader title={<span>便捷打分计算（直接输入伤害）<ImageInfoTip src={saPic} alt="打分计算说明" /></span>} open={open} setOpen={setOpen} />
+      <CollapseHeader title={
+        <span className="flex items-center justify-between w-full gap-3">
+          <span>便捷打分计算（直接输入伤害）<ImageInfoTip src={saPic} alt="打分计算说明" /></span>
+          <span className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+            <span className="text-xs text-text-muted">ex打分</span>
+            <Switch value={exScore} onChange={toggleEx} />
+          </span>
+        </span>
+      } open={open} setOpen={setOpen} />
       {open && (<>
       <div className="flex gap-3 mb-3 items-end flex-wrap">
         <Field label="总伤" value={totalDmg} onChange={v => setTotalDmg(v)} />
         <Field label="伤害系数" value={damageCoeff} onChange={v => setDamageCoeff(v)} step={0.001} />
+        {!exScore && (
         <div>
           <div className="input-label">难度</div>
           <select className="input-field text-xs py-1.5" value={diff} onChange={e => setDiff(parseInt(e.target.value))}>
             {Object.keys(SCORE_TABLE).map(k => <option key={k} value={k}>{k}</option>)}
           </select>
         </div>
+        )}
         <div>
           <div className="input-label">回合</div>
           <select className="input-field text-xs py-1.5" value={turns} onChange={e => setTurns(parseInt(e.target.value))}>
@@ -244,7 +271,7 @@ function QuickScoreCard() {
             value={thresholdOverride ?? ''}
             onChange={e => setThresholdOverride(e.target.value ? parseFloat(e.target.value) : undefined)} />
         </div>
-        <Toggle label="盾分" value={hasShield} onChange={setHasShield} />
+        {!exScore && <Toggle label="盾分" value={hasShield} onChange={setHasShield} />}
       </div>
       {result && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-slate-700/50">
