@@ -31,3 +31,4 @@ cursor/
 # Tutorial source (local only — regenerate guide.html via scripts/gen-guide.mjs)
 public/tutorial/*.md
 public/tutorial/*.png
+public/tutorial/.obsidian/
