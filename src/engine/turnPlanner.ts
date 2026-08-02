@@ -19,7 +19,9 @@ export function computeTurnPlanner(state: TurnPlannerState): ComputedTurnResult[
     totalBossDR += turn.bossDR;
 
     const odLevel = getODLevel(turn.roundLabel);
-    const odCost = odLevel ? (odMode / 3) * odLevel : 0;
+    // ex打分 has 5 OD levels (cap 500/200), normal has 3 (cap 300/120)
+    const maxODLevel = state.exScore ? 5 : 3;
+    const odCost = odLevel ? (odMode / maxODLevel) * odLevel : 0;
 
     // ── SP ────────────────────────────────────────────────
     for (const fa of turn.frontActions) {
@@ -75,6 +77,8 @@ export function computeTurnPlanner(state: TurnPlannerState): ComputedTurnResult[
 function isODRound(label: string): boolean { return label.includes('OD'); }
 
 function getODLevel(label: string): number {
+  if (label.includes('OD5')) return 5;
+  if (label.includes('OD4')) return 4;
   if (label.includes('OD3')) return 3;
   if (label.includes('OD2')) return 2;
   if (label.includes('OD1')) return 1;
@@ -98,6 +102,7 @@ export function createDefaultState(): TurnPlannerState {
     showBreak: false,
     showEncounter: false,
     showPursuit: false,
+    exScore: false,
     characters: [emptyChar, emptyChar, emptyChar, emptyChar, emptyChar, emptyChar] as TurnPlannerState['characters'],
     turns: defaultTurns,
   };

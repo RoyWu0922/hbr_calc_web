@@ -475,10 +475,27 @@ const OD_MODE_OPTIONS = [
   { value: '120', label: 'Hit数(120)' },
 ] as const;
 
+const EX_OD_MODE_OPTIONS = [
+  { value: '500', label: '百分比(500%)' },
+  { value: '200', label: 'Hit数(200)' },
+] as const;
+
+/** OD cap values for the given mode (normal vs ex打分) */
+function odOptionsFor(exScore: boolean) {
+  return exScore ? EX_OD_MODE_OPTIONS : OD_MODE_OPTIONS;
+}
+/** Migrate odMode between normal (300/120) and ex (500/200) scales */
+function migrateODMode(exScore: boolean, odMode: number): number {
+  if (exScore) return odMode === 300 ? 500 : odMode === 120 ? 200 : odMode;
+  return odMode === 500 ? 300 : odMode === 200 ? 120 : odMode;
+}
+
 function isODRound(label: string): boolean { return label.includes('OD'); }
 function isExtraRound(label: string): boolean { return label.includes('追加'); }
 
 function getODLevel(label: string): number {
+  if (label.includes('OD5')) return 5;
+  if (label.includes('OD4')) return 4;
   if (label.includes('OD3')) return 3;
   if (label.includes('OD2')) return 2;
   if (label.includes('OD1')) return 1;
@@ -503,9 +520,13 @@ function turnTypeToLabel(type: string, normalNum: number): string {
     case 'od1pre': return '前置OD1';
     case 'od2pre': return '前置OD2';
     case 'od3pre': return '前置OD3';
+    case 'od4pre': return '前置OD4';
+    case 'od5pre': return '前置OD5';
     case 'od1post': return '后置OD1';
     case 'od2post': return '后置OD2';
     case 'od3post': return '后置OD3';
+    case 'od4post': return '后置OD4';
+    case 'od5post': return '后置OD5';
     default: return String(normalNum);
   }
 }
@@ -573,7 +594,7 @@ function DetailTable({
   setState: (s: TurnPlannerState) => void;
   computed: ComputedTurnResult[];
 }) {
-  const { characters, turns, odMode, showBreak, showEncounter, showPursuit } = state;
+  const { characters, turns, odMode, showBreak, showEncounter, showPursuit, exScore } = state;
 
   const updateChar = (i: number, fn: (c: typeof characters[number]) => typeof characters[number]) => {
     const next = [...characters] as typeof characters;
@@ -696,7 +717,7 @@ function DetailTable({
           <span className="text-[10px] text-text-muted">OD</span>
           <select className="input-field text-[10px] py-0.5 w-28"
             value={String(odMode)} onChange={e => setState({ ...state, odMode: parseInt(e.target.value) as ODMode })}>
-            {OD_MODE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {odOptionsFor(exScore).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-text-muted" onClick={() => setState({ ...state, showBreak: !showBreak })}>
             <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showBreak ? 'bg-accent border-accent' : 'toggle-off'}`}>
@@ -715,6 +736,13 @@ function DetailTable({
               {showEncounter && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
             </div>
             遭遇战
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-accent" title="ex打分：OD上限500/200，新增OD4/OD5回合"
+            onClick={() => { const nextEx = !exScore; setState({ ...state, exScore: nextEx, odMode: migrateODMode(nextEx, odMode) as ODMode }); }}>
+            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${exScore ? 'bg-accent border-accent' : 'toggle-off'}`}>
+              {exScore && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            ex打分
           </label>
           <button className={`btn btn-xs px-1.5 ${deleteMode ? (delStart != null && delEnd != null ? 'bg-red-500/30 text-red-400' : 'bg-red-400/20 text-red-400') : 'btn-secondary'}`}
             title={deleteMode ? (delStart != null && delEnd != null ? '点击删除选中区间' : '点击回合标记起止点') : '区间删除'}
@@ -1010,6 +1038,14 @@ function DetailTable({
                       <option value="od1post">后置OD1</option>
                       <option value="od2post">后置OD2</option>
                       <option value="od3post">后置OD3</option>
+                      {exScore && (
+                        <>
+                          <option value="od4pre">前置OD4</option>
+                          <option value="od5pre">前置OD5</option>
+                          <option value="od4post">后置OD4</option>
+                          <option value="od5post">后置OD5</option>
+                        </>
+                      )}
                     </select>
                   </td>
 

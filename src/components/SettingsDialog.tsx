@@ -17,7 +17,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const [bgUrl, setBgUrl] = useState(settings.bgImage || '');
   const [bgOpacity, setBgOpacity] = useState(settings.bgOpacity);
   const [cardOpacity, setCardOpacityLocal] = useState(settings.cardOpacity);
-  const [cursorOpen, setCursorOpen] = useState(true);
+  const [cursorOpen, setCursorOpen] = useState(false);
   const [warning, setWarning] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -162,7 +162,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             <span className="text-text-muted text-xs transition-transform" style={{ transform: cursorOpen ? 'rotate(90deg)' : 'none' }}>▶</span>
             鼠标指针
             <span className="font-normal text-xs text-gray-400">
-              (别问为什么是pcr的, 没找到烧的指针)
+              (别问为什么只有pcr是动态的, 没找到烧的指针)
             </span>
           </button>
           {cursorOpen && (

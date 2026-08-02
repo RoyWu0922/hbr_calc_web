@@ -175,6 +175,7 @@ export interface TurnPlannerState {
   showBreak: boolean;         // 是否显示破坏输入
   showEncounter: boolean;     // 是否显示遭遇战phase
   showPursuit: boolean;       // 是否显示追击
+  exScore: boolean;           // ex打分模式：OD上限500/200，额外OD4/OD5回合
   characters: [TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar];
   turns: PlannerTurn[];
 }
