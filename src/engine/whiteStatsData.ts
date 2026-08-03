@@ -255,6 +255,10 @@ export const CHAR_GROWTH: CharGrowth[] = [
     minPow: 9, maxPow: 214, minDex: 7, maxDex: 206,
     minTough: 8, maxTough: 210, minSpr: 8, maxSpr: 210,
     minWis: 8, maxWis: 212, minLuck: 8, maxLuck: 208 },
+  { fullId: "4400073", shortId: "073", name: "成濑 光",
+    minPow: 8, maxPow: 211, minDex: 8, maxDex: 212,
+    minTough: 7, maxTough: 207, minSpr: 7, maxSpr: 207,
+    minWis: 8, maxWis: 212, minLuck: 8, maxLuck: 211 },
 ];
 
 export const AS_BONUSES: Record<string, Bonus6> = {
