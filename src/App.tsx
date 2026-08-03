@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import DamageCalculator from './components/DamageCalc/DamageCalculator';
 import HistoryPage from './components/History/HistoryPage';
 import SkillDatabase from './components/SkillDb/SkillDatabase';
@@ -25,6 +25,13 @@ const SUB_TABS: { key: SubTab; label: string }[] = [
   { key: 'skills', label: '技能库' },
   { key: 'history', label: '计算历史' },
   { key: 'guide', label: '计算指南' },
+];
+
+const PRIMARY_TABS: { key: PrimaryTab; label: string; fullLabel: string; icon: ReactNode }[] = [
+  { key: 'damage', label: '伤害', fullLabel: '伤害计算', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg> },
+  { key: 'white', label: '白值', fullLabel: '白值计算', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg> },
+  { key: 'extra', label: '功能', fullLabel: '额外功能', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
+  { key: 'planner', label: '排轴', fullLabel: '排轴', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> },
 ];
 
 export default function App() {
@@ -165,23 +172,23 @@ function AppInner() {
           已复制到剪贴板
         </div>
         <header className="glass-header sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+          <div className="max-w-7xl mx-auto px-3 md:px-4 py-2 md:py-3">
+          <div className="flex items-center gap-2 md:gap-4">
             <h1 className="text-lg font-bold whitespace-nowrap" style={{ color: 'var(--app-text-primary)' }}>HBR Toolbox</h1>
-            <nav className="flex gap-1.5">
-              <button onClick={() => switchPrimary('damage')} className={`nav-tab ${primaryTab === 'damage' ? 'active' : ''}`}>伤害计算</button>
-              <button onClick={() => switchPrimary('white')} className={`nav-tab ${primaryTab === 'white' ? 'active' : ''}`}>白值计算</button>
-              <button onClick={() => switchPrimary('extra')} className={`nav-tab ${primaryTab === 'extra' ? 'active' : ''}`}>额外功能</button>
-              <button onClick={() => switchPrimary('planner')} className={`nav-tab ${primaryTab === 'planner' ? 'active' : ''}`}>排轴</button>
+            <nav className="hidden md:flex gap-1.5">
+              {PRIMARY_TABS.map(t => (
+                <button key={t.key} onClick={() => switchPrimary(t.key)} className={`nav-tab ${primaryTab === t.key ? 'active' : ''}`}>{t.fullLabel}</button>
+              ))}
             </nav>
             {primaryTab === 'damage' && (
-              <div className="flex gap-1 ml-2 border-l border-white/10 pl-3">
+              <div className="hidden md:flex gap-1 ml-2 border-l border-white/10 pl-3">
                 {SUB_TABS.map(t => (
                   <button key={t.key} onClick={() => setSubTab(t.key)} className={`sub-tab text-xs ${subTab === t.key ? 'active' : ''}`}>{t.label}</button>
                 ))}
               </div>
             )}
             {primaryTab === 'planner' && (
-              <div className="flex gap-1 ml-2 border-l border-white/10 pl-3">
+              <div className="hidden md:flex gap-1 ml-2 border-l border-white/10 pl-3">
                 <button onClick={() => setPlannerSubTab('editor')} className={`sub-tab text-xs ${plannerSubTab === 'editor' ? 'active' : ''}`}>排轴编辑</button>
                 <button onClick={() => setPlannerSubTab('saved')} className={`sub-tab text-xs ${plannerSubTab === 'saved' ? 'active' : ''}`}>轴表记录</button>
               </div>
@@ -222,9 +229,23 @@ function AppInner() {
               {theme === 'dark' ? '' : ''}
             </button>
           </div>
+          {/* Mobile sub-tabs: horizontal scroll row */}
+          {(primaryTab === 'damage' || primaryTab === 'planner') && (
+            <div className="md:hidden flex gap-1 mt-1 overflow-x-auto whitespace-nowrap -mx-1 px-1">
+              {primaryTab === 'damage' ? SUB_TABS.map(t => (
+                <button key={t.key} onClick={() => setSubTab(t.key)} className={`sub-tab text-xs ${subTab === t.key ? 'active' : ''}`}>{t.label}</button>
+              )) : (
+                <>
+                  <button onClick={() => setPlannerSubTab('editor')} className={`sub-tab text-xs ${plannerSubTab === 'editor' ? 'active' : ''}`}>排轴编辑</button>
+                  <button onClick={() => setPlannerSubTab('saved')} className={`sub-tab text-xs ${plannerSubTab === 'saved' ? 'active' : ''}`}>轴表记录</button>
+                </>
+              )}
+            </div>
+          )}
+          </div>
         </header>
 
-        <main ref={mainRef} className="max-w-7xl mx-auto px-4 py-6">
+        <main ref={mainRef} className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 pb-24 md:pb-6">
           {/* Use display:none to preserve component state */}
           <div style={{ display: primaryTab === 'damage' && subTab === 'calculator' ? 'block' : 'none' }}>
             <DamageCalculator initialData={historyToLoad} />
@@ -269,8 +290,20 @@ function AppInner() {
         {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
         {changelog && <ChangelogDialog entry={changelog} onClose={(dontShowAgain) => { if (dontShowAgain) markAnnouncementSeen(changelog.id); setChangelog(null); }} />}
         <CursorFollower />
+        {/* Mobile bottom navigation */}
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t" style={{ borderTop: '1px solid var(--app-header-border)', background: 'var(--app-header-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="grid grid-cols-4 max-w-lg mx-auto">
+            {PRIMARY_TABS.map(t => (
+              <button key={t.key} onClick={() => switchPrimary(t.key)}
+                className={`flex flex-col items-center justify-center gap-0.5 py-2.5 ${primaryTab === t.key ? 'text-accent' : 'text-text-muted'}`}>
+                {t.icon}
+                <span className="text-[10px] leading-none">{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
         {/* Scroll buttons */}
-        <div className="fixed right-4 bottom-4 flex flex-col gap-1 z-40">
+        <div className="fixed right-4 bottom-20 md:bottom-4 flex flex-col gap-1 z-40">
           <button className="btn btn-secondary btn-xs w-7 h-7 flex items-center justify-center p-0 opacity-50 hover:opacity-100"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title="回到顶部">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>

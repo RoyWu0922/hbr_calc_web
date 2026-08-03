@@ -303,7 +303,7 @@ export default function DamageCalculator({ initialData }: Props) {
       </div>
 
       <CollapsibleSection title="敌方属性" defaultOpen>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="敌方属性" value={skill.enemyAttr} onChange={v => updateSkill('enemyAttr', v)} />
           <Field label="武器弱点" value={skill.weaponWeak} onChange={v => updateSkill('weaponWeak', v)} step={0.1} />
           <Field label="属性弱点" value={skill.elementWeak} onChange={v => updateSkill('elementWeak', v)} step={0.1} />
@@ -319,21 +319,21 @@ export default function DamageCalculator({ initialData }: Props) {
           onRemove={i => setBuffs(buffs.filter((_, j) => j !== i))} type="buff" enemyAttr={skill.enemyAttr} />
       </CollapsibleSection>
 
-      <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen={false}>
+      <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen>
         <SkillListCard skills={debuffs} lookup={buildLookup(DEBUFF_SKILLS, 'debuff')}
           onUpdate={(i, s) => { const n = [...debuffs]; n[i] = s as DebuffSkill; setDebuffs(n); }}
           onAdd={() => setDebuffs([...debuffs, emptyDebuff()])}
           onRemove={i => setDebuffs(debuffs.filter((_, j) => j !== i))} type="debuff" enemyAttr={skill.enemyAttr} />
       </CollapsibleSection>
 
-      <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen={false}>
+      <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen>
         <SkillListCard skills={weaknesses} lookup={buildLookup(WEAKNESS_SKILLS, 'weakness')}
           onUpdate={(i, s) => { const n = [...weaknesses]; n[i] = s as WeaknessSkill; setWeaknesses(n); }}
           onAdd={() => setWeaknesses([...weaknesses, emptyWeakness()])}
           onRemove={i => setWeaknesses(weaknesses.filter((_, j) => j !== i))} type="weakness" enemyAttr={skill.enemyAttr} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="被动加攻/减防 & 装备" defaultOpen={false}>
+      <CollapsibleSection title="被动加攻/减防 & 装备" defaultOpen>
         <BonusSection bonus={bonus} setBonus={setBonus} equipment={equipment} setEquipment={setEquipment}
           skill={skill} updateSkill={updateSkill} atkSum={atkSum} defSum={defSum} critSum={critSum} earringBonus={earringBonus} />
       </CollapsibleSection>
@@ -346,8 +346,8 @@ export default function DamageCalculator({ initialData }: Props) {
             <Switch value={exOd} onChange={() => { const next = !exOd; setOdMul(migrateODMul(next, odMul)); setExOd(next); }} />
           </span>
         </span>
-      } defaultOpen={false}>
-        <div className="grid grid-cols-4 gap-3">
+      } defaultOpen>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Field label="连击 (例: 3特大=(1+3*0.5)=2.5)" value={chainMul} onChange={setChainMul} step={0.01} />
           <Field label="破坏率%" value={breakMul} onChange={setBreakMul} step={1} />
           <div>
@@ -391,7 +391,7 @@ export default function DamageCalculator({ initialData }: Props) {
             <Switch value={!!score.exScore} onChange={toggleScoreEx} />
           </span>
         </span>
-      } defaultOpen={false}>
+      } defaultOpen>
         <ScoreSection score={score} updateScore={updateScore} bonusDmg={bonusDmg} setBonusDmg={setBonusDmg} />
       </CollapsibleSection>
 
@@ -466,7 +466,7 @@ function SkillParamsSection({ skill, updateSkill, result }: {
         <Field label="Hit数" value={skill.hitCount} onChange={v => updateSkill('hitCount', v)} />
         <Toggle label="暴击" value={skill.isCrit} onChange={v => updateSkill('isCrit', v)} />
       </div>
-      <div className="grid grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
         <Field label="宝珠" value={skill.orb} onChange={v => updateSkill('orb', v)} />
         <Field label="偏向(例: 月哥王ub打hp=2)" value={skill.deviation} onChange={v => updateSkill('deviation', v)} step={0.1} />
         <Field label="Token" value={skill.token} onChange={v => updateSkill('token', v)} step={0.1} />
@@ -526,7 +526,7 @@ function SkillListCard({ skills, lookup, onUpdate, onAdd, onRemove, type, enemyA
           const showMin = !isBuff && (skill.minPower !== undefined);
           return (
             <div key={i} className="glass-row p-2.5">
-              <div className="flex items-end gap-1.5">
+              <div className="flex items-end gap-1.5 flex-wrap">
                 <select className="input-field text-xs py-1.5" style={{ width: 133, flexShrink: 0 }} value={skill.name}
                   onChange={e => {
                     const found = lookup.find(s => s.name === e.target.value);
@@ -699,7 +699,7 @@ function ScoreSection({ score, updateScore, bonusDmg, setBonusDmg }: {
   bonusDmg: number; setBonusDmg: (v: number) => void;
 }) {
   return (
-    <div className="grid grid-cols-8 gap-2 items-end">
+    <div className="grid grid-cols-4 md:grid-cols-8 gap-2 items-end">
       {!score.exScore && (
         <div>
           <div className="input-label">难度</div>
