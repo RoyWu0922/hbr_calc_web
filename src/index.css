@@ -964,3 +964,18 @@ body.cursor-hover .cursor-ring {
   }
   .card:hover, .glass-row:hover, .nav-tab:active { transform: none !important; }
 }
+
+/* ── MedalRecord ───────────────────────────── */
+.rank-arc { position: relative; flex-shrink: 0; }
+.rank-arc-label {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.rank-arc-rank { font-size: 16px; font-weight: 800; line-height: 1;
+  color: var(--app-text-primary); letter-spacing: 0.02em; }
+
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 60; display: flex; align-items: center;
+  justify-content: center; padding: 1rem;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}

@@ -5,6 +5,7 @@ import SkillDatabase from './components/SkillDb/SkillDatabase';
 import GuidePage from './components/Guide/GuidePage';
 import ExtraFeatures from './components/ExtraFeatures/ExtraFeatures';
 import WhiteStats from './components/WhiteStats/WhiteStats';
+import MaxStatsCalculator from './components/WhiteStats/MaxStatsCalculator';
 import TurnPlanner from './components/TurnPlanner/TurnPlanner';
 import AuthDialog from './components/AuthDialog';
 import SettingsDialog from './components/SettingsDialog';
@@ -30,8 +31,9 @@ const SUB_TABS: { key: SubTab; label: string }[] = [
 const PRIMARY_TABS: { key: PrimaryTab; label: string; fullLabel: string; icon: ReactNode }[] = [
   { key: 'damage', label: '伤害', fullLabel: '伤害计算', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg> },
   { key: 'white', label: '白值', fullLabel: '白值计算', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg> },
+   { key: 'planner', label: '排轴', fullLabel: '排轴', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> },
   { key: 'extra', label: '功能', fullLabel: '额外功能', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
-  { key: 'planner', label: '排轴', fullLabel: '排轴', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> },
+ 
 ];
 
 export default function App() {
@@ -46,6 +48,8 @@ function AppInner() {
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('damage');
   const [subTab, setSubTab] = useState<SubTab>('calculator');
   const [plannerSubTab, setPlannerSubTab] = useState<'editor' | 'saved'>('editor');
+  const [extraSubTab, setExtraSubTab] = useState<'tools' | 'progress'>('tools');
+  const [whiteSubTab, setWhiteSubTab] = useState<'calc' | 'max'>('calc');
   const [historyToLoad, setHistoryToLoad] = useState<CalcHistoryEntry | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
@@ -96,7 +100,7 @@ function AppInner() {
   const checkCloud = async () => {
     if (!user) return;
     const { supabase } = await import('./utils/supabase');
-    const tables = ['calc_history', 'planner_axles', 'white_stats'];
+    const tables = ['calc_history', 'planner_axles', 'white_stats', 'medal_records'];
     let newCount = 0;
     for (const t of tables) {
       const { data } = await supabase.from(t).select('timestamp').eq('user_id', user.id).order('timestamp', { ascending: false }).limit(1);
@@ -193,6 +197,18 @@ function AppInner() {
                 <button onClick={() => setPlannerSubTab('saved')} className={`sub-tab text-xs ${plannerSubTab === 'saved' ? 'active' : ''}`}>轴表记录</button>
               </div>
             )}
+            {primaryTab === 'extra' && (
+              <div className="hidden md:flex gap-1 ml-2 border-l border-white/10 pl-3">
+                <button onClick={() => setExtraSubTab('tools')} className={`sub-tab text-xs ${extraSubTab === 'tools' ? 'active' : ''}`}>额外计算</button>
+                <button onClick={() => setExtraSubTab('progress')} className={`sub-tab text-xs ${extraSubTab === 'progress' ? 'active' : ''}`}>进度记录</button>
+              </div>
+            )}
+            {primaryTab === 'white' && (
+              <div className="hidden md:flex gap-1 ml-2 border-l border-white/10 pl-3">
+                <button onClick={() => setWhiteSubTab('calc')} className={`sub-tab text-xs ${whiteSubTab === 'calc' ? 'active' : ''}`}>白值计算</button>
+                <button onClick={() => setWhiteSubTab('max')} className={`sub-tab text-xs ${whiteSubTab === 'max' ? 'active' : ''}`}>顶配计算器</button>
+              </div>
+            )}
             <div className="flex-1" />
             <button className="btn btn-secondary btn-sm flex items-center gap-1" onClick={() => setShowSettings(true)} title="外观设置">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -230,14 +246,24 @@ function AppInner() {
             </button>
           </div>
           {/* Mobile sub-tabs: horizontal scroll row */}
-          {(primaryTab === 'damage' || primaryTab === 'planner') && (
+          {(primaryTab === 'damage' || primaryTab === 'planner' || primaryTab === 'extra' || primaryTab === 'white') && (
             <div className="md:hidden flex gap-1 mt-1 overflow-x-auto whitespace-nowrap -mx-1 px-1">
               {primaryTab === 'damage' ? SUB_TABS.map(t => (
                 <button key={t.key} onClick={() => setSubTab(t.key)} className={`sub-tab text-xs ${subTab === t.key ? 'active' : ''}`}>{t.label}</button>
-              )) : (
+              )) : primaryTab === 'planner' ? (
                 <>
                   <button onClick={() => setPlannerSubTab('editor')} className={`sub-tab text-xs ${plannerSubTab === 'editor' ? 'active' : ''}`}>排轴编辑</button>
                   <button onClick={() => setPlannerSubTab('saved')} className={`sub-tab text-xs ${plannerSubTab === 'saved' ? 'active' : ''}`}>轴表记录</button>
+                </>
+              ) : primaryTab === 'extra' ? (
+                <>
+                  <button onClick={() => setExtraSubTab('tools')} className={`sub-tab text-xs ${extraSubTab === 'tools' ? 'active' : ''}`}>功能</button>
+                  <button onClick={() => setExtraSubTab('progress')} className={`sub-tab text-xs ${extraSubTab === 'progress' ? 'active' : ''}`}>进度记录</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => setWhiteSubTab('calc')} className={`sub-tab text-xs ${whiteSubTab === 'calc' ? 'active' : ''}`}>白值计算</button>
+                  <button onClick={() => setWhiteSubTab('max')} className={`sub-tab text-xs ${whiteSubTab === 'max' ? 'active' : ''}`}>顶配计算器</button>
                 </>
               )}
             </div>
@@ -257,11 +283,14 @@ function AppInner() {
             <HistoryPage onLoad={(entry) => { setHistoryToLoad(entry); setSubTab('calculator'); setPrimaryTab('damage'); }} />
           )}
           {primaryTab === 'damage' && subTab === 'guide' && <GuidePage />}
-          <div style={{ display: primaryTab === 'white' ? 'block' : 'none' }}>
+          <div style={{ display: primaryTab === 'white' && whiteSubTab === 'calc' ? 'block' : 'none' }}>
             <WhiteStats />
           </div>
+          <div style={{ display: primaryTab === 'white' && whiteSubTab === 'max' ? 'block' : 'none' }}>
+            <MaxStatsCalculator />
+          </div>
           <div style={{ display: primaryTab === 'extra' ? 'block' : 'none' }}>
-            <ExtraFeatures />
+            <ExtraFeatures sub={extraSubTab} />
           </div>
           <div style={{ display: primaryTab === 'planner' ? 'block' : 'none' }}>
             <TurnPlanner mode={plannerSubTab} onSwitchToEditor={() => setPlannerSubTab('editor')} />

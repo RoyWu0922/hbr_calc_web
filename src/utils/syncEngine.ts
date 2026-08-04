@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { openDB } from 'idb';
+import { MEDAL_CUSTOM_KEY, readMedalStore, writeMedalStore } from './medalStorage';
 
 // Tables: calc_history, planner_axles, white_stats
 // Each has: uuid TEXT UNIQUE, user_id UUID, data JSONB, timestamp BIGINT, deleted BOOLEAN
@@ -211,6 +212,56 @@ async function syncCustomSkills() {
   } catch (e) { console.error('syncCustomSkills failed:', e); }
 }
 
+// Medal progress records sync (localStorage, single row per user)
+// Whole-store newer-wins merge (like custom_skills), plus the custom char roster.
+async function syncMedalRecords() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const local = readMedalStore();
+    const localCustom = JSON.parse(localStorage.getItem(MEDAL_CUSTOM_KEY) || '[]');
+    const localTs = local?.updatedAt || 0;
+    const localHasContent = !!local && Object.keys(local.records).length > 0;
+
+    const { data: cloud } = await supabase.from('medal_records').select('*').eq('user_id', user.id).maybeSingle();
+    const cloudTs = cloud?.updated_at || 0;
+    const payload: any = cloud?.data || {};
+    const cloudStore = payload.store || null;
+    const cloudCustom = payload.customChars || [];
+    const cloudHasContent = !!cloudStore && Object.keys(cloudStore.records || {}).length > 0;
+
+    const pushLocal = async () => {
+      await supabase.from('medal_records').upsert({
+        user_id: user.id,
+        data: { store: local, customChars: localCustom },
+        updated_at: localTs || Date.now(),
+      }, { onConflict: 'user_id' });
+    };
+
+    if (!localHasContent && !cloudHasContent) return;
+
+    if (cloudHasContent && !localHasContent) {
+      if (localTs > 0) { await pushLocal(); return; } // intentional deletion → push empty
+      writeMedalStore(cloudStore);
+      localStorage.setItem(MEDAL_CUSTOM_KEY, JSON.stringify(cloudCustom));
+      return;
+    }
+
+    if (localHasContent && !cloudHasContent) {
+      await pushLocal(); // first sync
+      return;
+    }
+
+    // Both have content → newer side wins (whole-store)
+    if (localTs >= cloudTs) {
+      await pushLocal();
+    } else {
+      writeMedalStore(cloudStore);
+      localStorage.setItem(MEDAL_CUSTOM_KEY, JSON.stringify(cloudCustom));
+    }
+  } catch (e) { console.error('syncMedalRecords failed:', e); }
+}
+
 async function syncFolders() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -259,6 +310,7 @@ export async function uploadAll() {
     await uploadTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
     await uploadTable('white_stats', 'history', 'hbr-white-stats');
     await syncCustomSkills();
+    await syncMedalRecords();
   } finally { releaseLock(); }
 }
 
@@ -270,6 +322,7 @@ export async function pullAll() {
     await pullTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
     await pullTable('white_stats', 'history', 'hbr-white-stats');
     await syncCustomSkills();
+    await syncMedalRecords();
   } finally { releaseLock(); }
 }
 

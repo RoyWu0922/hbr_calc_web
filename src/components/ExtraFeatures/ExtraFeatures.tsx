@@ -7,6 +7,8 @@ import { calcScore, calcBreakDetail, calcEncounterScore, calcIncomingDamage } fr
 import { SCORE_TABLE, TURN_COEFF } from '../../engine/skillDb';
 import { BreakParams } from '../../types';
 import { copyToClipboard } from '../../utils/copyToast';
+import { useMedalRecords } from '../../utils/medalStorage';
+import MedalRecord from '../MedalRecord/MedalRecord';
 
 function fmt(n: number): string { return Math.floor(n).toLocaleString('zh-CN'); }
 function fmtDec(n: number, d = 2): string { return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d }); }
@@ -21,17 +23,84 @@ function CollapseHeader({ title, open, setOpen }: { title: React.ReactNode; open
   );
 }
 
-export default function ExtraFeatures() {
+export default function ExtraFeatures({ sub }: { sub: 'tools' | 'progress' }) {
+  const [progressMode, setProgressMode] = useState<'medal' | 'jewel'>('medal');
+  const medalStore = useMedalRecords();
+  const importRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        if (!parsed || !parsed.records || typeof parsed.records !== 'object') {
+          alert('导入失败: 文件格式不正确');
+          return;
+        }
+        medalStore.importRecords(parsed);
+        alert('导入成功');
+      } catch {
+        alert('导入失败: 无法解析 JSON');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold">额外功能</h2>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ODCalculator />
-        <BreakCalculator />
+      <div style={{ display: sub === 'tools' ? 'block' : 'none' }}>
+        <h2 className="text-xl font-bold">额外功能</h2>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ODCalculator />
+          <BreakCalculator />
+        </div>
+        <QuickScoreCard />
+        <EncounterCalc />
+        <IncomingDamageCalc />
       </div>
-      <QuickScoreCard />
-      <EncounterCalc />
-      <IncomingDamageCalc />
+
+      <div style={{ display: sub === 'progress' ? 'block' : 'none' }} className="space-y-4">
+        {/* 全局记录切换器：每份记录 = 独立的勋章/宝玉进度 */}
+        <div className="card p-2 flex items-center gap-1.5 flex-wrap">
+          {medalStore.records.map(r => (
+            <button key={r.id} onClick={() => medalStore.switchRecord(r.id)}
+              className={r.id === medalStore.activeId ? 'btn btn-accent btn-sm' : 'btn btn-secondary btn-sm'}>
+              {r.name}
+            </button>
+          ))}
+          <div className="flex-1" />
+          <button className="btn btn-secondary btn-sm px-2" onClick={() => medalStore.createRecord()} title="新增记录">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button className="btn btn-secondary btn-sm px-2" onClick={() => { const n = prompt('重命名记录', medalStore.activeName); if (n) medalStore.renameRecord(medalStore.activeId, n); }} title="重命名">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </button>
+          <button className="btn btn-secondary btn-sm px-2" onClick={medalStore.downloadRecords} title="导出为 JSON">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button className="btn btn-secondary btn-sm px-2" onClick={() => importRef.current?.click()} title="从 JSON 导入">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
+          <input ref={importRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
+          {medalStore.records.length > 1 && (
+            <button className="btn btn-secondary btn-sm px-2" onClick={() => { if (confirm(`删除记录「${medalStore.activeName}」？`)) medalStore.deleteRecord(medalStore.activeId); }} title="删除">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>
+          )}
+        </div>
+        <div className="flex gap-1.5">
+          <button onClick={() => setProgressMode('medal')} className={`sub-tab text-xs ${progressMode === 'medal' ? 'active' : ''}`}>勋章</button>
+          <button onClick={() => setProgressMode('jewel')} className={`sub-tab text-xs ${progressMode === 'jewel' ? 'active' : ''}`}>宝玉</button>
+        </div>
+        <div style={{ display: progressMode === 'medal' ? 'block' : 'none' }}>
+          <MedalRecord mode="medal" store={medalStore} />
+        </div>
+        <div style={{ display: progressMode === 'jewel' ? 'block' : 'none' }}>
+          <MedalRecord mode="jewel" store={medalStore} />
+        </div>
+      </div>
     </div>
   );
 }
