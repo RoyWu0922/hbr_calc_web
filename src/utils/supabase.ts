@@ -5,10 +5,24 @@ const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZi
 
 export const supabase = createClient(URL, KEY, { auth: { autoRefreshToken: true, persistSession: true } });
 
-export function toEmail(name: string) { return name.trim().toLowerCase() + '@hbrcalc.dev'; }
+/** Convert a username to an ASCII-safe Supabase email.
+ *  Pure-ASCII names stay as-is (preserves existing accounts).
+ *  Non-ASCII (Chinese) names are base64-encoded into the local part. */
+export function toEmail(name: string) {
+  const n = name.trim().toLowerCase();
+  if (/^[a-z0-9._-]+$/.test(n)) return n + '@hbrcalc.dev';
+  const bytes = new TextEncoder().encode(n);
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  const b64 = btoa(bin).replace(/[+/=]/g, '_');
+  return b64 + '@hbrcalc.dev';
+}
 
 export async function authSignUp(username: string, password: string) {
-  const { error } = await supabase.auth.signUp({ email: toEmail(username), password });
+  const { error } = await supabase.auth.signUp({
+    email: toEmail(username), password,
+    options: { data: { username: username.trim() } },
+  });
   return error?.message || null;
 }
 

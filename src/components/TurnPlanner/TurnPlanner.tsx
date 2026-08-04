@@ -1282,13 +1282,13 @@ function SimpleTable({
     try {
       const html2canvas = (await import('../../utils/html2canvas.esm.js')).default;
       const canvas = await html2canvas(el, {
-        backgroundColor: '#ffffff',
+        // Match the current app theme (not forced light)
+        backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
         scale: 2,
         useCORS: true,
         logging: false,
         onclone(_clonedDoc: Document) {
-          // Set light theme
-          _clonedDoc.documentElement.setAttribute('data-theme', 'light');
+          // Keep the current theme so the export matches the 简轴 display
           // Force vertical center in table cells (html2canvas sometimes misaligns)
           const fixCss = _clonedDoc.createElement('style');
           fixCss.textContent = [
