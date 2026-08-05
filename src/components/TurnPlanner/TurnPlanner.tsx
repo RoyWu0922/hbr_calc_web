@@ -1656,7 +1656,11 @@ function SavedAxles({
 
   const handleExport = async () => {
     const all = await getAllAxles();
-    const json = JSON.stringify(all, null, 2);
+    // 有勾选的轴时只导出勾选的轴，否则导出全部
+    const toExport = selectedIds.size > 0
+      ? all.filter(a => a.id != null && selectedIds.has(a.id))
+      : all;
+    const json = JSON.stringify(toExport, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
