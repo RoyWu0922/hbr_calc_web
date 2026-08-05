@@ -7,7 +7,7 @@ import BadgeChecklist from './BadgeChecklist';
 import JewelView from './JewelView';
 
 type SortKey = 'default' | 'rank' | 'count' | 'team' | 'cat';
-type ProgressKey = 'all' | 'none' | 'partial' | 'done' | 'min';
+type ProgressKey = 'all' | 'none' | 'partial' | 'done' | 'min' | 'rankmin';
 
 export default function MedalRecord({ mode, store }: { mode: 'medal' | 'jewel'; store: MedalRecordStore }) {
   const { record, setCat, setJewel, customChars, addCharacter, removeCharacter } = store;
@@ -17,6 +17,8 @@ export default function MedalRecord({ mode, store }: { mode: 'medal' | 'jewel'; 
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('default');
   const [sortCat, setSortCat] = useState(medalData.checklist[0].key);
+  const [rankMinText, setRankMinText] = useState('');
+  const rankMin = parseInt(rankMinText, 10); // NaN when empty → no rank filter
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newTeam, setNewTeam] = useState('');
@@ -29,11 +31,13 @@ export default function MedalRecord({ mode, store }: { mode: 'medal' | 'jewel'; 
       if (team !== 'all' && ch.team !== team) return false;
       if (query && !(ch.name.includes(query) || ch.enName.toLowerCase().includes(query.toLowerCase()))) return false;
       const rec = record[String(ch.id)] || { cats: {}, jewels: {} };
-      const { count, total } = charBadgeSummary(rec.cats ?? {}, medalData, ch.enName);
+      const bs = charBadgeSummary(rec.cats ?? {}, medalData, ch.enName);
+      const { count, total } = bs;
       if (progress === 'none' && count !== 0) return false;
       if (progress === 'partial' && (count === 0 || count === total)) return false;
       if (progress === 'done' && count !== total) return false;
       if (progress === 'min' && count < minCount) return false;
+      if (progress === 'rankmin' && !Number.isNaN(rankMin) && calcRankInfo(bs.sum, medalData.rankThresholds).rank < rankMin) return false;
       return true;
     });
     const score = (ch: typeof allChars[number]) => {
@@ -63,7 +67,7 @@ export default function MedalRecord({ mode, store }: { mode: 'medal' | 'jewel'; 
       });
     }
     return list;
-  }, [allChars, team, progress, minCount, query, sort, sortCat, record, mode, orderBy]);
+  }, [allChars, team, progress, minCount, query, sort, sortCat, rankMin, record, mode, orderBy]);
 
   const overall = useMemo(() => {
     // Reflects the currently filtered set (team/search/progress) — e.g. team filter → that team's completion
@@ -109,7 +113,7 @@ export default function MedalRecord({ mode, store }: { mode: 'medal' | 'jewel'; 
               <div className="h-full rounded-full" style={{ width: `${mode === 'medal' ? overall.badgePct : overall.jewelPct}%`, background: 'var(--color-accent)' }} />
             </div>
             <div className="text-xs text-text-muted mt-1">
-              {mode === 'medal' ? `${overall.done}/${overall.totalValid} 档完成` : `${overall.learned}/${overall.jewelTotal} 宝玉习得`}
+              {mode === 'medal' ? `${overall.done}/${overall.totalValid} ` : `${overall.learned}/${overall.jewelTotal} 宝玉习得`}
             </div>
           </div>
           <div className="text-4xl font-extrabold text-accent shrink-0 leading-none">
@@ -132,35 +136,40 @@ export default function MedalRecord({ mode, store }: { mode: 'medal' | 'jewel'; 
         )}
       </div>
 
-      <div className="card p-3 flex flex-wrap items-center gap-2">
-        <select className="input-field" value={team} onChange={e => setTeam(e.target.value)}>
+      <div className="card p-3 flex flex-nowrap items-center gap-2 overflow-x-auto">
+        <select className="input-field input-inline shrink-0" value={team} onChange={e => setTeam(e.target.value)}>
           <option value="all">全部队伍</option>
           {teamOptions.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select className="input-field" value={progress} onChange={e => setProgress(e.target.value as ProgressKey)}>
+        <select className="input-field input-inline shrink-0" value={progress} onChange={e => setProgress(e.target.value as ProgressKey)}>
           <option value="all">全部进度</option>
           <option value="none">未开始</option>
           <option value="partial">进行中</option>
           <option value="done">{mode === 'medal' ? '已满勋章' : '已全宝玉'}</option>
           <option value="min">完成 ≥ N 项</option>
+          <option value="rankmin">Rank≥N</option>
         </select>
         {progress === 'min' && (
-          <input type="number" min={0} className="input-field w-24" value={minCount}
+          <input type="number" min={0} className="input-field input-inline w-24 shrink-0" value={minCount}
             onChange={e => setMinCount(Number(e.target.value))} />
         )}
-        <input className="input-field flex-1 min-w-[140px]" placeholder="搜索角色名" value={query} onChange={e => setQuery(e.target.value)} />
-        <select className="input-field" value={sort} onChange={e => setSort(e.target.value as SortKey)}>
-          <option value="default">默认排序(BadgeReward)</option>
+        {progress === 'rankmin' && (
+          <input type="number" min={1} max={15} className="input-field input-inline w-16 shrink-0" value={rankMinText} placeholder="≥"
+            onChange={e => setRankMinText(e.target.value)} />
+        )}
+        <select className="input-field input-inline shrink-0" value={sort} onChange={e => setSort(e.target.value as SortKey)}>
+          <option value="default">默认排序</option>
           <option value="rank">按 Rank 降序</option>
           <option value="count">{mode === 'medal' ? '按完成数降序' : '按习得数降序'}</option>
           <option value="team">按队伍+名字</option>
           <option value="cat">按分类完成数</option>
         </select>
         {sort === 'cat' && (
-          <select className="input-field" value={sortCat} onChange={e => setSortCat(e.target.value)}>
+          <select className="input-field input-inline shrink-0" value={sortCat} onChange={e => setSortCat(e.target.value)}>
             {medalData.checklist.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
         )}
+        <input className="input-field input-inline ml-auto w-9 shrink-0" placeholder="搜索角色名" value={query} onChange={e => setQuery(e.target.value)} />
       </div>
 
       <div ref={contentRef}>

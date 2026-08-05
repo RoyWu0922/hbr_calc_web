@@ -374,6 +374,8 @@ input[type="number"] { -moz-appearance: textfield; }
   box-shadow: 0 0 0 3px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.15),
     0 0 14px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.12);
 }
+/* 进度记录筛选栏的下拉框：内容自适应宽度，不再占满整行 */
+.input-field.input-inline { width: auto; }
 .input-label { @apply text-xs mb-1 font-medium; color: var(--app-text-primary); }
 
 select.input-field {
