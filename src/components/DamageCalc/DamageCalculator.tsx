@@ -337,7 +337,7 @@ export default function DamageCalculator({ initialData }: Props) {
                   <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${advanced.hideWhiteBonus ? 'bg-accent border-accent' : 'toggle-off'}`}>
                     {advanced.hideWhiteBonus && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
-                  隐藏全部白值加成填写框
+                  隐藏白值加成
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-text-muted"
                   onClick={() => setAdvanced(a => ({ ...a, manualSkill: !a.manualSkill }))}>
