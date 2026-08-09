@@ -115,6 +115,11 @@ export default function DamageCalculator({ initialData }: Props) {
       setSuperChainHits(d.superChainHits ?? 0); setBigChainHits(d.bigChainHits ?? 0);
       setMidChainHits(d.midChainHits ?? 0); setSmallChainHits(d.smallChainHits ?? 0);
       setBodyWeightStr(d.bodyWeightStr ?? '');
+      setChainMul(d.chainMul ?? 1);
+      setBreakMul(d.breakMul < 50 ? d.breakMul * 100 : d.breakMul);
+      setOdMul(d.odMul ?? 1);
+      setFloatVal(d.floatVal ?? 1);
+      setBonusDmg(d.bonusDmg ?? 0);
       setResult(initialData.result); setCalcLabel(initialData.label);
       setLoadedEntryId(initialData.id ?? null);
     }
