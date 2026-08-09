@@ -129,7 +129,7 @@ export default function DamageCalculator({ initialData }: Props) {
     const base = {
       stats, equipment, bonus, od, break_: breakParams, score,
       chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg,
-      superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr,
+      superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr, // 自由文本，不受 hideWhiteBonus 影响
     };
     if (!advanced.hideWhiteBonus) {
       return { ...base, skill, buffs, debuffs, weaknesses };
@@ -213,6 +213,8 @@ export default function DamageCalculator({ initialData }: Props) {
     setCalcLabel('导入');
   };
 
+  // 保存默认值：存的是原始 skill（非 effInput zeroed 副本），
+  // 保证进阶选项与默认值互不影响 —— 隐藏白值加成时默认值仍保留用户底层数值。
   const handleSaveDefaults = () => {
     const defaults: UserDefaults = {
       skill,
