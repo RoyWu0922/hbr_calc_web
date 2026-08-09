@@ -11,6 +11,7 @@ import { getCustomSkills, getDeletedBuiltins, getBuiltinOverrides } from '../../
 import { getSkillOrder, sortByOrder } from '../../engine/skillOrder';
 import { saveToHistory, updateHistoryEntry } from '../../utils/storage';
 import { saveUserDefaults, loadUserDefaults, clearUserDefaults, UserDefaults } from '../../engine/userDefaults';
+import { loadAdvancedOptions, saveAdvancedOptions } from '../../engine/advancedOptions';
 import { encodeShareData, decodeShareData } from '../../utils/shareUrl';
 import DamageResult from './DamageResult';
 import ImageInfoTip from '../ImageInfoTip';
@@ -103,6 +104,8 @@ export default function DamageCalculator({ initialData }: Props) {
   const [smallChainHits, setSmallChainHits] = useState(init?.smallChainHits ?? 0);
   const [bodyWeightStr, setBodyWeightStr] = useState(init?.bodyWeightStr ?? '');
   const [loadedEntryId, setLoadedEntryId] = useState<number | null>(null);
+  const [advanced, setAdvanced] = useState(loadAdvancedOptions);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -123,6 +126,8 @@ export default function DamageCalculator({ initialData }: Props) {
   }, [skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, breakParams, score, chainMul, breakMul, odMul, floatVal, bonusDmg]);
 
   useEffect(() => { runCalc(); }, [runCalc]);
+
+  useEffect(() => { saveAdvancedOptions(advanced); }, [advanced]);
 
   const handleSave = async () => {
     if (!result) return; setSaving(true);
@@ -291,6 +296,32 @@ export default function DamageCalculator({ initialData }: Props) {
           </button>
         </div>
         <div className="flex gap-1.5 items-center ml-auto">
+          <div className="relative">
+            <button className={`btn btn-xs px-2 ${showAdvanced ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setShowAdvanced(o => !o)} title="进阶选项">
+              进阶选项
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-1"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            {showAdvanced && (
+              <div className="absolute right-0 top-full mt-1 z-30 rounded-lg border p-2 flex flex-col gap-1.5 min-w-[150px] shadow-lg"
+                style={{ background: 'var(--app-bg)', borderColor: 'var(--app-glass-border)' }}>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-text-muted"
+                  onClick={() => setAdvanced(a => ({ ...a, hideWhiteBonus: !a.hideWhiteBonus }))}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${advanced.hideWhiteBonus ? 'bg-accent border-accent' : 'toggle-off'}`}>
+                    {advanced.hideWhiteBonus && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  隐藏全部白值加成填写框
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-text-muted"
+                  onClick={() => setAdvanced(a => ({ ...a, manualSkill: !a.manualSkill }))}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${advanced.manualSkill ? 'bg-accent border-accent' : 'toggle-off'}`}>
+                    {advanced.manualSkill && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  手动填写技能
+                </label>
+              </div>
+            )}
+          </div>
           <button className="btn btn-primary btn-xs" onClick={handleSaveDefaults} title="将当前所有输入的数值保存为默认值，下次打开页面自动填入">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="mr-0.5"><path d="M10.5 1.5H3a.5.5 0 00-.5.5v10a.5.5 0 00.5.5h8a.5.5 0 00.5-.5V4l-2.5-2.5z" stroke="currentColor" strokeWidth="1.2"/><path d="M9.5 1.5V4a.5.5 0 00.5.5h2.5" stroke="currentColor" strokeWidth="1.2"/><path d="M5 9.5V7l2 2.5L9 7v2.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/></svg>
             保存为默认值
