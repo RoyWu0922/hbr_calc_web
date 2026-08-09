@@ -367,21 +367,21 @@ export default function DamageCalculator({ initialData }: Props) {
         <SkillListCard skills={buffs} lookup={buildLookup(BUFF_SKILLS, 'buff')}
           onUpdate={(i, s) => { const n = [...buffs]; n[i] = s as BuffSkill; setBuffs(n); }}
           onAdd={() => setBuffs([...buffs, emptyBuff()])}
-          onRemove={i => setBuffs(buffs.filter((_, j) => j !== i))} type="buff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} />
+          onRemove={i => setBuffs(buffs.filter((_, j) => j !== i))} type="buff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
       </CollapsibleSection>
 
       <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen>
         <SkillListCard skills={debuffs} lookup={buildLookup(DEBUFF_SKILLS, 'debuff')}
           onUpdate={(i, s) => { const n = [...debuffs]; n[i] = s as DebuffSkill; setDebuffs(n); }}
           onAdd={() => setDebuffs([...debuffs, emptyDebuff()])}
-          onRemove={i => setDebuffs(debuffs.filter((_, j) => j !== i))} type="debuff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} />
+          onRemove={i => setDebuffs(debuffs.filter((_, j) => j !== i))} type="debuff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
       </CollapsibleSection>
 
       <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen>
         <SkillListCard skills={weaknesses} lookup={buildLookup(WEAKNESS_SKILLS, 'weakness')}
           onUpdate={(i, s) => { const n = [...weaknesses]; n[i] = s as WeaknessSkill; setWeaknesses(n); }}
           onAdd={() => setWeaknesses([...weaknesses, emptyWeakness()])}
-          onRemove={i => setWeaknesses(weaknesses.filter((_, j) => j !== i))} type="weakness" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} />
+          onRemove={i => setWeaknesses(weaknesses.filter((_, j) => j !== i))} type="weakness" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
       </CollapsibleSection>
 
       <CollapsibleSection title="被动加攻/减防 & 装备" defaultOpen>
@@ -587,17 +587,30 @@ function SkillListCard({ skills, lookup, onUpdate, onAdd, onRemove, type, enemyA
           return (
             <div key={i} className="glass-row p-2.5">
               <div className="flex items-end gap-1.5 flex-wrap">
-                <select className="input-field text-xs py-1.5" style={{ width: 133, flexShrink: 0 }} value={skill.name}
-                  onChange={e => {
-                    const found = lookup.find(s => s.name === e.target.value);
-                    if (found) {
-                      const u: any = { ...skill, name: found.name, maxPower: found.max, border: found.border, passive: 1, layers: 0, skillLevel: 1 };
-                      if (!isBuff) u.minPower = found.min; onUpdate(i, u);
-                    } else onUpdate(i, { ...skill, name: e.target.value });
-                  }}>
-                  <option value="">— 技能 —</option>
-                  {lookup.map((s: any) => <option key={s.name} value={s.name}>{s.name}</option>)}
-                </select>
+                {manualSkill ? (
+                  <input className="input-field text-xs py-1.5" style={{ width: 133, flexShrink: 0 }}
+                    value={skill.name} spellCheck={false} placeholder="技能名"
+                    onChange={e => onUpdate(i, { ...skill, name: e.target.value })} />
+                ) : (
+                  <select className="input-field text-xs py-1.5" style={{ width: 133, flexShrink: 0 }} value={skill.name}
+                    onChange={e => {
+                      const found = lookup.find(s => s.name === e.target.value);
+                      if (found) {
+                        const u: any = { ...skill, name: found.name, maxPower: found.max, border: found.border, passive: 1, layers: 0, skillLevel: 1 };
+                        if (!isBuff) u.minPower = found.min; onUpdate(i, u);
+                      } else onUpdate(i, { ...skill, name: e.target.value });
+                    }}>
+                    <option value="">— 技能 —</option>
+                    {lookup.map((s: any) => <option key={s.name} value={s.name}>{s.name}</option>)}
+                  </select>
+                )}
+                {manualSkill && (
+                  <>
+                    <Num label="技能差值" value={skill.border || 0} onChange={v => onUpdate(i, { ...skill, border: v })} />
+                    <Num label="max" value={skill.maxPower || 0} onChange={v => onUpdate(i, { ...skill, maxPower: v })} />
+                    {!isBuff && <Num label="min" value={skill.minPower || 0} onChange={v => onUpdate(i, { ...skill, minPower: v })} />}
+                  </>
+                )}
                  <Num label="初始属性" value={skill.currentAttr || 0}
                   onChange={v => { const u: any = { ...skill, currentAttr: v }; onUpdate(i, u); }} />
                 {!hideWhiteBonus && (
