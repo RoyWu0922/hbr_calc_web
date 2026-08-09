@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   SkillInput, Stats, BuffSkill, DebuffSkill, WeaknessSkill,
@@ -120,10 +120,30 @@ export default function DamageCalculator({ initialData }: Props) {
     }
   }, [initialData]);
 
+  const effInput: DamageInput = useMemo(() => {
+    const base = {
+      stats, equipment, bonus, od, break_: breakParams, score,
+      chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg,
+      superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr,
+    };
+    if (!advanced.hideWhiteBonus) {
+      return { ...base, skill, buffs, debuffs, weaknesses };
+    }
+    return {
+      ...base,
+      skill: { ...skill, whiteBonus: 0 },
+      buffs: buffs.map(b => ({ ...b, moraleFighting: 0 })),
+      debuffs: debuffs.map(d => ({ ...d, moraleDebuffs: 0 })),
+      weaknesses: weaknesses.map(w => ({ ...w, moraleDebuffs: 0 })),
+    };
+  }, [advanced.hideWhiteBonus, skill, stats, buffs, debuffs, weaknesses,
+      equipment, bonus, od, breakParams, score, chainMul, breakMul, odMul, floatVal, bonusDmg,
+      superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr]);
+
   const runCalc = useCallback(() => {
-    const r = calculateAll({ skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg });
+    const r = calculateAll(effInput);
     setResult(r);
-  }, [skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, breakParams, score, chainMul, breakMul, odMul, floatVal, bonusDmg]);
+  }, [effInput]);
 
   useEffect(() => { runCalc(); }, [runCalc]);
 
@@ -134,7 +154,7 @@ export default function DamageCalculator({ initialData }: Props) {
     const label = calcLabel.trim() || new Date().toLocaleString('zh-CN');
     const notes = calcNotes.trim();
     const ts = Date.now();
-    const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg, superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr };
+    const input = effInput;
     try {
       if (loadedEntryId) {
         const action = confirm('检测到从历史记录加载的数据。\n点击"确定"更新原记录，点击"取消"另存为新记录。');
@@ -156,7 +176,7 @@ export default function DamageCalculator({ initialData }: Props) {
   };
 
   const handleShare = async () => {
-    const input = { skill, stats, buffs, debuffs, weaknesses, equipment, bonus, od, break_: breakParams, score, chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg, superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr };
+    const input = effInput;
     const code = encodeShareData(input);
     try {
       await navigator.clipboard.writeText(code);
@@ -341,27 +361,27 @@ export default function DamageCalculator({ initialData }: Props) {
         </div>
       </CollapsibleSection>
 
-      <SkillParamsSection skill={skill} updateSkill={updateSkill} result={result} />
+      <SkillParamsSection skill={skill} updateSkill={updateSkill} result={result} hideWhiteBonus={advanced.hideWhiteBonus} />
 
       <CollapsibleSection title={<span>主动加攻区 <InfoTip id="buff" /></span>} defaultOpen>
         <SkillListCard skills={buffs} lookup={buildLookup(BUFF_SKILLS, 'buff')}
           onUpdate={(i, s) => { const n = [...buffs]; n[i] = s as BuffSkill; setBuffs(n); }}
           onAdd={() => setBuffs([...buffs, emptyBuff()])}
-          onRemove={i => setBuffs(buffs.filter((_, j) => j !== i))} type="buff" enemyAttr={skill.enemyAttr} />
+          onRemove={i => setBuffs(buffs.filter((_, j) => j !== i))} type="buff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} />
       </CollapsibleSection>
 
       <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen>
         <SkillListCard skills={debuffs} lookup={buildLookup(DEBUFF_SKILLS, 'debuff')}
           onUpdate={(i, s) => { const n = [...debuffs]; n[i] = s as DebuffSkill; setDebuffs(n); }}
           onAdd={() => setDebuffs([...debuffs, emptyDebuff()])}
-          onRemove={i => setDebuffs(debuffs.filter((_, j) => j !== i))} type="debuff" enemyAttr={skill.enemyAttr} />
+          onRemove={i => setDebuffs(debuffs.filter((_, j) => j !== i))} type="debuff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} />
       </CollapsibleSection>
 
       <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen>
         <SkillListCard skills={weaknesses} lookup={buildLookup(WEAKNESS_SKILLS, 'weakness')}
           onUpdate={(i, s) => { const n = [...weaknesses]; n[i] = s as WeaknessSkill; setWeaknesses(n); }}
           onAdd={() => setWeaknesses([...weaknesses, emptyWeakness()])}
-          onRemove={i => setWeaknesses(weaknesses.filter((_, j) => j !== i))} type="weakness" enemyAttr={skill.enemyAttr} />
+          onRemove={i => setWeaknesses(weaknesses.filter((_, j) => j !== i))} type="weakness" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} />
       </CollapsibleSection>
 
       <CollapsibleSection title="被动加攻/减防 & 装备" defaultOpen>
@@ -480,15 +500,18 @@ function ResultHeaderRow({ result }: { result: DamageResultData }) {
 import CollapsibleSection from '../CollapsibleSection';
 
 // ─── Skill Parameters ───────────────────────────────────────
-function SkillParamsSection({ skill, updateSkill, result }: {
-  skill: SkillInput; updateSkill: (k: keyof SkillInput, v: unknown) => void; result: DamageResultData | null;
+function SkillParamsSection({ skill, updateSkill, result, hideWhiteBonus }: {
+  skill: SkillInput; updateSkill: (k: keyof SkillInput, v: unknown) => void;
+  result: DamageResultData | null; hideWhiteBonus?: boolean;
 }) {
   const [showDetail, setShowDetail] = useState(false);
   return (
     <CollapsibleSection title="技能参数" defaultOpen>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <Field label="初始加权" value={skill.currentWeighted} onChange={v => updateSkill('currentWeighted', v)} />
-        <Field label="白值加成(包括士气, 灾厄等)（有-100的话请在这+50）" value={skill.whiteBonus} onChange={v => updateSkill('whiteBonus', v)} />
+        {!hideWhiteBonus && (
+          <Field label="白值加成(包括士气, 灾厄等)（有-100的话请在这+50）" value={skill.whiteBonus} onChange={v => updateSkill('whiteBonus', v)} />
+        )}
       </div>
       <div className="grid grid-cols-5 gap-3 mb-3">
         <Field label="最大威力" value={skill.maxPower} onChange={v => updateSkill('maxPower', v)} />
@@ -526,21 +549,27 @@ function SkillParamsSection({ skill, updateSkill, result }: {
 }
 
 // ─── Skill List Card ────────────────────────────────────────
-function SkillListCard({ skills, lookup, onUpdate, onAdd, onRemove, type, enemyAttr }: {
+function SkillListCard({ skills, lookup, onUpdate, onAdd, onRemove, type, enemyAttr, hideWhiteBonus = false, manualSkill = false }: {
   skills: any[]; lookup: any[]; onUpdate: (i: number, s: any) => void;
   onAdd: () => void; onRemove: (i: number) => void; type: 'buff' | 'debuff' | 'weakness';
-  enemyAttr: number;
+  enemyAttr: number; hideWhiteBonus?: boolean; manualSkill?: boolean;
 }) {
   const isBuff = type === 'buff';
 
+  const calcSkill = (sk: any) => hideWhiteBonus
+    ? (isBuff ? { ...sk, moraleFighting: 0 } : { ...sk, moraleDebuffs: 0 })
+    : sk;
+
   // 引用 engine 函数：总面板用汇总函数，单条用详细版（拆解 base/orb/overDiff）
   const calcPower = (sk: any) => {
-    if (!sk.name || !sk.maxPower) return 0;
-    return isBuff ? calcBuffPower(sk) : calcDebuffPower(sk, enemyAttr);
+    const cs = calcSkill(sk);
+    if (!cs.name || !cs.maxPower) return 0;
+    return isBuff ? calcBuffPower(cs) : calcDebuffPower(cs, enemyAttr);
   };
   const calcDetail = (sk: any) => {
-    if (!sk.name || !sk.maxPower) return null;
-    return isBuff ? calcBuffPowerDetail(sk) : calcDebuffPowerDetail(sk, enemyAttr);
+    const cs = calcSkill(sk);
+    if (!cs.name || !cs.maxPower) return null;
+    return isBuff ? calcBuffPowerDetail(cs) : calcDebuffPowerDetail(cs, enemyAttr);
   };
 
   // Section total
@@ -571,8 +600,10 @@ function SkillListCard({ skills, lookup, onUpdate, onAdd, onRemove, type, enemyA
                 </select>
                  <Num label="初始属性" value={skill.currentAttr || 0}
                   onChange={v => { const u: any = { ...skill, currentAttr: v }; onUpdate(i, u); }} />
-                <Num label={isBuff ? '白值加成' : '白值加成(包括士气, 灾厄等)'} value={isBuff ? skill.moraleFighting : skill.moraleDebuffs}
-                  onChange={v => { const u: any = { ...skill }; if (isBuff) u.moraleFighting = v; else u.moraleDebuffs = v; onUpdate(i, u); }} />
+                {!hideWhiteBonus && (
+                  <Num label={isBuff ? '白值加成' : '白值加成(包括士气, 灾厄等)'} value={isBuff ? skill.moraleFighting : skill.moraleDebuffs}
+                    onChange={v => { const u: any = { ...skill }; if (isBuff) u.moraleFighting = v; else u.moraleDebuffs = v; onUpdate(i, u); }} />
+                )}
                 <Num label="宝珠" value={skill.orb || 0}
                   onChange={v => { const u: any = { ...skill, orb: v }; onUpdate(i, u); }} />
                 <Num label="等级" value={skill.skillLevel || 1}
