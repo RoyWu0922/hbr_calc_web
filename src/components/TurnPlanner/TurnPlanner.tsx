@@ -490,6 +490,34 @@ function migrateODMode(exScore: boolean, odMode: number): number {
   return odMode === 500 ? 300 : odMode === 200 ? 120 : odMode;
 }
 
+/**
+ * 切换 OD 表现形式(% ↔ hit)时, 换算所有 OD 输入值以保留物理 OD 量。
+ * 百分比形式(300/500)与 hit 形式(120/200)互转: 数值 × newMode/oldMode
+ * (300%→120: ×0.4, 120→300: ×2.5)。同形式切换(如 ex 打分 300↔500 或 120↔200)
+ * 只改 odMode, 不换算数值。
+ */
+function convertODMode(state: TurnPlannerState, oldMode: number, newMode: number): TurnPlannerState {
+  if (oldMode === newMode) return state;
+  const oldIsPercent = oldMode >= 300;
+  const newIsPercent = newMode >= 300;
+  if (oldIsPercent === newIsPercent) return { ...state, odMode: newMode as ODMode };
+  // 保留物理量: 所有 OD 单位数值 × 比例 (round 到 6 位小数防重复切换累积浮点误差)
+  const ratio = newMode / oldMode;
+  const scale = (v: number) => Math.round(v * ratio * 1e6) / 1e6;
+  return {
+    ...state,
+    odMode: newMode as ODMode,
+    defaultPassiveOD: scale(state.defaultPassiveOD),
+    turns: state.turns.map(t => ({
+      ...t,
+      jailOD: scale(t.jailOD),
+      passiveOD: scale(t.passiveOD),
+      pursuitOD: scale(t.pursuitOD),
+      frontActions: t.frontActions.map(fa => ({ ...fa, odGain: scale(fa.odGain) })) as PlannerTurn['frontActions'],
+    })),
+  };
+}
+
 function isODRound(label: string): boolean { return label.includes('OD'); }
 function isExtraRound(label: string): boolean { return label.includes('追加'); }
 
@@ -719,7 +747,7 @@ function DetailTable({
         <div className="flex gap-1.5 items-center">
           <span className="text-[10px] text-text-muted">OD</span>
           <select className="input-field text-[10px] py-0.5 w-28"
-            value={String(odMode)} onChange={e => setState({ ...state, odMode: parseInt(e.target.value) as ODMode })}>
+            value={String(odMode)} onChange={e => setState(convertODMode(state, odMode, parseInt(e.target.value)))}>
             {odOptionsFor(exScore).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           <div className="relative">
