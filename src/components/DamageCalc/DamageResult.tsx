@@ -56,7 +56,11 @@ export default function DamageResult({ result, skill, floatVal,
   const upMin = -0.1, upMax = 0.1;
   const sx = (up: number) => L + ((up - upMin) / (upMax - upMin)) * pw;
   const sy = (pdf: number) => T + (1 - pdf / floatDist.maxPdf) * ph;
-  const ix = (mx: number) => ((mx - L) / pw) * (upMax - upMin) + upMin;
+  // 当前浮动值（floatVal prop）在分布上的落点，供图中标记
+  const currentUp = Math.max(upMin, Math.min(upMax, (floatVal || 1) - 1));
+  const currentPoint = floatDist.points.length > 0
+    ? floatDist.points.reduce((best, p) => Math.abs(p.up - currentUp) < Math.abs(best.up - currentUp) ? p : best, floatDist.points[0])
+    : null;
 
   // Build SVG path for PDF curve
   const pdfPathD = useMemo(() => {
@@ -89,17 +93,19 @@ export default function DamageResult({ result, skill, floatVal,
     const svgW = rect.width;
     const vbx = ((e.clientX - rect.left) / svgW) * W;
     if (vbx < L || vbx > L + pw) { setHover(null); return; }
-    const up = ix(vbx);
+    const up = ((vbx - L) / pw) * (upMax - upMin) + upMin;
     let best = floatDist.points[0];
     let bestDist = Infinity;
     for (const p of floatDist.points) {
       const d = Math.abs(p.up - up);
       if (d < bestDist) { bestDist = d; best = p; }
     }
-    const preAtUp = result.preAttenuation * (1 + best.up);
+    // preAttenuation 已含用户设置的 floatVal（damage.ts 中 preAttenuation *= floatVal），
+    // 先归一化（÷floatVal）再乘悬停的浮动偏差，否则浮动≠1 时悬停伤害会被重复计浮。
+    const preAtUp = (result.preAttenuation / (floatVal || 1)) * (1 + best.up);
     const dmgEstimate = applyAttenuation(preAtUp, 1);
     setHover({ x: best.up, y: best.pdf, pdfVal: best.pdf, survivalVal: best.survival, dmg: dmgEstimate });
-  }, [floatDist, result.preAttenuation, W, L, pw]);
+  }, [floatDist, result.preAttenuation, floatVal, W, L, pw, upMin, upMax]);
 
   return (
     <div className="space-y-4">
@@ -121,12 +127,19 @@ export default function DamageResult({ result, skill, floatVal,
             {' + '}{superChainHits}特大 + {bigChainHits}大 + {midChainHits}中 + {smallChainHits}小 = {totalHits} hits
             <span className="ml-1 text-[10px] opacity-60">（精确公式：特征函数法）</span>
           </div>
+          {currentPoint && (
+            <div className="text-xs text-amber-300/90 mb-2">
+              当前浮动 {(floatVal || 1).toFixed(2)} · P(≥此浮动) ≈ {(currentPoint.survival * 100).toFixed(1)}%
+            </div>
+          )}
 
           <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 220 }}>
             {/* Baseline */}
             <line x1={L} y1={T + ph} x2={L + pw} y2={T + ph} stroke="var(--app-glass-border)" strokeWidth={1} />
             {/* Zero vertical */}
             <line x1={sx(0)} y1={T} x2={sx(0)} y2={T + ph} stroke="rgba(245,158,11,0.3)" strokeWidth={1} strokeDasharray="4,2" />
+            {/* Current float value marker */}
+            <line x1={sx(currentUp)} y1={T} x2={sx(currentUp)} y2={T + ph} stroke="#f59e0b" strokeWidth={1.2} strokeDasharray="6,3" />
             {/* PDF gradient definition */}
             <defs>
               <linearGradient id="pdfGradient" x1="0" y1="0" x2="0" y2="1">

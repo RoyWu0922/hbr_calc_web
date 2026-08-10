@@ -53,6 +53,13 @@ export function upProb(hitWeights: number[], up: number): number {
   const dListArr = hitWeights.map(h => 0.1 * h).filter(d => d > 1e-15);
   if (dListArr.length === 0) return up <= 0 ? 1 : 0;
 
+  // 单 hit：平均浮动就是该 hit 自身的 uniform[-0.1, 0.1] 抽样，直接精确解析解。
+  // 特征函数法在单 hit 下 tail 按 1/t 衰减，固定 tMax 截断会引入可观测误差，
+  // 解析解无误差且更快。
+  if (dListArr.length === 1) {
+    return Math.max(0, Math.min(1, (0.1 - up) / 0.2));
+  }
+
   const dList = new Float64Array(dListArr);
   const minD = dListArr.reduce((a, b) => Math.min(a, b), Infinity);
 
