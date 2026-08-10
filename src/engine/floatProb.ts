@@ -250,9 +250,9 @@ export function buildHitWeights(
 ): number[] {
   const weights: number[] = [];
   if (customBodyWeights && customBodyWeights.length > 0) {
-    const sum = customBodyWeights.reduce((a, b) => a + b, 0);
-    const scale = hitCount / sum;
-    for (const w of customBodyWeights) weights.push(w * scale);
+    // 自定义权重直接按用户输入的比例使用（如 [0.05×7, 0.65] 表示各 hit 的相对伤害占比，
+    // 总和 1.0），不再按 hitCount/sum 缩放 —— 缩放会破坏本体与连击(0.5/0.25/…)的相对比例。
+    for (const w of customBodyWeights) weights.push(w);
   } else {
     for (let i = 0; i < hitCount; i++) weights.push(1.0);
   }
