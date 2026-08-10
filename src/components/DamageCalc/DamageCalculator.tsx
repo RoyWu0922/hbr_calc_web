@@ -28,9 +28,9 @@ const defaultSkill: SkillInput = {
 
 const defaultStats: Stats = { str: 0, spr: 0, int: 0, luk: 0 };
 
-function emptyBuff(): BuffSkill { return { name: '', maxPower: 0, border: 0, orb: 0, currentAttr: 0, moraleFighting: 0, skillLevel: 0, passive: 0, layers: 0 }; }
-function emptyDebuff(): DebuffSkill { return { name: '', maxPower: 0, minPower: 0, border: 0, orb: 0, currentAttr: 0, moraleDebuffs: 0, skillLevel: 0, passive: 0, layers: 0 }; }
-function emptyWeakness(): WeaknessSkill { return { name: '', maxPower: 0, minPower: 0, border: 0, orb: 0, currentAttr: 0, moraleDebuffs: 0, skillLevel: 0, passive: 0, layers: 0 }; }
+function emptyBuff(): BuffSkill { return { name: '', maxPower: 0, border: 0, orb: 0, currentAttr: 0, moraleFighting: 0, skillLevel: 1, passive: 0, layers: 0 }; }
+function emptyDebuff(): DebuffSkill { return { name: '', maxPower: 0, minPower: 0, border: 0, orb: 0, currentAttr: 0, moraleDebuffs: 0, skillLevel: 1, passive: 0, layers: 0 }; }
+function emptyWeakness(): WeaknessSkill { return { name: '', maxPower: 0, minPower: 0, border: 0, orb: 0, currentAttr: 0, moraleDebuffs: 0, skillLevel: 1, passive: 0, layers: 0 }; }
 function emptyBonusEntry(): BonusEntry { return { name: '', value: 0 }; }
 
 const defaultEquipment: Equipment = { ring: false, hpEarring: false, silverNecklace: false };
