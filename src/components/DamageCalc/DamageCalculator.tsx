@@ -859,7 +859,9 @@ function Field({ label, value, onChange, step }: { label: string; value: number;
 
 function Num({ label, value, onChange, step }: { label: string; value: number; onChange: (v: number) => void; step?: number; }) {
   return (
-    <div className="flex-1 min-w-0">
+    // min-w-[72px]：flex-basis 0 + min-width 0 时 flex-wrap 永远不触发(项目只会收缩不换行)，
+    // 移动端 buff/debuff 字段会被挤到不可用宽度；加最小宽度让塞不下时换到下一行。
+    <div className="flex-1 min-w-[72px]">
       <div className="text-[10px] text-text-muted mb-0.5 leading-tight truncate">{label}</div>
       <input className="input-field text-xs py-1.5 w-full" type="number" step={step || 1} value={value || ''}
         onChange={e => onChange(parseFloat(e.target.value) || 0)} />

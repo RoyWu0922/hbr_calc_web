@@ -1380,6 +1380,15 @@ function SimpleTable({
               st.textContent = st.textContent.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
             }
           });
+
+          // 4. 导出时把时间线容器展开到完整内容宽度。
+          //    overflow-x-auto 会让 html2canvas 只渲染可见框 —— 表格列宽合计约 588px,
+          //    容器更窄时(移动端整宽或旧版 48% 并排)超宽部分会被裁掉, 这就是"只能看见一部分"的根因。
+          const tl = _clonedDoc.querySelector('[data-timeline-export]') as HTMLElement | null;
+          if (tl) {
+            tl.style.overflow = 'visible';
+            tl.style.width = `${tl.scrollWidth}px`;
+          }
         },
       });
       canvas.toBlob((blob: Blob | null) => {
@@ -1455,9 +1464,10 @@ function SimpleTable({
           </svg>
         </button>
       </div>
-      <div className="flex gap-4 items-start">
+      {/* 移动端纵向堆叠(时间线在介绍卡下方, 整宽可完整截屏), 桌面端并排 */}
+      <div className="flex flex-col md:flex-row gap-4 md:items-start">
         {/* Left: Meta inputs */}
-        <div className="card space-y-2 text-sm flex-shrink-0" style={{ width: 400 }}>
+        <div className="card space-y-2 text-sm flex-shrink-0 w-full md:w-[400px]">
           <div>
             <div className="input-label">标题</div>
             <input className="input-field text-xs py-1.5" placeholder="第xx期打分 xx队 无限od流" value={title} onChange={e => { setTitle(e.target.value); onTitleChange(e.target.value); }} />
@@ -1490,7 +1500,7 @@ function SimpleTable({
         </div>
 
         {/* Right: Timeline table */}
-        <div ref={timelineRef} className="card overflow-x-auto !p-0 mx-auto" style={{ width: '48%' }}>
+        <div ref={timelineRef} data-timeline-export className="card overflow-x-auto !p-0 w-full md:flex-1">
           <table className="planner-table simple-timeline" style={{ tableLayout: 'fixed', width: '100%' }}>
             <colgroup>
               <col style={{ width: 56 }} />
