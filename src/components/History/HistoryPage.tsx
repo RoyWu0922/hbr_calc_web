@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { CalcHistoryEntry, DamageResultData } from '../../types';
 import { getHistory, deleteHistoryEntry, deleteHistoryEntries, clearHistory, duplicateHistoryEntry, updateHistoryLabel, updateHistoryNotes, getAllHistory, importHistoryEntries, createFolder, getFolders, updateFolder, deleteFolder, setHistoryFolder } from '../../utils/storage';
 import { decodeShareData } from '../../utils/shareUrl';
+import { validateHistoryImport } from '../../utils/importValidation';
 import { supabase } from '../../utils/supabase';
 import { pullAll } from '../../utils/syncEngine';
 import type { Folder } from '../../types';
@@ -12,12 +13,36 @@ function fmt(n: number): string {
   return Math.floor(n).toLocaleString('zh-CN');
 }
 
+function fmtOrDash(v: unknown): string {
+  return typeof v === 'number' && Number.isFinite(v) ? fmt(v) : '—';
+}
+
 function getEntryScore(entry: CalcHistoryEntry): number {
-  return entry.result?.score?.totalScore ?? 0;
+  const v = entry.result?.score?.totalScore;
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
 }
 
 function getEntryTurns(entry: CalcHistoryEntry): number {
-  return entry.input?.score?.turns ?? 0;
+  const v = entry.input?.score?.turns;
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+}
+
+/** 用于对比的历史记录必须字段完整，缺字段时跳过，避免渲染崩溃。 */
+function isCompleteEntry(e: CalcHistoryEntry): boolean {
+  const entry = e as unknown as Record<string, unknown>;
+  const inp = entry.input;
+  const res = entry.result;
+  if (typeof inp !== 'object' || inp === null) return false;
+  if (typeof res !== 'object' || res === null) return false;
+  const inpObj = inp as Record<string, unknown>;
+  const resObj = res as Record<string, unknown>;
+  if (typeof inpObj.skill !== 'object' || inpObj.skill === null) return false;
+  if (typeof inpObj.score !== 'object' || inpObj.score === null) return false;
+  return typeof resObj.postAttenuation === 'number'
+    && typeof resObj.atkFactor === 'number'
+    && typeof resObj.defFactor === 'number'
+    && typeof resObj.weaknessFactor === 'number'
+    && typeof resObj.critFactor === 'number';
 }
 
 export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEntry) => void }) {
@@ -57,8 +82,8 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(e =>
-        e.label.toLowerCase().includes(q) ||
-        (e.notes && e.notes.toLowerCase().includes(q))
+        (typeof e.label === 'string' && e.label.toLowerCase().includes(q)) ||
+        (typeof e.notes === 'string' && e.notes.toLowerCase().includes(q))
       );
     }
     if (folderFilter === 'uncategorized') {
@@ -68,7 +93,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
     }
     switch (sortBy) {
       case 'label':
-        list.sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
+        list.sort((a, b) => (a.label || '').localeCompare(b.label || '', 'zh-CN'));
         break;
       case 'score':
         list.sort((a, b) => getEntryScore(b) - getEntryScore(a));
@@ -111,7 +136,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
 
   const startEditNotes = (id: number, notes: string) => {
     setEditingNotesId(id);
-    setEditNotes(notes || '');
+    setEditNotes(typeof notes === 'string' ? notes : '');
   };
 
   const handleImport = () => {
@@ -170,7 +195,8 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
       try {
         const text = await file.text();
         const parsed = JSON.parse(text);
-        if (!Array.isArray(parsed)) throw new Error('格式无效');
+        const invalid = validateHistoryImport(parsed);
+        if (invalid) throw new Error(invalid);
         if (!confirm(`将导入 ${parsed.length} 条记录，确定？`)) return;
         await importHistoryEntries(parsed);
         await loadHistory();
@@ -188,8 +214,10 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
     const ids = [...selectedIds];
     if (ids.length < 2) return;
     const entries = ids.map(id => allEntries.find(e => e.id === id)).filter(Boolean) as CalcHistoryEntry[];
-    if (entries.length < 2) return;
-    setCompareEntries(entries);
+    // 只对比字段完整的记录，避免数据异常时 CompareModal 崩溃
+    const valid = entries.filter(isCompleteEntry);
+    if (valid.length < 2) { alert('选中的记录数据不完整，无法对比'); return; }
+    setCompareEntries(valid);
   };
 
   const [compareEntries, setCompareEntries] = useState<CalcHistoryEntry[] | null>(null);
@@ -337,7 +365,12 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
           <tbody>
             {entries.map((entry) => {
               const r = entry.result;
-              const s = entry.input.score;
+              const s = entry.input?.score;
+              const rScore = r?.score;
+              const label = typeof entry.label === 'string' ? entry.label : '';
+              const timeStr = typeof entry.timestamp === 'number' && Number.isFinite(entry.timestamp)
+                ? new Date(entry.timestamp).toLocaleString('zh-CN')
+                : '—';
               return (
                 <tr key={entry.id} className="hover:bg-bg-input/30">
                   <td>
@@ -362,8 +395,8 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
                         autoFocus />
                     ) : (
                       <span className="cursor-pointer hover:text-accent border-b border-dotted" style={{ borderColor: 'var(--app-toggle-border)' }}
-                        onClick={() => entry.id && startEdit(entry.id, entry.label)} title="点击编辑标签">
-                        {entry.label || '(无标签)'}
+                        onClick={() => entry.id != null && startEdit(entry.id, label)} title="点击编辑标签">
+                        {label || '(无标签)'}
                       </span>
                     )}
                   </td>
@@ -383,12 +416,12 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
                       </span>
                     )}
                   </td>
-                  <td>{s.difficulty}</td>
-                  <td>{s.turns}</td>
-                  <td className="font-mono num text-gold">{fmt(r.postAttenuation)}</td>
-                  <td className="font-mono num">{r.score ? fmt(r.score.damageScore) : '—'}</td>
-                  <td className="font-mono num text-gold font-bold">{r.score ? fmt(r.score.totalScore) : '—'}</td>
-                  <td className="text-text-muted text-xs">{new Date(entry.timestamp).toLocaleString('zh-CN')}</td>
+                  <td>{s?.difficulty ?? '—'}</td>
+                  <td>{s?.turns ?? '—'}</td>
+                  <td className="font-mono num text-gold">{fmtOrDash(r?.postAttenuation)}</td>
+                  <td className="font-mono num">{rScore ? fmtOrDash(rScore.damageScore) : '—'}</td>
+                  <td className="font-mono num text-gold font-bold">{rScore ? fmtOrDash(rScore.totalScore) : '—'}</td>
+                  <td className="text-text-muted text-xs">{timeStr}</td>
                   <td>
                     <div className="flex gap-1.5 items-center">
                       <select className="input-field text-[10px] py-0 w-16" value={entry.folderId ?? ''}

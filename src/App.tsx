@@ -83,14 +83,16 @@ function AppInner() {
   // Sync triggers on page leave/visibility change
   useEffect(() => { attachSyncTriggers(); }, []);
 
-  // First login: prompt to upload local records (only once per session)
+  // First login: prompt to upload local records (only once per device)
   useEffect(() => {
     if (user && !syncedRef.current && !localStorage.getItem('hbr_sync_done')) {
       syncedRef.current = true;
-      localStorage.setItem('hbr_sync_done', '1');
+      // Set flag only after the user answers so a dismissed prompt doesn't get stuck
       if (confirm('登录成功！是否将本地记录上传到云端？')) {
+        localStorage.setItem('hbr_sync_done', '1');
         uploadAll().finally(() => window.location.reload());
       } else {
+        localStorage.setItem('hbr_sync_done', '1');
         pullAll().finally(() => window.location.reload());
       }
     }
@@ -100,13 +102,21 @@ function AppInner() {
   const checkCloud = async () => {
     if (!user) return;
     const { supabase } = await import('./utils/supabase');
-    const tables = ['calc_history', 'planner_axles', 'white_stats', 'medal_records'];
+    // medal_records / custom_skills use updated_at, not timestamp
+    const tables = [
+      { name: 'calc_history', col: 'timestamp' },
+      { name: 'planner_axles', col: 'timestamp' },
+      { name: 'white_stats', col: 'timestamp' },
+      { name: 'medal_records', col: 'updated_at' },
+      { name: 'custom_skills', col: 'updated_at' },
+    ];
     let newCount = 0;
     for (const t of tables) {
-      const { data } = await supabase.from(t).select('timestamp').eq('user_id', user.id).order('timestamp', { ascending: false }).limit(1);
+      const { data } = await supabase.from(t.name).select(t.col).eq('user_id', user.id).order(t.col, { ascending: false }).limit(1);
       if (data?.length) {
         const lastSync = localStorage.getItem('hbr_last_sync');
-        if (!lastSync || data[0].timestamp > parseInt(lastSync)) newCount++;
+        const remoteTs = (data[0] as unknown as Record<string, number | null>)[t.col];
+        if (remoteTs && (!lastSync || remoteTs > parseInt(lastSync))) newCount++;
       }
     }
     if (newCount > 0) {
@@ -121,7 +131,14 @@ function AppInner() {
 
   useEffect(() => {
     if (!user) return;
-    const timer = setInterval(checkCloud, 120000);
+    const tick = async () => {
+      await checkCloud();
+      // Reliability: don't depend solely on page-exit uploads — push local
+      // changes periodically, then bump last_sync so our own rows don't re-prompt
+      await uploadAll();
+      localStorage.setItem('hbr_last_sync', String(Date.now()));
+    };
+    const timer = setInterval(tick, 120000);
     return () => clearInterval(timer);
   }, [user]);
 

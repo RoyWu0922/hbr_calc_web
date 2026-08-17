@@ -3,6 +3,7 @@ import { TurnPlannerState, PlannerTurn, FrontAction, ODMode, ComputedTurnResult 
 import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner';
 import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, deleteAxles, clearAllAxles, getAllAxles, importAxles, setAxleFolder, type SavedAxle } from '../../utils/plannerStorage';
 import { getFolders, createFolder, updateFolder, deleteFolder } from '../../utils/storage';
+import { validateAxleImport } from '../../utils/importValidation';
 import { copyToClipboard } from '../../utils/copyToast';
 import { supabase } from '../../utils/supabase';
 import { pullAll } from '../../utils/syncEngine';
@@ -1648,7 +1649,7 @@ function SavedAxles({
   useEffect(() => {
     let list = [...allEntries];
     const q = search.trim().toLowerCase();
-    if (q) list = list.filter(e => e.label.toLowerCase().includes(q));
+    if (q) list = list.filter(e => typeof e.label === 'string' && e.label.toLowerCase().includes(q));
     if (sortBy === 'score') list.sort((a, b) => b.score - a.score);
     else if (sortBy === 'turns') list.sort((a, b) => a.turns - b.turns);
     if (folderFilter === 'uncategorized') {
@@ -1718,7 +1719,8 @@ function SavedAxles({
       try {
         const text = await file.text();
         const parsed = JSON.parse(text);
-        if (!Array.isArray(parsed)) throw new Error('格式无效');
+        const invalid = validateAxleImport(parsed);
+        if (invalid) throw new Error(invalid);
         if (!confirm(`将导入 ${parsed.length} 个轴，确定？`)) return;
         await importAxles(parsed);
         await load();
@@ -1939,7 +1941,12 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
     <div className="space-y-4" style={styleVars as React.CSSProperties}>
       {mode === 'saved' ? (
         <SavedAxles state={state} onLoad={(entry) => {
-          setState(entry.state);
+          const st = entry.state;
+          if (!st || !Array.isArray(st.turns) || !Array.isArray(st.characters)) {
+            alert('该轴数据不完整，无法加载');
+            return;
+          }
+          setState(st);
           setLoadedAxleId(entry.id ?? null);
           setAxleScore(entry.score ?? 0);
           setAxleTurns(entry.turns ?? 0);

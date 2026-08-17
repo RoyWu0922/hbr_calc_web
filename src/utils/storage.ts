@@ -224,7 +224,13 @@ export async function deleteHistoryEntries(ids: number[]): Promise<void> {
 
 export async function clearHistory(): Promise<void> {
   const db = await getDB();
-  await db.clear('history');
+  const tx = db.transaction('history', 'readwrite');
+  for (const entry of await db.getAll('history')) {
+    entry.deleted = true;
+    entry.timestamp = Date.now();
+    await tx.store.put(entry);
+  }
+  await tx.done;
 }
 
 // ─── History Export/Import ─────────────────────────────────

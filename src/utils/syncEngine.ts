@@ -7,14 +7,29 @@ import { MEDAL_CUSTOM_KEY, readMedalStore, writeMedalStore } from './medalStorag
 
 function uuid() { return crypto.randomUUID(); }
 
-// ─── Sync lock (prevents concurrent pullAll/uploadAll races) ─────
+// ─── Sync lock (queues concurrent pullAll/uploadAll instead of dropping) ─────
 let syncBusy = false;
-function acquireLock(): boolean {
-  if (syncBusy) return false;
+let pendingSync: { fn: () => Promise<void>; resolve: () => void } | null = null;
+
+function runWithLock(fn: () => Promise<void>): Promise<void> {
+  if (syncBusy) {
+    return new Promise<void>((resolve) => {
+      // Coalesce: only the latest queued request matters (upload/pull are full passes)
+      if (pendingSync) pendingSync.resolve();
+      pendingSync = { fn, resolve };
+    });
+  }
   syncBusy = true;
-  return true;
+  return fn().finally(async () => {
+    syncBusy = false;
+    const next = pendingSync;
+    pendingSync = null;
+    if (next) {
+      await runWithLock(next.fn);
+      next.resolve();
+    }
+  });
 }
-function releaseLock() { syncBusy = false; }
 
 // ─── Record helper ─────────────────────────────────────────────
 function ensureUUID(entry: any) {
@@ -84,7 +99,9 @@ async function pullTable(table: string, storeName: string, dbName: string, folde
       if (existing) {
         localByUuid.delete(uuid);
         if (row.deleted) {
-          await tx.store.delete(existing.id!);
+          // Soft tombstone — never physically destroy user data
+          const merged = { ...existing, deleted: true, uuid, timestamp: row.timestamp };
+          await tx.store.put(merged);
           changes++;
         } else if (row.timestamp > (existing.timestamp || 0)) {
           const merged = { ...cloudData, uuid, timestamp: row.timestamp };
@@ -99,7 +116,9 @@ async function pullTable(table: string, storeName: string, dbName: string, folde
         changes++;
       }
     }
-    // Push local records not in cloud (new, created offline)
+    await tx.done;
+    // Push local records not in cloud (new, created offline) — after the tx
+    // so network awaits don't auto-commit the transaction mid-flight
     for (const [uid, entry] of localByUuid) {
       if (!entry.deleted) {
         await supabase.from(table).upsert({
@@ -109,7 +128,6 @@ async function pullTable(table: string, storeName: string, dbName: string, folde
         changes++;
       }
     }
-    await tx.done;
     return changes;
   } catch (e) { console.error(`pullTable(${table}) failed:`, e); return 0; }
 }
@@ -117,98 +135,62 @@ async function pullTable(table: string, storeName: string, dbName: string, folde
 // ─── Public API ────────────────────────────────────────────────
 
 // Custom skills sync (localStorage, single row per user)
-// Always merges local + cloud — newer side wins on key conflicts, no data loss
+// Whole-store newer-wins merge (like medal_records) so deletions propagate.
 async function syncCustomSkills() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    const CATS = ['buff', 'debuff', 'weakness'] as const;
     const localTs = parseInt(localStorage.getItem('hbr_skills_ts') || '0');
     const { data: cloud } = await supabase.from('custom_skills').select('*').eq('user_id', user.id).maybeSingle();
     const cloudTs = cloud?.updated_at || 0;
     const cloudData: Record<string, any> = cloud?.data || {};
 
-    // Check if local has any actual content
-    let localHasContent = false;
-    for (const cat of ['buff', 'debuff', 'weakness'] as const) {
-      const s = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
-      const o = JSON.parse(localStorage.getItem('hbr-builtin-overrides-' + cat) || '{}');
-      if (s.length > 0 || Object.keys(o).length > 0) localHasContent = true;
-    }
+    const readLocal = () => {
+      const data: Record<string, any> = {};
+      let has = false;
+      for (const cat of CATS) {
+        const s = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
+        const o = JSON.parse(localStorage.getItem('hbr-builtin-overrides-' + cat) || '{}');
+        data['skills_' + cat] = s;
+        data['overrides_' + cat] = o;
+        if (s.length > 0 || Object.keys(o).length > 0) has = true;
+      }
+      return { data, has };
+    };
+    const applyCloud = () => {
+      for (const cat of CATS) {
+        localStorage.setItem('hbr-custom-skills-' + cat, JSON.stringify(cloudData['skills_' + cat] || []));
+        localStorage.setItem('hbr-builtin-overrides-' + cat, JSON.stringify(cloudData['overrides_' + cat] || {}));
+      }
+      localStorage.setItem('hbr_skills_ts', String(cloudTs));
+    };
+    const pushLocal = async (data: Record<string, any>, ts: number) => {
+      await supabase.from('custom_skills').upsert({ user_id: user.id, data, updated_at: ts }, { onConflict: 'user_id' });
+      localStorage.setItem('hbr_skills_ts', String(ts));
+    };
+
+    const { data: localData, has: localHasContent } = readLocal();
     const cloudHasContent = cloudData && (
       (cloudData['skills_buff'] || []).length > 0 || Object.keys(cloudData['overrides_buff'] || {}).length > 0 ||
       (cloudData['skills_debuff'] || []).length > 0 || Object.keys(cloudData['overrides_debuff'] || {}).length > 0 ||
       (cloudData['skills_weakness'] || []).length > 0 || Object.keys(cloudData['overrides_weakness'] || {}).length > 0
     );
 
-    // If one side has no content, handle based on context
+    if (!localHasContent && !cloudHasContent) return;
+
     if (cloudHasContent && !localHasContent) {
-      if (localTs > 0) {
-        // Synced before and now local is empty → intentional deletion → push empty to cloud
-        const ts = Date.now();
-        await supabase.from('custom_skills').upsert({ user_id: user.id, data: {}, updated_at: ts }, { onConflict: 'user_id' });
-        localStorage.setItem('hbr_skills_ts', String(ts));
-        return;
-      }
-      // First time on this device → pull cloud down
-      for (const cat of ['buff', 'debuff', 'weakness'] as const) {
-        if (cloudData['skills_' + cat]) localStorage.setItem('hbr-custom-skills-' + cat, JSON.stringify(cloudData['skills_' + cat]));
-        if (cloudData['overrides_' + cat]) localStorage.setItem('hbr-builtin-overrides-' + cat, JSON.stringify(cloudData['overrides_' + cat]));
-      }
-      localStorage.setItem('hbr_skills_ts', String(cloudTs));
+      if (localTs > 0) { await pushLocal({}, Date.now()); return; } // synced before → intentional deletion → propagate
+      applyCloud(); // first time on this device → pull cloud down
       return;
     }
     if (localHasContent && !cloudHasContent) {
-      // Push local to cloud (first sync)
-      const data: Record<string, any> = {};
-      for (const cat of ['buff', 'debuff', 'weakness'] as const) {
-        data['skills_' + cat] = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
-        data['overrides_' + cat] = JSON.parse(localStorage.getItem('hbr-builtin-overrides-' + cat) || '{}');
-      }
-      const ts = Date.now();
-      await supabase.from('custom_skills').upsert({ user_id: user.id, data, updated_at: ts }, { onConflict: 'user_id' });
-      localStorage.setItem('hbr_skills_ts', String(ts));
+      await pushLocal(localData, localTs || Date.now()); // first sync
       return;
     }
-    if (!localHasContent && !cloudHasContent) return;
-
-    // Build merge: include all entries from both sides; for same skill/override, prefer local when localTs >= cloudTs
-    const preferLocal = localTs >= cloudTs;
-    const merged: Record<string, any> = {};
-    let hasContent = false;
-    for (const cat of ['buff', 'debuff', 'weakness'] as const) {
-      const localSkills: any[] = JSON.parse(localStorage.getItem('hbr-custom-skills-' + cat) || '[]');
-      const cloudSkills: any[] = cloudData['skills_' + cat] || [];
-      const localOv: Record<string, any> = JSON.parse(localStorage.getItem('hbr-builtin-overrides-' + cat) || '{}');
-      const cloudOv: Record<string, any> = cloudData['overrides_' + cat] || {};
-
-      // Merge skills by name — preferLocal wins on conflict
-      const byName = new Map<string, any>();
-      const secondaryS = preferLocal ? cloudSkills : localSkills;
-      const primaryS = preferLocal ? localSkills : cloudSkills;
-      for (const s of secondaryS) { if (s && s.name) byName.set(s.name, s); }
-      for (const s of primaryS) { if (s && s.name) byName.set(s.name, s); }
-      merged['skills_' + cat] = [...byName.values()];
-
-      // Merge overrides — preferLocal wins on same key
-      const secondaryOv = preferLocal ? cloudOv : localOv;
-      const primaryOv = preferLocal ? localOv : cloudOv;
-      merged['overrides_' + cat] = { ...secondaryOv, ...primaryOv };
-
-      if (merged['skills_' + cat].length > 0 || Object.keys(merged['overrides_' + cat]).length > 0) hasContent = true;
-    }
-
-    // Write merged to localStorage
-    for (const cat of ['buff', 'debuff', 'weakness'] as const) {
-      localStorage.setItem('hbr-custom-skills-' + cat, JSON.stringify(merged['skills_' + cat] || []));
-      localStorage.setItem('hbr-builtin-overrides-' + cat, JSON.stringify(merged['overrides_' + cat] || {}));
-    }
-
-    // Push merged to cloud (only if has content or cloud record exists)
-    if (hasContent || cloudTs > 0) {
-      const ts = Date.now();
-      await supabase.from('custom_skills').upsert({ user_id: user.id, data: merged, updated_at: ts }, { onConflict: 'user_id' });
-      localStorage.setItem('hbr_skills_ts', String(ts));
-    }
+    // Both have content → newer side wins (whole-store, so deletions propagate)
+    if (localTs >= cloudTs) await pushLocal(localData, localTs);
+    else applyCloud();
   } catch (e) { console.error('syncCustomSkills failed:', e); }
 }
 
@@ -302,28 +284,26 @@ async function syncFolders() {
   } catch (e) { console.error('syncFolders failed:', e); }
 }
 
-export async function uploadAll() {
-  if (!acquireLock()) return;
-  try {
+export function uploadAll(): Promise<void> {
+  return runWithLock(async () => {
     await syncFolders();
     await uploadTable('calc_history', 'history', 'hbr-calc-db', 'calc');
     await uploadTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
     await uploadTable('white_stats', 'history', 'hbr-white-stats');
     await syncCustomSkills();
     await syncMedalRecords();
-  } finally { releaseLock(); }
+  });
 }
 
-export async function pullAll() {
-  if (!acquireLock()) return;
-  try {
+export function pullAll(): Promise<void> {
+  return runWithLock(async () => {
     await syncFolders();
     await pullTable('calc_history', 'history', 'hbr-calc-db', 'calc');
     await pullTable('planner_axles', 'planner_saves', 'hbr-calc-db', 'planner');
     await pullTable('white_stats', 'history', 'hbr-white-stats');
     await syncCustomSkills();
     await syncMedalRecords();
-  } finally { releaseLock(); }
+  });
 }
 
 export async function fullSync() {

@@ -282,7 +282,14 @@ export async function duplicateAxle(id: number): Promise<number> {
 
 export async function clearAllAxles(): Promise<void> {
   const db = await getDB();
-  await db.clear('planner_saves');
+  const tx = db.transaction('planner_saves', 'readwrite');
+  for (const entry of await db.getAll('planner_saves')) {
+    const e = entry as SavedAxle & { deleted?: boolean };
+    e.deleted = true;
+    e.timestamp = Date.now();
+    await tx.store.put(e);
+  }
+  await tx.done;
 }
 
 export async function deleteAxle(id: number): Promise<void> {

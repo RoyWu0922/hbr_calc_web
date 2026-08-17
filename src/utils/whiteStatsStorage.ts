@@ -43,5 +43,11 @@ export async function deleteWhiteStatsEntry(id: number): Promise<void> {
 
 export async function clearWhiteStatsHistory(): Promise<void> {
   const db = await getDb();
-  await db.clear('history');
+  const tx = db.transaction('history', 'readwrite');
+  for (const e of await db.getAll('history')) {
+    e.deleted = true;
+    e.timestamp = Date.now();
+    await tx.store.put(e);
+  }
+  await tx.done;
 }
