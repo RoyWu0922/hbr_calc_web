@@ -2,10 +2,11 @@
 export interface AdvancedOptions {
   hideWhiteBonus: boolean; // 隐藏全部白值加成填写框
   manualSkill: boolean;    // 取消下拉选技能，手动填写技能名 + 差值/min/max
+  spModel: boolean;        // SP模型：由 SP + 单体/群体 自动算最大威力/基础差值
 }
 
 const STORAGE_KEY = 'hbr_calc_advanced_options';
-const DEFAULT_OPTIONS: AdvancedOptions = { hideWhiteBonus: false, manualSkill: false };
+const DEFAULT_OPTIONS: AdvancedOptions = { hideWhiteBonus: false, manualSkill: false, spModel: false };
 
 export function loadAdvancedOptions(): AdvancedOptions {
   try {
@@ -15,6 +16,7 @@ export function loadAdvancedOptions(): AdvancedOptions {
     return {
       hideWhiteBonus: parsed.hideWhiteBonus === true,
       manualSkill: parsed.manualSkill === true,
+      spModel: parsed.spModel === true,
     };
   } catch {
     return { ...DEFAULT_OPTIONS };

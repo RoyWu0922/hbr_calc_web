@@ -26,6 +26,14 @@ const defaultSkill: SkillInput = {
   weaponWeak: 0, elementWeak: 0, hitCount: 0,
 };
 
+// SP模型：最大威力 = 750 + 60·sp²(单体) / 750 + 45·sp²(群体)；基础差值 = ⌈105 + 3·sp⌉（非整数向上取整）
+function spModelMaxPower(sp: number, target: 'single' | 'group'): number {
+  return target === 'group' ? 750 + 45 * sp * sp : 750 + 60 * sp * sp;
+}
+function spModelBaseDiff(sp: number): number {
+  return Math.ceil(105 + sp * 3);
+}
+
 const defaultStats: Stats = { str: 0, spr: 0, int: 0, luk: 0 };
 
 function emptyBuff(): BuffSkill { return { name: '', maxPower: 0, border: 0, orb: 0, currentAttr: 0, moraleFighting: 0, skillLevel: 1, passive: 0, layers: 0 }; }
@@ -126,22 +134,27 @@ export default function DamageCalculator({ initialData }: Props) {
   }, [initialData]);
 
   const effInput: DamageInput = useMemo(() => {
+    // SP模型开启时：最大威力/基础差值 由 SP + 目标数自动计算（不覆盖用户手填的原始值）；
+    // 公式值对应 技能等级=1，等级缩放仍由「技能等级」字段正常控制
+    const effSkill = advanced.spModel
+      ? { ...skill, maxPower: spModelMaxPower(skill.sp, skill.spTarget ?? 'single'), baseDiff: spModelBaseDiff(skill.sp) }
+      : skill;
     const base = {
       stats, equipment, bonus, od, break_: breakParams, score,
       chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg,
       superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr, // 自由文本，不受 hideWhiteBonus 影响
     };
     if (!advanced.hideWhiteBonus) {
-      return { ...base, skill, buffs, debuffs, weaknesses };
+      return { ...base, skill: effSkill, buffs, debuffs, weaknesses };
     }
     return {
       ...base,
-      skill: { ...skill, whiteBonus: 0 },
+      skill: { ...effSkill, whiteBonus: 0 },
       buffs: buffs.map(b => ({ ...b, moraleFighting: 0 })),
       debuffs: debuffs.map(d => ({ ...d, moraleDebuffs: 0 })),
       weaknesses: weaknesses.map(w => ({ ...w, moraleDebuffs: 0 })),
     };
-  }, [advanced.hideWhiteBonus, skill, stats, buffs, debuffs, weaknesses,
+  }, [advanced.hideWhiteBonus, advanced.spModel, skill, stats, buffs, debuffs, weaknesses,
       equipment, bonus, od, breakParams, score, chainMul, breakMul, odMul, floatVal, bonusDmg,
       superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr]);
 
@@ -346,6 +359,18 @@ export default function DamageCalculator({ initialData }: Props) {
                   </div>
                   手动填写技能
                 </label>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-text-muted"
+                  onClick={() => {
+                    const next = !advanced.spModel;
+                    setAdvanced(a => ({ ...a, spModel: next }));
+                    // 公式值对应技能等级=1，默认 0 会被引擎缩放 0.98，开 SP模型 时自动补正到 1
+                    if (next && skill.skillLevel === 0) updateSkill('skillLevel', 1);
+                  }}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${advanced.spModel ? 'bg-accent border-accent' : 'toggle-off'}`}>
+                    {advanced.spModel && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  SP模型
+                </label>
               </div>
             )}
           </div>
@@ -368,7 +393,7 @@ export default function DamageCalculator({ initialData }: Props) {
         </div>
       </CollapsibleSection>
 
-      <SkillParamsSection skill={skill} updateSkill={updateSkill} result={result} hideWhiteBonus={advanced.hideWhiteBonus} />
+      <SkillParamsSection skill={skill} updateSkill={updateSkill} result={result} hideWhiteBonus={advanced.hideWhiteBonus} spModel={advanced.spModel} />
 
       <CollapsibleSection title={<span>主动加攻区 <InfoTip id="buff" /></span>} defaultOpen>
         <SkillListCard skills={buffs} lookup={buildLookup(BUFF_SKILLS, 'buff')}
@@ -507,9 +532,9 @@ function ResultHeaderRow({ result }: { result: DamageResultData }) {
 import CollapsibleSection from '../CollapsibleSection';
 
 // ─── Skill Parameters ───────────────────────────────────────
-function SkillParamsSection({ skill, updateSkill, result, hideWhiteBonus }: {
+function SkillParamsSection({ skill, updateSkill, result, hideWhiteBonus, spModel }: {
   skill: SkillInput; updateSkill: (k: keyof SkillInput, v: unknown) => void;
-  result: DamageResultData | null; hideWhiteBonus?: boolean;
+  result: DamageResultData | null; hideWhiteBonus?: boolean; spModel?: boolean;
 }) {
   const [showDetail, setShowDetail] = useState(false);
   return (
@@ -520,13 +545,33 @@ function SkillParamsSection({ skill, updateSkill, result, hideWhiteBonus }: {
           <Field label="白值加成(包括士气, 灾厄等)（有-100的话请在这+50）" value={skill.whiteBonus} onChange={v => updateSkill('whiteBonus', v)} />
         )}
       </div>
-      <div className="grid grid-cols-5 gap-3 mb-3">
-        <Field label="最大威力" value={skill.maxPower} onChange={v => updateSkill('maxPower', v)} />
-        <Field label="技能等级" value={skill.skillLevel} onChange={v => updateSkill('skillLevel', v)} />
-        <Field label="基础差值" value={skill.baseDiff} onChange={v => updateSkill('baseDiff', v)} />
-        <Field label="Hit数" value={skill.hitCount} onChange={v => updateSkill('hitCount', v)} />
-        <Toggle label="暴击" value={skill.isCrit} onChange={v => updateSkill('isCrit', v)} />
-      </div>
+      {spModel ? (
+        <div className="grid grid-cols-5 gap-3 mb-3">
+          <Field label="SP" value={skill.sp} onChange={v => updateSkill('sp', v)} />
+          <div>
+            <div className="input-label">目标</div>
+            <input type="range" min={0} max={1} step={1}
+              value={skill.spTarget === 'group' ? 1 : 0}
+              onChange={e => updateSkill('spTarget', e.target.value === '1' ? 'group' : 'single')}
+              className="w-full mt-2 accent-accent" title="单体 750+60sp² / 群体 750+45sp²" />
+            <div className="flex justify-between text-[10px] text-text-muted mt-1 leading-tight">
+              <span>单体</span>
+              <span>群体</span>
+            </div>
+          </div>
+          <Field label="技能等级" value={skill.skillLevel} onChange={v => updateSkill('skillLevel', v)} />
+          <Field label="Hit数" value={skill.hitCount} onChange={v => updateSkill('hitCount', v)} />
+          <Toggle label="暴击" value={skill.isCrit} onChange={v => updateSkill('isCrit', v)} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-5 gap-3 mb-3">
+          <Field label="最大威力" value={skill.maxPower} onChange={v => updateSkill('maxPower', v)} />
+          <Field label="技能等级" value={skill.skillLevel} onChange={v => updateSkill('skillLevel', v)} />
+          <Field label="基础差值" value={skill.baseDiff} onChange={v => updateSkill('baseDiff', v)} />
+          <Field label="Hit数" value={skill.hitCount} onChange={v => updateSkill('hitCount', v)} />
+          <Toggle label="暴击" value={skill.isCrit} onChange={v => updateSkill('isCrit', v)} />
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
         <Field label="宝珠" value={skill.orb} onChange={v => updateSkill('orb', v)} />
         <Field label="偏向(例: 月哥王ub打hp=2)" value={skill.deviation} onChange={v => updateSkill('deviation', v)} step={0.1} />
