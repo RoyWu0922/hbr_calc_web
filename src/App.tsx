@@ -7,6 +7,7 @@ import ExtraFeatures from './components/ExtraFeatures/ExtraFeatures';
 import WhiteStats from './components/WhiteStats/WhiteStats';
 import MaxStatsCalculator from './components/WhiteStats/MaxStatsCalculator';
 import TurnPlanner from './components/TurnPlanner/TurnPlanner';
+import GuideInfoPage from './components/GuideInfo/GuideInfoPage';
 import AuthDialog from './components/AuthDialog';
 import SettingsDialog from './components/SettingsDialog';
 import ChangelogDialog from './components/ChangelogDialog';
@@ -19,7 +20,7 @@ import { AuthProvider, useAuth } from './utils/auth';
 import { attachSyncTriggers, uploadAll, pullAll } from './utils/syncEngine';
 import { CalcHistoryEntry, DamageResultData } from './types';
 
-type PrimaryTab = 'damage' | 'white' | 'extra' | 'planner';
+type PrimaryTab = 'damage' | 'white' | 'extra' | 'planner' | 'guideInfo';
 type SubTab = 'calculator' | 'skills' | 'history' | 'guide';
 const SUB_TABS: { key: SubTab; label: string }[] = [
   { key: 'calculator', label: '伤害计算' },
@@ -33,7 +34,8 @@ const PRIMARY_TABS: { key: PrimaryTab; label: string; fullLabel: string; icon: R
   { key: 'white', label: '白值', fullLabel: '白值计算', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg> },
    { key: 'planner', label: '排轴', fullLabel: '排轴', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> },
   { key: 'extra', label: '功能', fullLabel: '额外功能', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
- 
+  { key: 'guideInfo', label: '攻略', fullLabel: '攻略资讯', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> },
+
 ];
 
 export default function App() {
@@ -312,6 +314,9 @@ function AppInner() {
           <div style={{ display: primaryTab === 'planner' ? 'block' : 'none' }}>
             <TurnPlanner mode={plannerSubTab} onSwitchToEditor={() => setPlannerSubTab('editor')} />
           </div>
+          <div style={{ display: primaryTab === 'guideInfo' ? 'block' : 'none' }}>
+            <GuideInfoPage />
+          </div>
         </main>
 
         {/* Left side floating icons */}
@@ -338,7 +343,7 @@ function AppInner() {
         <CursorFollower />
         {/* Mobile bottom navigation */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t" style={{ borderTop: '1px solid var(--app-header-border)', background: 'var(--app-header-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div className="grid grid-cols-4 max-w-lg mx-auto">
+          <div className="grid grid-cols-5 max-w-lg mx-auto">
             {PRIMARY_TABS.map(t => (
               <button key={t.key} onClick={() => switchPrimary(t.key)}
                 className={`flex flex-col items-center justify-center gap-0.5 py-2.5 ${primaryTab === t.key ? 'text-accent' : 'text-text-muted'}`}>

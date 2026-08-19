@@ -324,3 +324,38 @@ export interface DamageInput {
   smallChainHits?: number;
   bodyWeightStr?: string;
 }
+
+// ─── 攻略资讯 (Guide) ─────────────────────────────────
+export type GuideCategory = 'ex' | 'score';   // 异时层EX | 打分EX
+export type GuideAttribute = '火' | '冰' | '雷' | '光' | '暗' | '无';
+export type GuideStage = 'P1' | 'P2';
+export type GuideStatus = 'pending' | 'approved' | 'rejected';
+
+export interface GuideTeamSlot {
+  characterId: number;   // medalData 角色 id (0~63)
+  skin?: string;         // 皮肤 id（缺省=原皮，兼容旧数据），见 guideData.getCharSkins
+  break: number;         // 突破数 0~4
+}
+
+export interface GuideEntry {
+  id?: number;
+  uuid?: string;         // Supabase 主键
+  category: GuideCategory;
+  period: number;        // 期数
+  stage?: GuideStage;    // 仅异时层EX
+  attribute: GuideAttribute;
+  weather?: boolean;     // 需要天气（仅异时层EX）
+  turns: number;         // 1~15
+  team: GuideTeamSlot[]; // 长度固定 6
+  author: string;
+  videoUrl?: string;
+  imageUrl?: string;
+  notes?: string;
+  score?: number;        // 仅打分EX
+  status: GuideStatus;
+  userId: string;        // 投稿者 Supabase 用户 id
+  createdAt: number;
+  updatedAt: number;
+  deleted?: boolean;
+  likeCount?: number;    // 点赞数（数据库同步）
+}
