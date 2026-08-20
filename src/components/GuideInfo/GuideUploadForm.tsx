@@ -181,7 +181,13 @@ export default function GuideUploadForm({ category, allowCategoryChange, isAdmin
       </div>
 
       <CharacterPickerModal open={pickerIdx !== null} onClose={() => setPickerIdx(null)}
-        onPick={sel => { if (pickerIdx != null) setSlot(pickerIdx, { characterId: sel.characterId, skin: sel.skin, break: 0 }); }} />
+        onPick={sel => {
+          if (pickerIdx == null) return;
+          // 同一角色只能放一个（含不同皮肤），重复则弹提醒不允许放入
+          const dup = team.find((s, idx) => idx !== pickerIdx && s?.characterId === sel.characterId);
+          if (dup) { alert('该角色已在队伍中，一个角色只能放一个（含不同皮肤）'); return; }
+          setSlot(pickerIdx, { characterId: sel.characterId, skin: sel.skin, break: 0 });
+        }} />
     </div>
   );
 }

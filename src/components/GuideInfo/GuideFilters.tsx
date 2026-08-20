@@ -156,7 +156,7 @@ export default function GuideFilters({ category, filters, onChange, userId }: {
         {category === 'score' && (
           <>
             <span className="input-label ml-2">分数 ≥</span>
-            <input type="number" className="input-field w-24" placeholder="最低分" value={filters.minScore ?? ''}
+            <input type="number" className="input-field w-16 !py-1 text-xs" value={filters.minScore ?? ''}
               onChange={e => set({ minScore: e.target.value === '' ? null : Number(e.target.value) })} />
           </>
         )}
