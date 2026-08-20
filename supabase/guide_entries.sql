@@ -121,3 +121,49 @@ drop policy if exists "guide_likes_delete" on public.guide_likes;
 create policy "guide_likes_delete" on public.guide_likes
   for delete
   using ( auth.uid() = user_id );
+
+-- ─── 评论 ─────────────────────────────────────────────
+-- 评论区：登录用户对每篇（已审核）作业发表评论；直接发布，本人可删，管理员可隐藏任意
+create table if not exists public.guide_comments (
+  id uuid primary key default gen_random_uuid(),
+  entry_id uuid not null references public.guide_entries(id) on delete cascade,
+  user_id uuid not null references auth.users,
+  author text not null,      -- 登录用户名（展示用，denormalized）
+  content text not null check (length(content) between 1 and 500),
+  created_at timestamptz default now(),
+  deleted boolean default false
+);
+
+create index if not exists guide_comments_entry_idx on public.guide_comments (entry_id, created_at);
+
+alter table public.guide_comments enable row level security;
+
+-- 读：仅未删且所属作业已审核的评论；管理员全量
+drop policy if exists "guide_comments_read" on public.guide_comments;
+create policy "guide_comments_read" on public.guide_comments
+  for select using (
+    ( deleted = false
+      and exists (select 1 from public.guide_entries e where e.id = entry_id and e.status = 'approved' and e.deleted = false) )
+    or public.is_guide_admin()
+  );
+
+-- 写：本人，且 author 必须等于 JWT 里的用户名（防冒充他人/假名）
+drop policy if exists "guide_comments_insert" on public.guide_comments;
+create policy "guide_comments_insert" on public.guide_comments
+  for insert with check (
+    auth.uid() = user_id
+    and author = coalesce(auth.jwt() -> 'user_metadata' ->> 'username', '')
+  );
+
+-- 改：本人可改/软删自己的，管理员可隐藏任意；author 不可被改成假名
+drop policy if exists "guide_comments_update" on public.guide_comments;
+create policy "guide_comments_update" on public.guide_comments
+  for update using ( public.is_guide_admin() or auth.uid() = user_id )
+  with check ( public.is_guide_admin() or (
+    auth.uid() = user_id and author = coalesce(auth.jwt() -> 'user_metadata' ->> 'username', '')
+  ) );
+
+-- 删：仅管理员（兜底硬删，前端统一走软删）
+drop policy if exists "guide_comments_delete" on public.guide_comments;
+create policy "guide_comments_delete" on public.guide_comments
+  for delete using ( public.is_guide_admin() );

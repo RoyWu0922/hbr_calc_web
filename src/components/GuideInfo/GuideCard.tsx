@@ -18,7 +18,7 @@ function TeamSlot({ slot }: { slot: GuideTeamSlot }) {
   );
 }
 
-export default function GuideCard({ entry, isFav, onToggleFav, liked, onLike, canEdit, onEdit }: {
+export default function GuideCard({ entry, isFav, onToggleFav, liked, onLike, canEdit, onEdit, onComments }: {
   entry: GuideEntry;
   isFav: boolean;
   onToggleFav: () => void;
@@ -26,6 +26,7 @@ export default function GuideCard({ entry, isFav, onToggleFav, liked, onLike, ca
   onLike: () => void;
   canEdit: boolean;
   onEdit: () => void;
+  onComments: () => void;
 }) {
   return (
     <div className="card p-3 flex flex-col gap-2">
@@ -43,6 +44,7 @@ export default function GuideCard({ entry, isFav, onToggleFav, liked, onLike, ca
           <span className="leading-none">{liked ? '❤' : '♡'}</span>
           <span>{entry.likeCount ?? 0}</span>
         </button>
+        <button className="btn btn-xs btn-secondary" onClick={onComments}>💬 评论</button>
         {canEdit && <button className="btn btn-xs btn-secondary" onClick={onEdit}>编辑</button>}
         <button className={`text-lg leading-none ${isFav ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`} onClick={onToggleFav} title="收藏">
           {isFav ? '★' : '☆'}

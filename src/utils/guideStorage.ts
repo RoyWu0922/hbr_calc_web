@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { GuideCategory, GuideEntry, GuideStatus, GuideTeamSlot } from '../types';
+import type { GuideCategory, GuideComment, GuideEntry, GuideStatus, GuideTeamSlot } from '../types';
 
 const TABLE = 'guide_entries';
 
@@ -160,4 +160,57 @@ export async function listMyLikedIds(): Promise<string[]> {
   } catch {
     return [];
   }
+}
+
+// ─── 评论 ─────────────────────────────────────────────
+const COMMENTS_TABLE = 'guide_comments';
+
+interface CommentRow {
+  id: string;
+  entry_id: string;
+  user_id: string;
+  author: string;
+  content: string;
+  created_at: string;
+  deleted: boolean;
+}
+
+// 某作业的评论列表（RLS 自动过滤：仅已审核作业 + 未删除）
+export async function listComments(entryUuid: string): Promise<{ comments: GuideComment[]; error: string | null }> {
+  try {
+    const { data, error } = await supabase
+      .from(COMMENTS_TABLE)
+      .select('*')
+      .eq('entry_id', entryUuid)
+      .order('created_at', { ascending: true });
+    if (error) return { comments: [], error: error.message };
+    const comments: GuideComment[] = (data as CommentRow[]).map(r => ({
+      uuid: r.id,
+      entryId: r.entry_id,
+      userId: r.user_id,
+      author: r.author,
+      content: r.content,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+    return { comments, error: null };
+  } catch (e) {
+    return { comments: [], error: (e as Error).message };
+  }
+}
+
+// 发表评论（author 必须与登录用户名一致，RLS 校验）
+export async function addComment(entryUuid: string, content: string, userId: string, author: string): Promise<string | null> {
+  const { error } = await supabase.from(COMMENTS_TABLE).insert({
+    entry_id: entryUuid,
+    user_id: userId,
+    author,
+    content: content.trim(),
+  });
+  return error?.message || null;
+}
+
+// 软删评论（本人或管理员）
+export async function softDeleteComment(commentUuid: string): Promise<string | null> {
+  const { error } = await supabase.from(COMMENTS_TABLE).update({ deleted: true }).eq('id', commentUuid);
+  return error?.message || null;
 }

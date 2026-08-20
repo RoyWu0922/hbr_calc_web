@@ -359,3 +359,12 @@ export interface GuideEntry {
   deleted?: boolean;
   likeCount?: number;    // 点赞数（数据库同步）
 }
+
+export interface GuideComment {
+  uuid: string;
+  entryId: string;
+  userId: string;
+  author: string;        // 登录用户名（展示用）
+  content: string;
+  createdAt: number;
+}

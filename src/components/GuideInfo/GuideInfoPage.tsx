@@ -7,6 +7,7 @@ import GuideFilters, { applyFilters, defaultFilters, type GuideFilterState } fro
 import GuideCardList from './GuideCardList';
 import GuideUploadForm from './GuideUploadForm';
 import GuideAdminPanel from './GuideAdminPanel';
+import CommentModal from './CommentModal';
 import Pagination from '../Pagination';
 
 const PAGE_SIZE = 12;
@@ -31,6 +32,7 @@ export default function GuideInfoPage() {
   const [editing, setEditing] = useState<GuideEntry | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState('');
+  const [commenting, setCommenting] = useState<GuideEntry | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -112,7 +114,8 @@ export default function GuideInfoPage() {
       ) : (
         <>
           <GuideCardList entries={pageEntries} favorites={favorites} onToggleFav={toggleFav}
-            userId={user?.id ?? null} isAdmin={isAdmin} likedIds={likedIds} onLike={toggleLike} onEdit={openEdit} />
+            userId={user?.id ?? null} isAdmin={isAdmin} likedIds={likedIds} onLike={toggleLike} onEdit={openEdit}
+            onComments={setCommenting} />
           <Pagination page={page} pageCount={pageCount} onPage={setPage} />
         </>
       )}
@@ -126,6 +129,7 @@ export default function GuideInfoPage() {
           onSubmitted={() => listApproved(category).then(r => { setEntries(r.entries); setError(r.error); })} />
       )}
       {showAdmin && <GuideAdminPanel onClose={() => setShowAdmin(false)} />}
+      {commenting && <CommentModal entry={commenting} isAdmin={isAdmin} onClose={() => setCommenting(null)} />}
     </div>
   );
 }
