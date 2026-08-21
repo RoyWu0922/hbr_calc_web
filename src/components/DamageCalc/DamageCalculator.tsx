@@ -278,10 +278,11 @@ export default function DamageCalculator({ initialData }: Props) {
   const toggleScoreEx = () => {
     const next = !score.exScore;
     updateScore('exScore', next);
+    updateScore('baseScoreOverride', 120000);
     if (next) {
       updateScore('damageCoeff', 1);
       updateScore('modifier', 3);
-      updateScore('thresholdOverride', 2000000000);
+      updateScore('thresholdOverride', 1833033033);
     } else {
       updateScore('damageCoeff', defaultScore.damageCoeff);
       updateScore('modifier', defaultScore.modifier);
@@ -842,6 +843,14 @@ function ScoreSection({ score, updateScore, bonusDmg, setBonusDmg }: {
           <select className="input-field text-xs py-1.5" value={score.difficulty} onChange={e => updateScore('difficulty', parseInt(e.target.value))}>
             {Object.keys(SCORE_TABLE).map(k => <option key={k} value={k}>{k}</option>)}
           </select>
+        </div>
+      )}
+      {score.exScore && (
+        <div>
+          <div className="input-label">基础分</div>
+          <input className="input-field text-xs py-1.5" type="number" step={1}
+            value={score.baseScoreOverride ?? ''} placeholder="100000"
+            onChange={e => updateScore('baseScoreOverride', e.target.value ? parseFloat(e.target.value) : undefined)} />
         </div>
       )}
       <div>

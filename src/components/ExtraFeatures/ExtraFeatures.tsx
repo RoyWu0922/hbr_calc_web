@@ -278,6 +278,7 @@ function QuickScoreCard() {
   const [hasShield, setHasShield] = useState(true);
   const [modifier, setModifier] = useState(1.35);
   const [thresholdOverride, setThresholdOverride] = useState<number | undefined>(undefined);
+  const [baseScoreOverride, setBaseScoreOverride] = useState<number | undefined>(undefined);
   const [exScore, setExScore] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -285,6 +286,7 @@ function QuickScoreCard() {
   const toggleEx = () => {
     const next = !exScore;
     setExScore(next);
+    setBaseScoreOverride(undefined);
     if (next) {
       setDamageCoeff(1);
       setModifier(3);
@@ -300,9 +302,9 @@ function QuickScoreCard() {
     if (!totalDmg) return null;
     return calcScore(totalDmg, {
       difficulty: diff, turns, hasShield, damageCoeff, modifier, targets: 1,
-      thresholdOverride, exScore,
+      thresholdOverride, baseScoreOverride, exScore,
     });
-  }, [totalDmg, damageCoeff, diff, turns, hasShield, modifier, thresholdOverride, exScore]);
+  }, [totalDmg, damageCoeff, diff, turns, hasShield, modifier, thresholdOverride, baseScoreOverride, exScore]);
 
   return (
     <div className="card border-gold/20">
@@ -325,6 +327,14 @@ function QuickScoreCard() {
           <select className="input-field text-xs py-1.5" value={diff} onChange={e => setDiff(parseInt(e.target.value))}>
             {Object.keys(SCORE_TABLE).map(k => <option key={k} value={k}>{k}</option>)}
           </select>
+        </div>
+        )}
+        {exScore && (
+        <div>
+          <div className="input-label">基础分</div>
+          <input className="input-field text-xs py-1.5" type="number" step={1}
+            value={baseScoreOverride ?? ''} placeholder="100000"
+            onChange={e => setBaseScoreOverride(e.target.value ? parseFloat(e.target.value) : undefined)} />
         </div>
         )}
         <div>
