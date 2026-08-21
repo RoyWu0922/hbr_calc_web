@@ -317,6 +317,7 @@ export interface DamageInput {
   floatVal: number;
   bonusDmg: number;
   damageValueOverride?: number;
+  exAttenuation?: boolean;  // ex打分：切换 EX 衰减（阈值 1e7）
   // Float probability distribution settings
   superChainHits?: number;
   bigChainHits?: number;

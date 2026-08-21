@@ -445,6 +445,41 @@ export function applyAttenuation(damage: number, float = 1): number {
   return damage * float;
 }
 
+// ─── EX 衰减（打分EX）──────────────────────────────────────────
+// 伤害 ≤ 1e7 → 原样返回（与下方分支在 x=1e7 处平滑衔接）
+// 伤害 > 1e7 → 1e7 + 443400000 * ln(1 + 0.02046 * (伤害-1e7)/1e7)
+//            → 若结果仍 > 10e，再叠加原 10e 衰减（上限 20e）
+const EX_ATTEN_THRESHOLD = 10_000_000;       // 1e7
+const EX_ATTEN_COEFF = 443_400_000;          // 443400000
+const EX_ATTEN_B = 0.02046;
+
+export function applyExAttenuation(damage: number, float = 1): number {
+  const d = damage * float;
+  if (d <= EX_ATTEN_THRESHOLD) return d;
+  const result = EX_ATTEN_THRESHOLD
+    + EX_ATTEN_COEFF * Math.log(1 + EX_ATTEN_B * (d - EX_ATTEN_THRESHOLD) / EX_ATTEN_THRESHOLD);
+  const exAtten = roundDown(Math.min(result, Number.MAX_SAFE_INTEGER));
+  // 两层衰减叠加：EX 衰减后仍 > 10e → 再过一遍原 10e 衰减
+  return exAtten > ATTEN_THRESHOLD ? applyAttenuation(exAtten) : exAtten;
+}
+
+// EX 反推（两层衰减的逆）：target = y
+//   y ≤ 10e：只经过 EX 衰减 → 逆推 EX 对数
+//   y > 10e：先逆推原 10e 衰减得 y1，再逆推 EX 对数
+export function reverseExAttenuation(targetDamage: number): number | null {
+  let y = targetDamage;
+  if (y > ATTEN_CAP) return null;  // 超过 20e 上限不可达
+  if (y > ATTEN_THRESHOLD) {
+    // 逆原衰减：y = 20e - exp(0.7 - 0.7*y1/10e) * 10e
+    const lnArg = (ATTEN_CAP - y) / ATTEN_THRESHOLD;
+    if (lnArg <= 0) return null;
+    y = ATTEN_THRESHOLD * (0.7 - Math.log(lnArg)) / 0.7;
+  }
+  if (y <= EX_ATTEN_THRESHOLD) return y;
+  const expTerm = Math.exp((y - EX_ATTEN_THRESHOLD) / EX_ATTEN_COEFF);
+  return EX_ATTEN_THRESHOLD + EX_ATTEN_THRESHOLD * (expTerm - 1) / EX_ATTEN_B;
+}
+
 // ─── Score Calculation ───────────────────────────────────────
 export function calcScore(damage: number, params: ScoreParams, bonusDmg = 0): {
   baseScore: number; threshold: number; damageScore: number;
@@ -528,8 +563,14 @@ export function calculateAll(input: DamageInput): DamageResultData {
     * floatVal;
 
   // ── 衰减（最后一步，所有乘区已并入）──────────────────────────
-  const attenuationApplied = preAttenuation > ATTEN_THRESHOLD;
-  const postAttenuation = applyAttenuation(preAttenuation, 1);
+  // ex打分开关：切换为 EX 衰减（阈值 1e7，平滑衔接）
+  const exAtten = input.exAttenuation;
+  const attenuationApplied = exAtten
+    ? preAttenuation > EX_ATTEN_THRESHOLD
+    : preAttenuation > ATTEN_THRESHOLD;
+  const postAttenuation = exAtten
+    ? applyExAttenuation(preAttenuation, 1)
+    : applyAttenuation(preAttenuation, 1);
 
   // ── OD / 破坏 / 打分 ────────────────────────────────────────
   const odResult = calcOD(od);

@@ -104,6 +104,7 @@ export default function DamageCalculator({ initialData }: Props) {
   });
   const [odMul, setOdMul] = useState(init?.odMul ?? 1);
   const [exOd, setExOd] = useState(false);
+  const [exAtten, setExAtten] = useState(false);
   const [floatVal, setFloatVal] = useState(init?.floatVal ?? 1);
   const [bonusDmg, setBonusDmg] = useState(init?.bonusDmg ?? 0);
   const [superChainHits, setSuperChainHits] = useState(init?.superChainHits ?? 0);
@@ -141,7 +142,7 @@ export default function DamageCalculator({ initialData }: Props) {
       : skill;
     const base = {
       stats, equipment, bonus, od, break_: breakParams, score,
-      chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg,
+      chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg, exAttenuation: exAtten,
       superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr, // 自由文本，不受 hideWhiteBonus 影响
     };
     if (!advanced.hideWhiteBonus) {
@@ -155,7 +156,7 @@ export default function DamageCalculator({ initialData }: Props) {
       weaknesses: weaknesses.map(w => ({ ...w, moraleDebuffs: 0 })),
     };
   }, [advanced.hideWhiteBonus, advanced.spModel, skill, stats, buffs, debuffs, weaknesses,
-      equipment, bonus, od, breakParams, score, chainMul, breakMul, odMul, floatVal, bonusDmg,
+      equipment, bonus, od, breakParams, score, chainMul, breakMul, odMul, floatVal, bonusDmg, exAtten,
       superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr]);
 
   const runCalc = useCallback(() => {
@@ -462,7 +463,7 @@ export default function DamageCalculator({ initialData }: Props) {
       {/* Result header row - sticky for visibility while scrolling */}
       {result && (
         <div className="sticky top-[57px] z-30" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-          <ResultHeaderRow result={result} />
+          <ResultHeaderRow result={result} exAtten={exAtten} onToggleExAtten={() => setExAtten(!exAtten)} />
         </div>
       )}
 
@@ -492,7 +493,9 @@ export default function DamageCalculator({ initialData }: Props) {
 }
 
 // ─── Result Header Row ─────────────────────────────────────
-function ResultHeaderRow({ result }: { result: DamageResultData }) {
+function ResultHeaderRow({ result, exAtten, onToggleExAtten }: {
+  result: DamageResultData; exAtten: boolean; onToggleExAtten: () => void;
+}) {
   const copyBtn = (val: string) => (
     <button className="ml-0.5 text-text-muted hover:text-accent inline-flex items-center" style={{ width: 12, height: 12 }}
       onClick={(e) => { e.stopPropagation(); copyToClipboard(val); }} title="复制">
@@ -514,7 +517,13 @@ function ResultHeaderRow({ result }: { result: DamageResultData }) {
           <div>爆伤区 <span className="text-text-primary font-mono">{result.critFactor.toFixed(1)}</span>{copyBtn(result.critFactor.toFixed(1))}</div>
         </div>
         <div className="text-right flex-shrink-0 relative">
-          <div className="text-xs text-text-muted">最终伤害 {copyBtn(String(Math.floor(result.postAttenuation)))}</div>
+          <div className="text-xs text-text-muted flex items-center justify-end gap-1.5">
+            最终伤害 {copyBtn(String(Math.floor(result.postAttenuation)))}
+            <span className="flex items-center gap-1">
+              <span className="text-[10px]">ex衰减</span>
+              <Switch value={exAtten} onChange={onToggleExAtten} />
+            </span>
+          </div>
           <div key={Math.floor(result.postAttenuation)} className="text-3xl font-bold num dmg-pop score-hero">
             {Math.floor(result.postAttenuation).toLocaleString('zh-CN')}</div>
           {result.attenuationApplied && (
