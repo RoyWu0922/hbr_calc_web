@@ -785,6 +785,7 @@ function BonusSection({ bonus, setBonus, equipment, setEquipment, skill, updateS
       <div className="stat-box-left">
         <div className="card-header text-xs mb-2">装备区</div>
         <div className="space-y-2">
+          <Toggle label="属性戒指" value={equipment.ring} onChange={v => setEquipment({ ...equipment, ring: v })} />
           <Toggle label="HP/DP耳环" value={equipment.hpEarring} onChange={v => setEquipment({ ...equipment, hpEarring: v })} />
           <div className="text-xs text-text-muted pl-7">耳环加攻: <span className="text-gold font-semibold">{earringBonus.toFixed(2)}</span></div>
           <Toggle label="恒星战项链" value={equipment.silverNecklace} onChange={v => setEquipment({ ...equipment, silverNecklace: v })} />
