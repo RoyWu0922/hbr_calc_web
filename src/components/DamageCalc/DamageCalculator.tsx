@@ -274,16 +274,17 @@ export default function DamageCalculator({ initialData }: Props) {
   const updateSkill = (k: keyof SkillInput, v: unknown) => setSkill(s => ({ ...s, [k]: v }));
   const updateScore = (k: keyof ScoreParams, v: unknown) => setScore(s => ({ ...s, [k]: v }));
 
-  // ex打分 toggle: apply ex defaults (threshold 20亿, coeff 1, modifier 3), revert on off
+  // ex打分 toggle: apply ex defaults (基础分12万, 阈值18.33亿, 系数1, 词条3), revert on off
   const toggleScoreEx = () => {
     const next = !score.exScore;
     updateScore('exScore', next);
-    updateScore('baseScoreOverride', 120000);
     if (next) {
+      updateScore('baseScoreOverride', 120000);
       updateScore('damageCoeff', 1);
       updateScore('modifier', 3);
       updateScore('thresholdOverride', 1833033033);
     } else {
+      updateScore('baseScoreOverride', undefined);
       updateScore('damageCoeff', defaultScore.damageCoeff);
       updateScore('modifier', defaultScore.modifier);
       updateScore('thresholdOverride', undefined);
