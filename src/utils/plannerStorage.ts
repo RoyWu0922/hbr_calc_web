@@ -149,7 +149,7 @@ export async function loadPlannerTurns(): Promise<PlannerTurn[]> {
 
 // ─── Config ────────────────────────────────────────────────
 
-export async function savePlannerConfig(config: { odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean; showPursuit: boolean; exScore: boolean }): Promise<void> {
+export async function savePlannerConfig(config: { odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean; showPursuit: boolean; exScore: boolean; showDrag: boolean }): Promise<void> {
   const db = await getDB();
   const tx = db.transaction('planner_config', 'readwrite');
   await tx.store.put({ key: 'odMode', value: config.odMode });
@@ -158,10 +158,11 @@ export async function savePlannerConfig(config: { odMode: ODMode; defaultPassive
   await tx.store.put({ key: 'showEncounter', value: config.showEncounter });
   await tx.store.put({ key: 'showPursuit', value: config.showPursuit });
   await tx.store.put({ key: 'exScore', value: config.exScore });
+  await tx.store.put({ key: 'showDrag', value: config.showDrag });
   await tx.done;
 }
 
-export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean; showPursuit: boolean; exScore: boolean }> {
+export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean; showPursuit: boolean; exScore: boolean; showDrag: boolean }> {
   const db = await getDB();
   const odMode = await db.get('planner_config', 'odMode');
   const passive = await db.get('planner_config', 'defaultPassiveOD');
@@ -169,6 +170,7 @@ export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPass
   const showEncounter = await db.get('planner_config', 'showEncounter');
   const showPursuit = await db.get('planner_config', 'showPursuit');
   const exScore = await db.get('planner_config', 'exScore');
+  const showDrag = await db.get('planner_config', 'showDrag');
   return {
     odMode: (odMode?.value as ODMode) || 300,
     defaultPassiveOD: (passive?.value as number) || 0,
@@ -176,6 +178,7 @@ export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPass
     showEncounter: (showEncounter?.value as boolean) || false,
     showPursuit: (showPursuit?.value as boolean) || false,
     exScore: (exScore?.value as boolean) || false,
+    showDrag: (showDrag?.value as boolean) || false,
   };
 }
 
@@ -184,7 +187,7 @@ export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPass
 export async function savePlannerState(state: TurnPlannerState): Promise<void> {
   await savePlannerChars(state.characters as unknown as TurnPlannerChar[]);
   await savePlannerTurns(state.turns);
-  await savePlannerConfig({ odMode: state.odMode, defaultPassiveOD: state.defaultPassiveOD, showBreak: state.showBreak, showEncounter: state.showEncounter, showPursuit: state.showPursuit, exScore: state.exScore });
+  await savePlannerConfig({ odMode: state.odMode, defaultPassiveOD: state.defaultPassiveOD, showBreak: state.showBreak, showEncounter: state.showEncounter, showPursuit: state.showPursuit, exScore: state.exScore, showDrag: !!state.showDrag });
 }
 
 export async function loadPlannerState(): Promise<TurnPlannerState | null> {
@@ -206,6 +209,7 @@ export async function loadPlannerState(): Promise<TurnPlannerState | null> {
     showEncounter: config.showEncounter,
     showPursuit: config.showPursuit,
     exScore: !!config.exScore,
+    showDrag: !!config.showDrag,
     characters: characters as TurnPlannerState['characters'],
     turns: turns.length > 0 ? turns : [],
   };

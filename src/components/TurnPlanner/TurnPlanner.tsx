@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, Fragment, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, Fragment, useCallback, type DragEvent } from 'react';
 import { TurnPlannerState, PlannerTurn, FrontAction, ODMode, ComputedTurnResult } from '../../types';
 import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner';
 import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles, updateAxleLabel, duplicateAxle, deleteAxle, deleteAxles, clearAllAxles, getAllAxles, importAxles, setAxleFolder, type SavedAxle } from '../../utils/plannerStorage';
@@ -624,6 +624,7 @@ function DetailTable({
   computed: ComputedTurnResult[];
 }) {
   const { characters, turns, odMode, showBreak, showEncounter, showPursuit, exScore } = state;
+  const showDrag = !!state.showDrag;
 
   const updateChar = (i: number, fn: (c: typeof characters[number]) => typeof characters[number]) => {
     const next = [...characters] as typeof characters;
@@ -667,6 +668,42 @@ function DetailTable({
   const [deleteMode, setDeleteMode] = useState(false);
   const [delStart, setDelStart] = useState<number | null>(null);
   const [delEnd, setDelEnd] = useState<number | null>(null);
+
+  // Drag-reorder state for the three front actions (same turn only)
+  const [drag, setDrag] = useState<{ ti: number; ai: number } | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+
+  const moveFrontAction = (fromTi: number, fromAi: number, toTi: number, toAi: number) => {
+    if (fromTi !== toTi || fromAi === toAi) return;
+    updateTurn(toTi, t => {
+      const fns = [...t.frontActions] as typeof t.frontActions;
+      const [moved] = fns.splice(fromAi, 1);
+      fns.splice(toAi, 0, moved);
+      return { ...t, frontActions: fns };
+    });
+  };
+
+  const onDragStartCell = (ti: number, ai: number) => (e: DragEvent) => {
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', `${ti}-${ai}`); } catch { /* no-op */ }
+    setDrag({ ti, ai });
+  };
+
+  const onDragOverCell = (ti: number, ai: number) => (e: DragEvent) => {
+    if (!drag || drag.ti !== ti) return; // 只允许同回合内换序
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOver !== ai) setDragOver(ai);
+  };
+
+  const onDropCell = (ti: number, ai: number) => (e: DragEvent) => {
+    e.preventDefault();
+    if (drag) moveFrontAction(drag.ti, drag.ai, ti, ai);
+    setDrag(null);
+    setDragOver(null);
+  };
+
+  const onDragEndCell = () => { setDrag(null); setDragOver(null); };
 
   useEffect(() => {
     if (!deleteMode) return;
@@ -784,6 +821,13 @@ function DetailTable({
                     {exScore && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
                   ex打分
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] text-text-muted" title="拖拽换序：拖动手柄左右调整三个主动行动的顺序"
+                  onClick={() => setState({ ...state, showDrag: !showDrag })}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${showDrag ? 'bg-accent border-accent' : 'toggle-off'}`}>
+                    {showDrag && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  拖拽换序
                 </label>
               </div>
             )}
@@ -1096,21 +1140,43 @@ function DetailTable({
                   {/* Front 3 — Row A */}
                   {turn.frontActions.map((fa, ai) => (
                     <Fragment key={ai}>
-                      <td>
-                        <select className="input-field text-[8px] py-0.5 w-full text-center" value={fa.charIndex}
-                          onChange={e => {
-                            const ci = parseInt(e.target.value);
-                            updateTurn(ti, t => {
-                              const fns = [...t.frontActions] as typeof t.frontActions;
-                              fns[ai] = { ...fns[ai], charIndex: ci };
-                              return { ...t, frontActions: fns };
-                            });
-                          }}>
-                          <option value={-1}>—</option>
-                          {characters.map((c, ci) => c.name ? <option key={ci} value={ci}>{c.name}</option> : null)}
-                        </select>
+                      <td
+                        onDragOver={onDragOverCell(ti, ai)}
+                        onDrop={onDropCell(ti, ai)}
+                        onDragEnd={onDragEndCell}
+                        style={dragOver === ai ? { outline: '2px solid rgba(245,158,11,0.7)', outlineOffset: '-2px' } : undefined}
+                      >
+                        <div className="flex items-center gap-1">
+                          {showDrag && (
+                            <span
+                              draggable
+                              onDragStart={onDragStartCell(ti, ai)}
+                              onDragEnd={onDragEndCell}
+                              title="拖拽换序"
+                              className="cursor-grab text-text-muted/60 hover:text-accent select-none text-xs leading-none shrink-0 px-0.5"
+                            >⠿</span>
+                          )}
+                          <select className="input-field text-[8px] py-0.5 w-full text-center" value={fa.charIndex}
+                            onChange={e => {
+                              const ci = parseInt(e.target.value);
+                              updateTurn(ti, t => {
+                                const fns = [...t.frontActions] as typeof t.frontActions;
+                                fns[ai] = { ...fns[ai], charIndex: ci };
+                                return { ...t, frontActions: fns };
+                              });
+                            }}>
+                            <option value={-1}>—</option>
+                            {characters.map((c, ci) => c.name ? <option key={ci} value={ci}>{c.name}</option> : null)}
+                          </select>
+                        </div>
                       </td>
-                      <td colSpan={showBreak ? 4 : 3}>
+                      <td
+                        colSpan={showBreak ? 4 : 3}
+                        onDragOver={onDragOverCell(ti, ai)}
+                        onDrop={onDropCell(ti, ai)}
+                        onDragEnd={onDragEndCell}
+                        style={dragOver === ai ? { background: 'rgba(245,158,11,0.15)' } : undefined}
+                      >
                         <input className={TINY} type="text" value={fa.action} placeholder="行动"
                           style={matchSet.has(`${ti}-${ai}`) ? { background: 'rgba(245,158,11,0.3)', borderColor: 'rgba(245,158,11,0.6)' } : undefined}
                           onChange={e => updateTurn(ti, t => {

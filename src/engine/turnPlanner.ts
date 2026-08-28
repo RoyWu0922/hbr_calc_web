@@ -103,6 +103,7 @@ export function createDefaultState(): TurnPlannerState {
     showEncounter: false,
     showPursuit: false,
     exScore: false,
+    showDrag: false,
     characters: [emptyChar, emptyChar, emptyChar, emptyChar, emptyChar, emptyChar] as TurnPlannerState['characters'],
     turns: defaultTurns,
   };
