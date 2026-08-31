@@ -242,6 +242,10 @@ interface ODRow {
   extraODRise: number;
 }
 
+function round4(v: number): number {
+  return Math.round(v * 10000) / 10000;
+}
+
 function calcODRow(row: ODRow, shared: ODShared) {
   const { origHit, addHit, earring, fixedOD, extraODRise } = row;
   const { targets, odRate, odRise } = shared;
@@ -253,7 +257,7 @@ function calcODRow(row: ODRow, shared: ODShared) {
   else if (origHit === 0) j = 0;
   else if (earringVal === 0) j = 0;
   else j = ((origHit - 1) / 9 * (earringVal - 5) + 5);
-  j = j / 100 + 1 + (odRise + extraODRise) / 100;
+  j = round4(j / 100 + 1 + (odRise + extraODRise) / 100);
 
   const part1 = Math.floor(fixedOD * j * 100) / 100;
   const j25 = Math.floor(j * 2.5 * 100) / 100;
