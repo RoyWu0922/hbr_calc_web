@@ -701,6 +701,7 @@ input[type="checkbox"]:checked::after {
   border-radius: 0;
   box-shadow: none;
   border: 1px solid var(--planner-input-border);
+  transition: box-shadow 120ms ease;
 }
 .planner-table .input-field::before { display: none; }
 .planner-table .input-field:focus {

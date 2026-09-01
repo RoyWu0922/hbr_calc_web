@@ -709,6 +709,20 @@ function DetailTable({
 
   const onDragEndCell = () => { setDrag(null); setDragOver(null); };
 
+  // 键盘导航模式：输入框聚焦时方向键不跳格；Enter 退出聚焦后，方向键在格间移动光标
+  const tableRef = useRef<HTMLTableElement | null>(null);
+  const navIdxRef = useRef<number | null>(null);
+
+  const highlightNav = (inputs: HTMLElement[], idx: number | null) => {
+    inputs.forEach((inp, i) => {
+      if (i === idx) {
+        inp.style.boxShadow = '0 0 0 1px rgba(245,158,11,0.5)';
+      } else if (inp.style.boxShadow) {
+        inp.style.boxShadow = '';
+      }
+    });
+  };
+
   useEffect(() => {
     if (!deleteMode) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setDeleteMode(false); setDelStart(null); setDelEnd(null); } };
@@ -877,52 +891,77 @@ function DetailTable({
         </div>
       </div>
 
-      <table className="planner-table" onKeyDown={e => {
-        if (!['Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      <table className="planner-table" ref={tableRef} tabIndex={-1} style={{ outline: 'none' }} onKeyDown={e => {
+        const table = tableRef.current;
+        if (!table) return;
+        if (!['Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Escape'].includes(e.key)) return;
         const target = e.target as HTMLElement;
-        if (!target.closest('input, select')) return;
-        const inputs = Array.from(e.currentTarget.querySelectorAll('input:not([type="checkbox"]), select'));
-        const idx = inputs.indexOf(target as any);
-        if (idx < 0) return;
-        const rowEls = Array.from(e.currentTarget.querySelectorAll('tr'));
-        // Find which row the current input is in
-        let rowIdx = -1;
-        for (let i = 0; i < rowEls.length; i++) {
-          if (rowEls[i].contains(target)) { rowIdx = i; break; }
+        const inputs = Array.from(table.querySelectorAll('input:not([type="checkbox"]), select')) as HTMLElement[];
+
+        // 编辑模式：焦点在输入框/下拉上，方向键保留默认（编辑/调值），仅 Enter 退出聚焦进入导航
+        if (target.closest('input, select')) {
+          if (e.key === 'Enter') {
+            const idx = inputs.indexOf(target);
+            if (idx < 0) return;
+            e.preventDefault();
+            navIdxRef.current = idx;
+            (target as HTMLElement).blur();
+            table.focus({ preventScroll: true });
+            highlightNav(inputs, idx);
+          }
+          return;
         }
-        if (rowIdx < 0) return;
-        // Get inputs in the same row
-        const rowInputs = inputs.filter(inp => rowEls[rowIdx].contains(inp));
-        const colIdx = rowInputs.indexOf(target as any);
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          // Go to cell below in next row at same-ish column, or wrap to next turn
-          for (let r = rowIdx + 1; r < rowEls.length; r++) {
-            const nextInputs = inputs.filter(inp => rowEls[r].contains(inp));
-            if (nextInputs.length === 0) continue;
-            // Find closest column match
-            const matchIdx = Math.min(colIdx, nextInputs.length - 1);
-            (nextInputs[matchIdx] as HTMLElement).focus();
-            break;
+
+        // 导航模式：焦点在 table 容器上，方向键移动描边到相邻格，Enter 进入编辑，Esc 退出
+        if (target === table && navIdxRef.current != null) {
+          const idx = navIdxRef.current;
+          const rowEls = Array.from(table.querySelectorAll('tr'));
+          let rowIdx = -1;
+          for (let i = 0; i < rowEls.length; i++) {
+            if (rowEls[i].contains(inputs[idx])) { rowIdx = i; break; }
           }
-        } else if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          for (let r = rowIdx + 1; r < rowEls.length; r++) {
-            const nextRow = inputs.filter(inp => rowEls[r].contains(inp));
-            if (nextRow.length > colIdx) { (nextRow[colIdx] as HTMLElement).focus(); break; }
+          if (rowIdx < 0) return;
+          const rowInputs = inputs.filter(inp => rowEls[rowIdx].contains(inp));
+          const colIdx = rowInputs.indexOf(inputs[idx]);
+
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            highlightNav(inputs, null);
+            navIdxRef.current = null;
+            inputs[idx].focus();
+            return;
           }
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          for (let r = rowIdx - 1; r >= 0; r--) {
-            const prevRow = inputs.filter(inp => rowEls[r].contains(inp));
-            if (prevRow.length > colIdx) { (prevRow[colIdx] as HTMLElement).focus(); break; }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            highlightNav(inputs, null);
+            navIdxRef.current = null;
+            return;
           }
-        } else if (e.key === 'ArrowRight' && colIdx < rowInputs.length - 1) {
-          e.preventDefault();
-          (rowInputs[colIdx + 1] as HTMLElement).focus();
-        } else if (e.key === 'ArrowLeft' && colIdx > 0) {
-          e.preventDefault();
-          (rowInputs[colIdx - 1] as HTMLElement).focus();
+
+          e.preventDefault(); // 阻止方向键滚动页面
+          let next = idx;
+          if (e.key === 'ArrowDown') {
+            for (let r = rowIdx + 1; r < rowEls.length; r++) {
+              const nr = inputs.filter(inp => rowEls[r].contains(inp));
+              if (nr.length > colIdx) { next = inputs.indexOf(nr[colIdx]); break; }
+            }
+          } else if (e.key === 'ArrowUp') {
+            for (let r = rowIdx - 1; r >= 0; r--) {
+              const pr = inputs.filter(inp => rowEls[r].contains(inp));
+              if (pr.length > colIdx) { next = inputs.indexOf(pr[colIdx]); break; }
+            }
+          } else if (e.key === 'ArrowRight' && colIdx < rowInputs.length - 1) {
+            next = inputs.indexOf(rowInputs[colIdx + 1]);
+          } else if (e.key === 'ArrowLeft' && colIdx > 0) {
+            next = inputs.indexOf(rowInputs[colIdx - 1]);
+          } else {
+            return;
+          }
+
+          if (next >= 0 && next !== idx) {
+            navIdxRef.current = next;
+            highlightNav(inputs, next);
+          }
         }
       }} onBlur={e => {
         const t = e.target as unknown as HTMLInputElement;
