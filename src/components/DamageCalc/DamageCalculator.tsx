@@ -812,6 +812,7 @@ function PassiveBlock({ title, entries, total, totalClass, onUpdate, placeholder
           <input className="input-field text-xs py-1.5" style={{ width: 52 }} type="text" inputMode="decimal"
             value={entry.value === 0 ? '' : String(entry.value)}
             placeholder="数值"
+            onWheel={e => e.currentTarget.blur()}
             onChange={e => {
               const raw = e.target.value;
               const n = [...entries];
@@ -852,7 +853,7 @@ function ScoreSection({ score, updateScore, bonusDmg, setBonusDmg }: {
           <div className="input-label">基础分</div>
           <input className="input-field text-xs py-1.5" type="number" step={1}
             value={score.baseScoreOverride ?? ''} placeholder="100000"
-            onChange={e => updateScore('baseScoreOverride', e.target.value ? parseFloat(e.target.value) : undefined)} />
+            onChange={e => updateScore('baseScoreOverride', e.target.value ? parseFloat(e.target.value) : undefined)} onWheel={e => e.currentTarget.blur()} />
         </div>
       )}
       <div>
@@ -864,27 +865,27 @@ function ScoreSection({ score, updateScore, bonusDmg, setBonusDmg }: {
       <div>
         <div className="input-label">伤害系数</div>
         <input className="input-field text-xs py-1.5" type="number" step={0.001} value={score.damageCoeff}
-          onChange={e => updateScore('damageCoeff', parseFloat(e.target.value) || 0)} />
+          onChange={e => updateScore('damageCoeff', parseFloat(e.target.value) || 0)} onWheel={e => e.currentTarget.blur()} />
       </div>
       <div>
         <div className="input-label">目标数</div>
         <input className="input-field text-xs py-1.5" type="number" step={1} value={score.targets || 1}
-          onChange={e => updateScore('targets', parseInt(e.target.value) || 1)} />
+          onChange={e => updateScore('targets', parseInt(e.target.value) || 1)} onWheel={e => e.currentTarget.blur()} />
       </div>
       <div>
         <div className="input-label">词条倍率</div>
         <input className="input-field text-xs py-1.5" type="number" step={0.01} value={score.modifier}
-          onChange={e => updateScore('modifier', parseFloat(e.target.value) || 0)} />
+          onChange={e => updateScore('modifier', parseFloat(e.target.value) || 0)} onWheel={e => e.currentTarget.blur()} />
       </div>
       <div>
         <div className="input-label">伤害阈值</div>
         <input className="input-field text-xs py-1.5" type="number"  value={score.thresholdOverride || ''}
-          onChange={e => updateScore('thresholdOverride', e.target.value ? parseFloat(e.target.value) : undefined)} />
+          onChange={e => updateScore('thresholdOverride', e.target.value ? parseFloat(e.target.value) : undefined)} onWheel={e => e.currentTarget.blur()} />
       </div>
       <div>
         <div className="input-label">垫刀</div>
         <input className="input-field text-xs py-1.5" type="number" value={bonusDmg || ''}
-          onChange={e => { const v = e.target.value; setBonusDmg(v === '' ? 0 : parseFloat(v) || 0); }} />
+          onChange={e => { const v = e.target.value; setBonusDmg(v === '' ? 0 : parseFloat(v) || 0); }} onWheel={e => e.currentTarget.blur()} />
       </div>
       {!score.exScore && (
         <div>
@@ -917,7 +918,7 @@ function Field({ label, value, onChange, step }: { label: string; value: number;
   return (
     <div>
       <div className="input-label truncate">{label}</div>
-      <input className="input-field" type="number" step={step} value={value || ''} onChange={e => onChange(parseFloat(e.target.value) || 0)} />
+      <input className="input-field" type="number" step={step} value={value || ''} onChange={e => onChange(parseFloat(e.target.value) || 0)} onWheel={e => e.currentTarget.blur()} />
     </div>
   );
 }
@@ -929,7 +930,7 @@ function Num({ label, value, onChange, step }: { label: string; value: number; o
     <div className="flex-1 min-w-[72px]">
       <div className="text-[10px] text-text-muted mb-0.5 leading-tight truncate">{label}</div>
       <input className="input-field text-xs py-1.5 w-full" type="number" step={step || 1} value={value || ''}
-        onChange={e => onChange(parseFloat(e.target.value) || 0)} />
+        onChange={e => onChange(parseFloat(e.target.value) || 0)} onWheel={e => e.currentTarget.blur()} />
     </div>
   );
 }

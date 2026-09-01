@@ -197,19 +197,19 @@ export default function DamageResult({ result, skill, floatVal,
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <div className="text-[10px] text-text-muted mb-0.5">特大连击 (50%)</div>
-                <input className="input-field text-xs py-1" type="number" value={superChainHits} onChange={e => setSuperChainHits(parseInt(e.target.value) || 0)} />
+                <input className="input-field text-xs py-1" type="number" value={superChainHits} onChange={e => setSuperChainHits(parseInt(e.target.value) || 0)} onWheel={e => e.currentTarget.blur()} />
               </div>
               <div>
                 <div className="text-[10px] text-text-muted mb-0.5">大连击 (25%)</div>
-                <input className="input-field text-xs py-1" type="number" value={bigChainHits} onChange={e => setBigChainHits(parseInt(e.target.value) || 0)} />
+                <input className="input-field text-xs py-1" type="number" value={bigChainHits} onChange={e => setBigChainHits(parseInt(e.target.value) || 0)} onWheel={e => e.currentTarget.blur()} />
               </div>
               <div>
                 <div className="text-[10px] text-text-muted mb-0.5">中连击 (12%)</div>
-                <input className="input-field text-xs py-1" type="number" value={midChainHits} onChange={e => setMidChainHits(parseInt(e.target.value) || 0)} />
+                <input className="input-field text-xs py-1" type="number" value={midChainHits} onChange={e => setMidChainHits(parseInt(e.target.value) || 0)} onWheel={e => e.currentTarget.blur()} />
               </div>
               <div>
                 <div className="text-[10px] text-text-muted mb-0.5">小连击 (6%)</div>
-                <input className="input-field text-xs py-1" type="number" value={smallChainHits} onChange={e => setSmallChainHits(parseInt(e.target.value) || 0)} />
+                <input className="input-field text-xs py-1" type="number" value={smallChainHits} onChange={e => setSmallChainHits(parseInt(e.target.value) || 0)} onWheel={e => e.currentTarget.blur()} />
               </div>
             </div>
           </div>
