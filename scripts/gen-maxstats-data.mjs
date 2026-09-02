@@ -1,13 +1,13 @@
 /**
- * Generate max-stats calculator data from max_stats_calc6.9.0.xlsx.
+ * Generate max-stats calculator data from max_stats_calc6.9.11.xlsx.
  * Output: src/data/maxStatsData.json
  *
  * - characters: 67 chars, each with their styles + level-200 max base stats
- *   (assumes 徽章13 / 满破满强化 / 转生+20 / 灵魂+5 / 开花)
- * - equips: 11 装备基础数据 presets (already include the +5 weapon bonus)
+ *   (assumes 徽章13 / 满破满强化 / 专属潜在 / 转生+20 / 灵魂+5 / 开花 / 因子15)
+ * - equips: 13 装备基础数据 presets (already include the +5 weapon bonus)
  *
- * 6.9.0 vs 6.8.10: fixed Toughness/Spirit values (were swapped) for most styles,
- * added 3 new styles (李·幸福的味道, 莓·雙星女武神 冰/暗).
+ * 6.9.11 vs 6.9.0: added 专属潜在特性 + 因子全强化15 (base stats all raised),
+ * added 2 styles (彌生·征服暑假餒！, 千惠·夏夜蝴蝶), added 2 luck equips.
  *
  * 组合计算页 formula: total = charBase(style) + ceil(0.1 × supportBase(style)) + equip
  */
@@ -16,7 +16,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const XLSX = require('xlsx');
 
-const wb = XLSX.readFile('max_stats_calc6.9.0.xlsx');
+const wb = XLSX.readFile('max_stats_calc6.9.11.xlsx');
 
 // ─── 角色基础数据 (A=Element, B=Team, C=Character, D=Style, G..L=6 stats) ──
 const ws = wb.Sheets['角色基础数据'];
@@ -52,7 +52,7 @@ const equips = rows2
 const output = {
   characters,
   equips,
-  note: '数据来源: 不会打牌的qeit (HBR V6.9.0, 徽章13 / 满破满强化 / 转生+20 / 专武+5 / 开花)',
+  note: '数据来源: 不会打牌的qeit (HBR V6.9.11, 徽章13 / 满破满强化 / 专属潜在 / 转生+20 / 灵魂+5 / 专武+5 / 开花 / 因子15)',
 };
 mkdirSync('src/data', { recursive: true });
 writeFileSync('src/data/maxStatsData.json', JSON.stringify(output));
