@@ -536,6 +536,8 @@ function ResultHeaderRow({ result, exAtten, onToggleExAtten }: {
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
     </button>
   );
+  const mb = result.multiBody;
+  const isMulti = !!mb && mb.perBody.length > 0;
   return (
     <div className="card border-accent/30">
       <div className="flex items-center gap-4 flex-wrap">
@@ -544,9 +546,13 @@ function ResultHeaderRow({ result, exAtten, onToggleExAtten }: {
           <div className="text-white/20">|</div>
           <div>加攻区 <span className="text-text-primary font-mono">{result.atkFactor.toFixed(3)}</span>{copyBtn(result.atkFactor.toFixed(3))}</div>
           <div className="text-white/20">|</div>
-          <div>减防区 <span className="text-text-primary font-mono">{result.defFactor.toFixed(3)}</span>{copyBtn(result.defFactor.toFixed(3))}</div>
+          {isMulti && mb
+            ? <div>减防区 <span className="text-text-primary font-mono">[{mb.perBody.map(b => b.dbf.toFixed(3)).join(', ')}]</span></div>
+            : <div>减防区 <span className="text-text-primary font-mono">{result.defFactor.toFixed(3)}</span>{copyBtn(result.defFactor.toFixed(3))}</div>}
           <div className="text-white/20">|</div>
-          <div>弱点区 <span className="text-text-primary font-mono">{result.weaknessFactor.toFixed(3)}</span>{copyBtn(result.weaknessFactor.toFixed(3))}</div>
+          {isMulti && mb
+            ? <div>弱点区 <span className="text-text-primary font-mono">[{mb.perBody.map(b => b.weakness.toFixed(3)).join(', ')}]</span></div>
+            : <div>弱点区 <span className="text-text-primary font-mono">{result.weaknessFactor.toFixed(3)}</span>{copyBtn(result.weaknessFactor.toFixed(3))}</div>}
           <div className="text-white/20">|</div>
           <div>爆伤区 <span className="text-text-primary font-mono">{result.critFactor.toFixed(1)}</span>{copyBtn(result.critFactor.toFixed(1))}</div>
         </div>
@@ -560,6 +566,11 @@ function ResultHeaderRow({ result, exAtten, onToggleExAtten }: {
           </div>
           <div key={Math.floor(result.postAttenuation)} className="text-3xl font-bold num dmg-pop score-hero">
             {Math.floor(result.postAttenuation).toLocaleString('zh-CN')}</div>
+          {isMulti && mb && (
+            <div className="text-[11px] text-danger mt-1 font-mono">
+              {mb.perBody.map((b, i) => `体${i + 1}: ${Math.floor(b.postAttenuation).toLocaleString('zh-CN')}`).join(' · ')}
+            </div>
+          )}
           {result.attenuationApplied && (
             <div className="text-[10px] text-danger absolute -bottom-3 right-0 whitespace-nowrap">
               衰减前: {Math.floor(result.preAttenuation).toLocaleString('zh-CN')}
