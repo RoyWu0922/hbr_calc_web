@@ -246,6 +246,11 @@ function round4(v: number): number {
   return Math.round(v * 10000) / 10000;
 }
 
+// 向下取整到2位小数（对浮点误差鲁棒：先加极小量再 floor，避免 50*1.1056=55.2799… 被截成 55.27）
+function floor2(v: number): number {
+  return Math.floor(v * 100 + 1e-9) / 100;
+}
+
 function calcODRow(row: ODRow, shared: ODShared) {
   const { origHit, addHit, earring, fixedOD, extraODRise } = row;
   const { targets, odRate, odRise } = shared;
@@ -259,9 +264,9 @@ function calcODRow(row: ODRow, shared: ODShared) {
   else j = ((origHit - 1) / 9 * (earringVal - 5) + 5);
   j = round4(j / 100 + 1 + (odRise + extraODRise) / 100);
 
-  const part1 = Math.floor(fixedOD * j * 100) / 100;
-  const j25 = Math.floor(j * 2.5 * 100) / 100;
-  const part2 = (origHit + addHit) * Math.floor(j25 * odRate) / 100 * targets;
+  const part1 = floor2(fixedOD * j);
+  const j25 = floor2(j * 2.5);
+  const part2 = (origHit + addHit) * Math.floor(j25 * odRate + 1e-9) / 100 * targets;
   const n = (part1 + part2) / 100;
   const actualHits = n * 40;
   return { n, actualHits };
