@@ -538,39 +538,59 @@ export function calculateAll(input: DamageInput): DamageResultData {
   // ── 降防区 = 主动降防 + 被动降防 ────────────────────────────
   const activeDef = calcDebuffTotal(debuffs, skill.enemyAttr);   // 主动: 降防/脆弱等
   const passiveDef = calcPassiveDefSum(bonus);                   // 被动: 永续降防等
-  const defFactor = (activeDef + passiveDef) / 100 + 1;
+  let defFactor = (activeDef + passiveDef) / 100 + 1;
 
   // ── 弱点区 = 武器弱点 × 元素弱点 ────────────────────────────
   const weaknessTotal = calcWeaknessTotal(weaknesses, skill.enemyAttr);
   const weaponWeakFactor = skill.weaponWeak + 1;
   const elementFactor = skill.elementWeak + weaknessTotal / 100 + 1;
-  const weaknessFactor = weaponWeakFactor * elementFactor;
+  let weaknessFactor = weaponWeakFactor * elementFactor;
 
   // ── 爆伤区 ──────────────────────────────────────────────────
   const critFactor = calcCritDamage(bonus, skill.isCrit) / 100;   // 基础 + 暴击 + 额外条目（存储为百分比，/100 转为乘数）
 
   // ── 额外乘区（用户手动调节）─────────────────────────────────
 
-  // ── 合并：衰减前伤害（含所有乘区，衰减为最后一步）────────────
-  const preAttenuation = skillResult.multiplier
+  // ── 共享乘区（不含 dbf/weakness）────────────────────────────
+  const shared = skillResult.multiplier
     * atkFactor
-    * defFactor
-    * weaknessFactor
     * critFactor
     * chainMul
     * breakMul
     * odMul
     * floatVal;
 
-  // ── 衰减（最后一步，所有乘区已并入）──────────────────────────
-  // ex打分开关：切换为 EX 衰减（阈值 1e7，平滑衔接）
   const exAtten = input.exAttenuation;
-  const attenuationApplied = exAtten
-    ? preAttenuation > EX_ATTEN_THRESHOLD
-    : preAttenuation > ATTEN_THRESHOLD;
-  const postAttenuation = exAtten
-    ? applyExAttenuation(preAttenuation, 1)
-    : applyAttenuation(preAttenuation, 1);
+  const applyAtten = (dmg: number) => exAtten ? applyExAttenuation(dmg, 1) : applyAttenuation(dmg, 1);
+  const isOver = (dmg: number) => exAtten ? dmg > EX_ATTEN_THRESHOLD : dmg > ATTEN_THRESHOLD;
+
+  const bodies = input.multiBody?.enabled ? input.multiBody.bodies : null;
+  const useMultiBody = !!bodies && bodies.length > 0;
+
+  let preAttenuation: number;
+  let postAttenuation: number;
+  let attenuationApplied: boolean;
+  let multiBody: DamageResultData['multiBody'];
+
+  if (useMultiBody && bodies) {
+    const perBody = bodies.map(b => {
+      const pre = shared * b.dbf * b.weakness;
+      const post = applyAtten(pre);
+      return { dbf: b.dbf, weakness: b.weakness, preAttenuation: pre, postAttenuation: post };
+    });
+    const averagePreAttenuation = perBody.reduce((s, p) => s + p.preAttenuation, 0) / perBody.length;
+    const averagePostAttenuation = perBody.reduce((s, p) => s + p.postAttenuation, 0) / perBody.length;
+    preAttenuation = averagePreAttenuation;
+    postAttenuation = averagePostAttenuation;
+    attenuationApplied = isOver(averagePreAttenuation);
+    defFactor = perBody.reduce((s, p) => s + p.dbf, 0) / perBody.length;
+    weaknessFactor = perBody.reduce((s, p) => s + p.weakness, 0) / perBody.length;
+    multiBody = { perBody, averagePreAttenuation, averagePostAttenuation };
+  } else {
+    preAttenuation = shared * defFactor * weaknessFactor;
+    attenuationApplied = isOver(preAttenuation);
+    postAttenuation = applyAtten(preAttenuation);
+  }
 
   // ── OD / 破坏 / 打分 ────────────────────────────────────────
   const odResult = calcOD(od);
@@ -607,6 +627,7 @@ export function calculateAll(input: DamageInput): DamageResultData {
     odHit: odResult.odHit,
     weightedBreak,
     score: scoreResult,
+    multiBody,
   };
 }
 
