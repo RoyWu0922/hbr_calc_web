@@ -135,7 +135,7 @@ export default function DamageCalculator({ initialData }: Props) {
       setBonusDmg(d.bonusDmg ?? 0);
       setResult(initialData.result); setCalcLabel(initialData.label);
       setLoadedEntryId(initialData.id ?? null);
-      if (d.multiBody?.bodies?.length) setMultiBodyBodies(d.multiBody.bodies);
+      if (d.multiBody?.bodies?.length) { setMultiBodyBodies(d.multiBody.bodies); setActiveBodyIndex(0); }
       setAdvanced(a => ({ ...a, multiBody: !!d.multiBody?.enabled }));
     }
   }, [initialData]);
@@ -231,7 +231,7 @@ export default function DamageCalculator({ initialData }: Props) {
     setOdMul(decoded.odMul);
     setFloatVal(decoded.floatVal);
     setBonusDmg(decoded.bonusDmg ?? 0);
-    if (decoded.multiBody?.bodies?.length) setMultiBodyBodies(decoded.multiBody.bodies);
+    if (decoded.multiBody?.bodies?.length) { setMultiBodyBodies(decoded.multiBody.bodies); setActiveBodyIndex(0); }
     setAdvanced(a => ({ ...a, multiBody: !!decoded.multiBody?.enabled }));
     setCalcLabel('导入');
   };
@@ -408,8 +408,8 @@ export default function DamageCalculator({ initialData }: Props) {
       <CollapsibleSection title="敌方属性" defaultOpen>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="敌方属性" value={skill.enemyAttr} onChange={v => updateSkill('enemyAttr', v)} />
-          <Field label="武器弱点" value={skill.weaponWeak} onChange={v => updateSkill('weaponWeak', v)} step={0.1} />
-          <Field label="属性弱点" value={skill.elementWeak} onChange={v => updateSkill('elementWeak', v)} step={0.1} />
+          {!advanced.multiBody && <Field label="武器弱点" value={skill.weaponWeak} onChange={v => updateSkill('weaponWeak', v)} step={0.1} />}
+          {!advanced.multiBody && <Field label="属性弱点" value={skill.elementWeak} onChange={v => updateSkill('elementWeak', v)} step={0.1} />}
         </div>
       </CollapsibleSection>
 
@@ -453,7 +453,7 @@ export default function DamageCalculator({ initialData }: Props) {
 
       <CollapsibleSection title="被动加攻/减防 & 装备" defaultOpen>
         <BonusSection bonus={bonus} setBonus={setBonus} equipment={equipment} setEquipment={setEquipment}
-          skill={skill} updateSkill={updateSkill} atkSum={atkSum} defSum={defSum} critSum={critSum} earringBonus={earringBonus} />
+          skill={skill} updateSkill={updateSkill} atkSum={atkSum} defSum={defSum} critSum={critSum} earringBonus={earringBonus} hideDef={advanced.multiBody} />
       </CollapsibleSection>
 
       <CollapsibleSection title={
@@ -812,18 +812,18 @@ function PopItem({ label, value, highlight }: { label: string; value: string; hi
 }
 
 // ─── Bonus Section ──────────────────────────────────────────
-function BonusSection({ bonus, setBonus, equipment, setEquipment, skill, updateSkill, atkSum, defSum, critSum, earringBonus }: {
+function BonusSection({ bonus, setBonus, equipment, setEquipment, skill, updateSkill, atkSum, defSum, critSum, earringBonus, hideDef }: {
   bonus: BonusArea; setBonus: (b: BonusArea) => void;
   equipment: Equipment; setEquipment: (e: Equipment) => void;
   skill: SkillInput; updateSkill: (k: keyof SkillInput, v: unknown) => void;
-  atkSum: number; defSum: number; critSum: number; earringBonus: number;
+  atkSum: number; defSum: number; critSum: number; earringBonus: number; hideDef: boolean;
 }) {
   return (
     <div className="grid grid-cols-4 gap-4">
       <PassiveBlock title={<span>被动加攻区% <InfoTip id="passiveAtk" /></span>} entries={bonus.passiveAtkEntries} total={atkSum} totalClass="text-heal"
         onUpdate={e => setBonus({ ...bonus, passiveAtkEntries: e })} placeholder="加攻被动名" />
-      <PassiveBlock title="被动减防区%" entries={bonus.passiveDefEntries} total={defSum} totalClass="text-accent"
-        onUpdate={e => setBonus({ ...bonus, passiveDefEntries: e })} placeholder="减防被动名" />
+      {!hideDef && <PassiveBlock title="被动减防区%" entries={bonus.passiveDefEntries} total={defSum} totalClass="text-accent"
+        onUpdate={e => setBonus({ ...bonus, passiveDefEntries: e })} placeholder="减防被动名" />}
       <PassiveBlock title="爆伤区%" entries={bonus.critDmgExtraEntries} total={critSum} totalClass="text-gold"
         onUpdate={e => setBonus({ ...bonus, critDmgExtraEntries: e })} placeholder="爆伤项名" />
       <div className="stat-box-left">
