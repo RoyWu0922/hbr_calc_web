@@ -23,6 +23,7 @@ export interface UserDefaults {
   midChainHits?: number;
   smallChainHits?: number;
   bodyWeightStr?: string;
+  multiBodyBodies?: { dbf: number; weakness: number }[];
 }
 
 const STORAGE_KEY = 'hbr_calc_user_defaults';

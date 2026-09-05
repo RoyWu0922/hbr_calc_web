@@ -115,6 +115,10 @@ export default function DamageCalculator({ initialData }: Props) {
   const [loadedEntryId, setLoadedEntryId] = useState<number | null>(null);
   const [advanced, setAdvanced] = useState(loadAdvancedOptions);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [multiBodyBodies, setMultiBodyBodies] = useState<{ dbf: number; weakness: number }[]>(
+    init?.multiBodyBodies?.length ? init.multiBodyBodies : [{ dbf: 1, weakness: 1 }, { dbf: 1, weakness: 1 }]
+  );
+  const [activeBodyIndex, setActiveBodyIndex] = useState(0);
 
   useEffect(() => {
     if (initialData) {
@@ -131,6 +135,8 @@ export default function DamageCalculator({ initialData }: Props) {
       setBonusDmg(d.bonusDmg ?? 0);
       setResult(initialData.result); setCalcLabel(initialData.label);
       setLoadedEntryId(initialData.id ?? null);
+      if (d.multiBody?.bodies?.length) setMultiBodyBodies(d.multiBody.bodies);
+      if (d.multiBody?.enabled) setAdvanced(a => ({ ...a, multiBody: true }));
     }
   }, [initialData]);
 
@@ -144,6 +150,7 @@ export default function DamageCalculator({ initialData }: Props) {
       stats, equipment, bonus, od, break_: breakParams, score,
       chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg, exAttenuation: exAtten,
       superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr, // 自由文本，不受 hideWhiteBonus 影响
+      multiBody: { enabled: advanced.multiBody, bodies: multiBodyBodies },
     };
     if (!advanced.hideWhiteBonus) {
       return { ...base, skill: effSkill, buffs, debuffs, weaknesses };
@@ -157,7 +164,7 @@ export default function DamageCalculator({ initialData }: Props) {
     };
   }, [advanced.hideWhiteBonus, advanced.spModel, skill, stats, buffs, debuffs, weaknesses,
       equipment, bonus, od, breakParams, score, chainMul, breakMul, odMul, floatVal, bonusDmg, exAtten,
-      superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr]);
+      superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr, advanced.multiBody, multiBodyBodies]);
 
   const runCalc = useCallback(() => {
     const r = calculateAll(effInput);
@@ -224,6 +231,8 @@ export default function DamageCalculator({ initialData }: Props) {
     setOdMul(decoded.odMul);
     setFloatVal(decoded.floatVal);
     setBonusDmg(decoded.bonusDmg ?? 0);
+    if (decoded.multiBody?.bodies?.length) setMultiBodyBodies(decoded.multiBody.bodies);
+    if (decoded.multiBody?.enabled) setAdvanced(a => ({ ...a, multiBody: true }));
     setCalcLabel('导入');
   };
 
@@ -247,6 +256,7 @@ export default function DamageCalculator({ initialData }: Props) {
       midChainHits,
       smallChainHits,
       bodyWeightStr,
+      multiBodyBodies,
     };
     saveUserDefaults(defaults);
     alert('当前数值已保存为默认值，刷新页面后生效');
@@ -373,6 +383,13 @@ export default function DamageCalculator({ initialData }: Props) {
                     {advanced.spModel && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
                   SP模型
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-text-muted"
+                  onClick={() => setAdvanced(a => ({ ...a, multiBody: !a.multiBody }))}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${advanced.multiBody ? 'bg-accent border-accent' : 'toggle-off'}`}>
+                    {advanced.multiBody && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  多体
                 </label>
               </div>
             )}
