@@ -1,7 +1,13 @@
 import type { Session, User } from '@supabase/supabase-js';
 
-const host = typeof location !== 'undefined' && location.hostname ? location.hostname : '127.0.0.1';
-const BASE = import.meta.env.VITE_SUPABASE_URL || `http://${host}:8123`;
+const base = (() => {
+  if (import.meta.env.VITE_SUPABASE_URL) return import.meta.env.VITE_SUPABASE_URL;
+  // Same-origin by default: the reverse proxy (Caddy) serves the SPA and proxies
+  // /api/* to the local SQLite backend, so no mixed-content / CORS issues.
+  if (typeof location !== 'undefined' && location.origin) return location.origin;
+  return 'http://127.0.0.1:8123';
+})();
+const BASE = base;
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'local';
 
 const SESSION_KEY = 'hbr_local_session';
