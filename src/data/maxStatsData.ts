@@ -8,6 +8,8 @@ export interface MaxStatsData {
   characters: MaxCharacter[];
   equips: MaxEquip[];
   note: string;
+  /** 专属潜在特性（UR）：每角色一项，未命中角色的项为 0 */
+  urPotential: Record<string, Stats6>;
 }
 
 export const maxStatsData = raw as unknown as MaxStatsData;
