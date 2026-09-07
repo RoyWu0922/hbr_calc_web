@@ -573,10 +573,14 @@ export function calculateAll(input: DamageInput): DamageResultData {
   let multiBody: DamageResultData['multiBody'];
 
   if (useMultiBody && bodies) {
+    // 每体用自己的减防/弱点技能列表独立算因子；被动减防 + 武器/属性弱点为共享项
     const perBody = bodies.map(b => {
-      const pre = shared * b.dbf * b.weakness;
+      const dbf = (calcDebuffTotal(b.debuffs, skill.enemyAttr) + passiveDef) / 100 + 1;
+      const weakness = (skill.weaponWeak + 1)
+        * (skill.elementWeak + calcWeaknessTotal(b.weaknesses, skill.enemyAttr) / 100 + 1);
+      const pre = shared * dbf * weakness;
       const post = applyAtten(pre);
-      return { dbf: b.dbf, weakness: b.weakness, preAttenuation: pre, postAttenuation: post };
+      return { dbf, weakness, preAttenuation: pre, postAttenuation: post };
     });
     const averagePreAttenuation = perBody.reduce((s, p) => s + p.preAttenuation, 0) / perBody.length;
     const averagePostAttenuation = perBody.reduce((s, p) => s + p.postAttenuation, 0) / perBody.length;

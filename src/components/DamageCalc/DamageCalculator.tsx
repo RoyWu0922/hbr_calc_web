@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   SkillInput, Stats, BuffSkill, DebuffSkill, WeaknessSkill,
-  Equipment, BonusArea, BonusEntry, ODParams, BreakParams, ScoreParams, DamageInput, DamageResultData, CalcHistoryEntry,
+  Equipment, BonusArea, BonusEntry, ODParams, BreakParams, ScoreParams, DamageInput, DamageResultData, CalcHistoryEntry, MultiBodyBody,
 } from '../../types';
 import { calculateAll, calcPassiveAtkSum, calcPassiveDefSum, calcBuffPower, calcBuffPowerDetail, calcDebuffPower, calcDebuffPowerDetail } from '../../engine/damage';
 import { copyToClipboard } from '../../utils/copyToast';
@@ -39,6 +39,10 @@ const defaultStats: Stats = { str: 0, spr: 0, int: 0, luk: 0 };
 function emptyBuff(): BuffSkill { return { name: '', maxPower: 0, border: 0, orb: 0, currentAttr: 0, moraleFighting: 0, skillLevel: 1, passive: 0, layers: 0 }; }
 function emptyDebuff(): DebuffSkill { return { name: '', maxPower: 0, minPower: 0, border: 0, orb: 0, currentAttr: 0, moraleDebuffs: 0, skillLevel: 1, passive: 0, layers: 0 }; }
 function emptyWeakness(): WeaknessSkill { return { name: '', maxPower: 0, minPower: 0, border: 0, orb: 0, currentAttr: 0, moraleDebuffs: 0, skillLevel: 1, passive: 0, layers: 0 }; }
+function cloneSkillRows<T>(arr: T[]): T[] { return arr.map(o => ({ ...o } as T)); }
+function makeBodyState(debuffs: DebuffSkill[], weaknesses: WeaknessSkill[]): MultiBodyBody {
+  return { debuffs: cloneSkillRows(debuffs), weaknesses: cloneSkillRows(weaknesses) };
+}
 function emptyBonusEntry(): BonusEntry { return { name: '', value: 0 }; }
 
 const defaultEquipment: Equipment = { ring: false, hpEarring: false, silverNecklace: false };
@@ -115,10 +119,72 @@ export default function DamageCalculator({ initialData }: Props) {
   const [loadedEntryId, setLoadedEntryId] = useState<number | null>(null);
   const [advanced, setAdvanced] = useState(loadAdvancedOptions);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [multiBodyBodies, setMultiBodyBodies] = useState<{ dbf: number; weakness: number }[]>(
-    init?.multiBodyBodies?.length ? init.multiBodyBodies : [{ dbf: 1, weakness: 1 }, { dbf: 1, weakness: 1 }]
+  // 多体：每体一份自己的减防/弱点技能列表（默认空，开启时由 seed 填充）
+  const [multiBodyBodies, setMultiBodyBodies] = useState<MultiBodyBody[]>(
+    init?.multiBodyBodies?.length
+      ? init.multiBodyBodies.map(b => ({ debuffs: cloneSkillRows(b.debuffs ?? []), weaknesses: cloneSkillRows(b.weaknesses ?? []) }))
+      : []
   );
   const [activeBodyIndex, setActiveBodyIndex] = useState(0);
+
+  // 开启多体时若无体数据，按当前减防/弱点配置生成 2 个相同体（可直接各自改）
+  useEffect(() => {
+    if (advanced.multiBody && multiBodyBodies.length === 0) {
+      setMultiBodyBodies([makeBodyState(debuffs, weaknesses), makeBodyState(debuffs, weaknesses)]);
+      setActiveBodyIndex(0);
+    }
+    // 只在开关/配置变化、且无体数据时种一次；种完 length>0 即停
+  }, [advanced.multiBody, debuffs, weaknesses, multiBodyBodies.length]);
+
+  const toggleMultiBody = () => {
+    const next = !advanced.multiBody;
+    if (!next && multiBodyBodies.length) {
+      // 关闭：把体1的配置回落成单体减防/弱点，不丢已配内容
+      setDebuffs(cloneSkillRows(multiBodyBodies[0].debuffs));
+      setWeaknesses(cloneSkillRows(multiBodyBodies[0].weaknesses));
+    }
+    setActiveBodyIndex(0);
+    setAdvanced(a => ({ ...a, multiBody: next }));
+  };
+  // 整体体数：直接设为 N（增加的新体复制体1，减少则截尾）
+  const setBodyCount = (n: number) => {
+    const cur = multiBodyBodies.length;
+    if (n === cur) return;
+    if (n < cur) {
+      setMultiBodyBodies(multiBodyBodies.slice(0, n));
+      setActiveBodyIndex(i => Math.min(i, n - 1));
+      return;
+    }
+    const tpl = multiBodyBodies[0] ?? makeBodyState(debuffs, weaknesses);
+    const add: MultiBodyBody[] = [];
+    for (let k = 0; k < n - cur; k++) {
+      add.push({ debuffs: cloneSkillRows(tpl.debuffs), weaknesses: cloneSkillRows(tpl.weaknesses) });
+    }
+    setMultiBodyBodies([...multiBodyBodies, ...add]);
+  };
+  const updateMbBody = (bi: number, k: 'debuffs' | 'weaknesses', arr: DebuffSkill[] | WeaknessSkill[]) => {
+    setMultiBodyBodies(multiBodyBodies.map((b, i) => (i === bi ? { ...b, [k]: arr } : b)));
+  };
+  // 当前体的操作快捷入口（若多体已启用且有体）
+  const mbCur = advanced.multiBody ? multiBodyBodies[activeBodyIndex] : undefined;
+  const mbCurIdx = advanced.multiBody && mbCur ? activeBodyIndex : -1;
+
+  // 历史/分享导入：多体开关与体数据回填（enabled 但无体 = 旧数据，用导入的单体配置生成 2 体）
+  const applyMbLoad = (mb: DamageInput['multiBody'] | undefined, srcDeb: DebuffSkill[], srcWeak: WeaknessSkill[]) => {
+    if (mb?.enabled && mb.bodies?.length) {
+      setMultiBodyBodies(mb.bodies.map(b => ({ debuffs: cloneSkillRows(b.debuffs ?? []), weaknesses: cloneSkillRows(b.weaknesses ?? []) })));
+      setActiveBodyIndex(0);
+      setAdvanced(a => ({ ...a, multiBody: true }));
+    } else if (mb?.enabled) {
+      setMultiBodyBodies([makeBodyState(srcDeb, srcWeak), makeBodyState(srcDeb, srcWeak)]);
+      setActiveBodyIndex(0);
+      setAdvanced(a => ({ ...a, multiBody: true }));
+    } else {
+      setMultiBodyBodies([]);
+      setActiveBodyIndex(0);
+      setAdvanced(a => ({ ...a, multiBody: false }));
+    }
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -135,8 +201,7 @@ export default function DamageCalculator({ initialData }: Props) {
       setBonusDmg(d.bonusDmg ?? 0);
       setResult(initialData.result); setCalcLabel(initialData.label);
       setLoadedEntryId(initialData.id ?? null);
-      if (d.multiBody?.bodies?.length) { setMultiBodyBodies(d.multiBody.bodies); setActiveBodyIndex(0); }
-      setAdvanced(a => ({ ...a, multiBody: !!d.multiBody?.enabled }));
+      applyMbLoad(d.multiBody, d.debuffs, d.weaknesses);
     }
   }, [initialData]);
 
@@ -146,21 +211,34 @@ export default function DamageCalculator({ initialData }: Props) {
     const effSkill = advanced.spModel
       ? { ...skill, maxPower: spModelMaxPower(skill.sp, skill.spTarget ?? 'single'), baseDiff: spModelBaseDiff(skill.sp) }
       : skill;
+    const mbOn = advanced.multiBody && multiBodyBodies.length > 0;
+    const zeroD = (d: DebuffSkill) => ({ ...d, moraleDebuffs: 0 });
+    const zeroW = (w: WeaknessSkill) => ({ ...w, moraleDebuffs: 0 });
+    // 多体开启时：顶层 debuffs/weaknesses 取「体1」（分享/历史/默认值落盘即体1的单体视图，之后关掉多体也不丢配置）；
+    // 每体技能列表随 hideWhiteBonus 归零士气
+    const topDebuffs = mbOn ? multiBodyBodies[0].debuffs : debuffs;
+    const topWeaknesses = mbOn ? multiBodyBodies[0].weaknesses : weaknesses;
+    const mbBodies: MultiBodyBody[] = advanced.multiBody
+      ? multiBodyBodies.map(b => ({
+          debuffs: advanced.hideWhiteBonus ? b.debuffs.map(zeroD) : b.debuffs,
+          weaknesses: advanced.hideWhiteBonus ? b.weaknesses.map(zeroW) : b.weaknesses,
+        }))
+      : [];
     const base = {
       stats, equipment, bonus, od, break_: breakParams, score,
       chainMul, breakMul: breakMul / 100, odMul, floatVal, bonusDmg, exAttenuation: exAtten,
       superChainHits, bigChainHits, midChainHits, smallChainHits, bodyWeightStr, // 自由文本，不受 hideWhiteBonus 影响
-      multiBody: { enabled: advanced.multiBody, bodies: multiBodyBodies },
+      multiBody: { enabled: mbOn, bodies: mbBodies },
     };
     if (!advanced.hideWhiteBonus) {
-      return { ...base, skill: effSkill, buffs, debuffs, weaknesses };
+      return { ...base, skill: effSkill, buffs, debuffs: topDebuffs, weaknesses: topWeaknesses };
     }
     return {
       ...base,
       skill: { ...effSkill, whiteBonus: 0 },
       buffs: buffs.map(b => ({ ...b, moraleFighting: 0 })),
-      debuffs: debuffs.map(d => ({ ...d, moraleDebuffs: 0 })),
-      weaknesses: weaknesses.map(w => ({ ...w, moraleDebuffs: 0 })),
+      debuffs: topDebuffs.map(zeroD),
+      weaknesses: topWeaknesses.map(zeroW),
     };
   }, [advanced.hideWhiteBonus, advanced.spModel, skill, stats, buffs, debuffs, weaknesses,
       equipment, bonus, od, breakParams, score, chainMul, breakMul, odMul, floatVal, bonusDmg, exAtten,
@@ -231,8 +309,7 @@ export default function DamageCalculator({ initialData }: Props) {
     setOdMul(decoded.odMul);
     setFloatVal(decoded.floatVal);
     setBonusDmg(decoded.bonusDmg ?? 0);
-    if (decoded.multiBody?.bodies?.length) { setMultiBodyBodies(decoded.multiBody.bodies); setActiveBodyIndex(0); }
-    setAdvanced(a => ({ ...a, multiBody: !!decoded.multiBody?.enabled }));
+    applyMbLoad(decoded.multiBody, decoded.debuffs, decoded.weaknesses);
     setCalcLabel('导入');
   };
 
@@ -385,12 +462,22 @@ export default function DamageCalculator({ initialData }: Props) {
                   SP模型
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-text-muted"
-                  onClick={() => setAdvanced(a => ({ ...a, multiBody: !a.multiBody }))}>
+                  onClick={toggleMultiBody}>
                   <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${advanced.multiBody ? 'bg-accent border-accent' : 'toggle-off'}`}>
                     {advanced.multiBody && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
                   多体
                 </label>
+                {advanced.multiBody && (
+                  <div className="flex items-center justify-between gap-2 pl-[22px]">
+                    <span className="text-[11px] text-text-muted">整体体数</span>
+                    <select className="input-field text-xs !py-1" style={{ width: 64 }}
+                      value={multiBodyBodies.length || 2}
+                      onChange={e => setBodyCount(parseInt(e.target.value, 10) || 2)}>
+                      {[2, 3, 4, 5, 6, 7, 8].map(n => <option key={n} value={n}>{n}体</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -408,21 +495,10 @@ export default function DamageCalculator({ initialData }: Props) {
       <CollapsibleSection title="敌方属性" defaultOpen>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="敌方属性" value={skill.enemyAttr} onChange={v => updateSkill('enemyAttr', v)} />
-          {!advanced.multiBody && <Field label="武器弱点" value={skill.weaponWeak} onChange={v => updateSkill('weaponWeak', v)} step={0.1} />}
-          {!advanced.multiBody && <Field label="属性弱点" value={skill.elementWeak} onChange={v => updateSkill('elementWeak', v)} step={0.1} />}
+          <Field label="武器弱点" value={skill.weaponWeak} onChange={v => updateSkill('weaponWeak', v)} step={0.1} />
+          <Field label="属性弱点" value={skill.elementWeak} onChange={v => updateSkill('elementWeak', v)} step={0.1} />
         </div>
       </CollapsibleSection>
-
-      {advanced.multiBody && (
-        <CollapsibleSection title="多体" defaultOpen>
-          <MultiBodySection
-            bodies={multiBodyBodies}
-            setBodies={setMultiBodyBodies}
-            activeIndex={activeBodyIndex}
-            setActiveIndex={setActiveBodyIndex}
-          />
-        </CollapsibleSection>
-      )}
 
       <SkillParamsSection skill={skill} updateSkill={updateSkill} result={result} hideWhiteBonus={advanced.hideWhiteBonus} spModel={advanced.spModel} />
 
@@ -433,27 +509,79 @@ export default function DamageCalculator({ initialData }: Props) {
           onRemove={i => setBuffs(buffs.filter((_, j) => j !== i))} type="buff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
       </CollapsibleSection>
 
-      {!advanced.multiBody && (
-        <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen>
-          <SkillListCard skills={debuffs} lookup={buildLookup(DEBUFF_SKILLS, 'debuff')}
-            onUpdate={(i, s) => { const n = [...debuffs]; n[i] = s as DebuffSkill; setDebuffs(n); }}
-            onAdd={() => setDebuffs([...debuffs, emptyDebuff()])}
-            onRemove={i => setDebuffs(debuffs.filter((_, j) => j !== i))} type="debuff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
-        </CollapsibleSection>
-      )}
+      {advanced.multiBody && mbCur && mbCurIdx >= 0 ? (
+        <>
+          {/* 顶栏一体切换：减防/弱点两区共用当前体 */}
+          <div className="card">
+            <div className="flex items-center flex-wrap gap-1.5">
+              {multiBodyBodies.map((_, i) => (
+                <div key={i} className="flex items-center">
+                  <button type="button"
+                    className={`btn btn-xs px-2.5 ${i === activeBodyIndex ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveBodyIndex(i)}>
+                    体{i + 1}
+                  </button>
+                  {multiBodyBodies.length > 2 && i === activeBodyIndex && (
+                    <button type="button" title="删除此体" className="btn btn-xs btn-danger ml-0.5"
+                      onClick={() => {
+                        const n = multiBodyBodies.filter((_, j) => j !== i);
+                        setMultiBodyBodies(n);
+                        setActiveBodyIndex(Math.min(activeBodyIndex, n.length - 1));
+                      }}>×</button>
+                  )}
+                </div>
+              ))}
+              <button type="button" className="btn btn-xs btn-secondary" onClick={() => setBodyCount(multiBodyBodies.length + 1)}>+新增体</button>
+              {activeBodyIndex > 0 && (
+                <button type="button" className="btn btn-xs btn-secondary" title="把体1的减防+弱点配置复制到当前体"
+                  onClick={() => {
+                    const tpl = multiBodyBodies[0];
+                    setMultiBodyBodies(multiBodyBodies.map((b, j) => j === activeBodyIndex
+                      ? { debuffs: cloneSkillRows(tpl.debuffs), weaknesses: cloneSkillRows(tpl.weaknesses) }
+                      : b));
+                  }}>复制体1</button>
+              )}
+              <span className="ml-auto text-[10px] text-text-muted">体数可在进阶选项·多体里直接选</span>
+            </div>
+          </div>
 
-      {!advanced.multiBody && (
-        <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen>
-          <SkillListCard skills={weaknesses} lookup={buildLookup(WEAKNESS_SKILLS, 'weakness')}
-            onUpdate={(i, s) => { const n = [...weaknesses]; n[i] = s as WeaknessSkill; setWeaknesses(n); }}
-            onAdd={() => setWeaknesses([...weaknesses, emptyWeakness()])}
-            onRemove={i => setWeaknesses(weaknesses.filter((_, j) => j !== i))} type="weakness" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
-        </CollapsibleSection>
+          <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /><span className="text-xs text-text-muted font-normal"> · 体{activeBodyIndex + 1}</span></span>} defaultOpen>
+            <SkillListCard skills={mbCur.debuffs} lookup={buildLookup(DEBUFF_SKILLS, 'debuff')}
+              onUpdate={(i, s) => { const arr = mbCur.debuffs.map((d, j) => (j === i ? s as DebuffSkill : d)); updateMbBody(activeBodyIndex, 'debuffs', arr); }}
+              onAdd={() => updateMbBody(activeBodyIndex, 'debuffs', [...mbCur.debuffs, emptyDebuff()])}
+              onRemove={(i) => updateMbBody(activeBodyIndex, 'debuffs', mbCur.debuffs.filter((_, j) => j !== i))}
+              type="debuff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
+          </CollapsibleSection>
+
+          <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /><span className="text-xs text-text-muted font-normal"> · 体{activeBodyIndex + 1}</span></span>} defaultOpen>
+            <SkillListCard skills={mbCur.weaknesses} lookup={buildLookup(WEAKNESS_SKILLS, 'weakness')}
+              onUpdate={(i, s) => { const arr = mbCur.weaknesses.map((w, j) => (j === i ? s as WeaknessSkill : w)); updateMbBody(activeBodyIndex, 'weaknesses', arr); }}
+              onAdd={() => updateMbBody(activeBodyIndex, 'weaknesses', [...mbCur.weaknesses, emptyWeakness()])}
+              onRemove={(i) => updateMbBody(activeBodyIndex, 'weaknesses', mbCur.weaknesses.filter((_, j) => j !== i))}
+              type="weakness" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
+          </CollapsibleSection>
+        </>
+      ) : (
+        <>
+          <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen>
+            <SkillListCard skills={debuffs} lookup={buildLookup(DEBUFF_SKILLS, 'debuff')}
+              onUpdate={(i, s) => { const n = [...debuffs]; n[i] = s as DebuffSkill; setDebuffs(n); }}
+              onAdd={() => setDebuffs([...debuffs, emptyDebuff()])}
+              onRemove={i => setDebuffs(debuffs.filter((_, j) => j !== i))} type="debuff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
+          </CollapsibleSection>
+
+          <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen>
+            <SkillListCard skills={weaknesses} lookup={buildLookup(WEAKNESS_SKILLS, 'weakness')}
+              onUpdate={(i, s) => { const n = [...weaknesses]; n[i] = s as WeaknessSkill; setWeaknesses(n); }}
+              onAdd={() => setWeaknesses([...weaknesses, emptyWeakness()])}
+              onRemove={i => setWeaknesses(weaknesses.filter((_, j) => j !== i))} type="weakness" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
+          </CollapsibleSection>
+        </>
       )}
 
       <CollapsibleSection title="被动加攻/减防 & 装备" defaultOpen>
         <BonusSection bonus={bonus} setBonus={setBonus} equipment={equipment} setEquipment={setEquipment}
-          skill={skill} updateSkill={updateSkill} atkSum={atkSum} defSum={defSum} critSum={critSum} earringBonus={earringBonus} hideDef={advanced.multiBody} />
+          skill={skill} updateSkill={updateSkill} atkSum={atkSum} defSum={defSum} critSum={critSum} earringBonus={earringBonus} />
       </CollapsibleSection>
 
       <CollapsibleSection title={
@@ -812,18 +940,18 @@ function PopItem({ label, value, highlight }: { label: string; value: string; hi
 }
 
 // ─── Bonus Section ──────────────────────────────────────────
-function BonusSection({ bonus, setBonus, equipment, setEquipment, skill, updateSkill, atkSum, defSum, critSum, earringBonus, hideDef }: {
+function BonusSection({ bonus, setBonus, equipment, setEquipment, skill, updateSkill, atkSum, defSum, critSum, earringBonus }: {
   bonus: BonusArea; setBonus: (b: BonusArea) => void;
   equipment: Equipment; setEquipment: (e: Equipment) => void;
   skill: SkillInput; updateSkill: (k: keyof SkillInput, v: unknown) => void;
-  atkSum: number; defSum: number; critSum: number; earringBonus: number; hideDef: boolean;
+  atkSum: number; defSum: number; critSum: number; earringBonus: number;
 }) {
   return (
     <div className="grid grid-cols-4 gap-4">
       <PassiveBlock title={<span>被动加攻区% <InfoTip id="passiveAtk" /></span>} entries={bonus.passiveAtkEntries} total={atkSum} totalClass="text-heal"
         onUpdate={e => setBonus({ ...bonus, passiveAtkEntries: e })} placeholder="加攻被动名" />
-      {!hideDef && <PassiveBlock title="被动减防区%" entries={bonus.passiveDefEntries} total={defSum} totalClass="text-accent"
-        onUpdate={e => setBonus({ ...bonus, passiveDefEntries: e })} placeholder="减防被动名" />}
+      <PassiveBlock title="被动减防区%" entries={bonus.passiveDefEntries} total={defSum} totalClass="text-accent"
+        onUpdate={e => setBonus({ ...bonus, passiveDefEntries: e })} placeholder="减防被动名" />
       <PassiveBlock title="爆伤区%" entries={bonus.critDmgExtraEntries} total={critSum} totalClass="text-gold"
         onUpdate={e => setBonus({ ...bonus, critDmgExtraEntries: e })} placeholder="爆伤项名" />
       <div className="stat-box-left">
@@ -966,61 +1094,6 @@ function Field({ label, value, onChange, step }: { label: string; value: number;
   );
 }
 
-// ─── Multi-Body Section ────────────────────────────────────
-function MultiBodySection({ bodies, setBodies, activeIndex, setActiveIndex }: {
-  bodies: { dbf: number; weakness: number }[];
-  setBodies: (b: { dbf: number; weakness: number }[]) => void;
-  activeIndex: number;
-  setActiveIndex: (i: number) => void;
-}) {
-  const update = (i: number, k: 'dbf' | 'weakness', v: number) => {
-    const n = [...bodies];
-    n[i] = { ...n[i], [k]: v };
-    setBodies(n);
-  };
-  const copyFirstDbf = (i: number) => {
-    const n = [...bodies];
-    n[i] = { ...n[i], dbf: bodies[0].dbf };
-    setBodies(n);
-  };
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {bodies.map((_, i) => (
-          <button key={i} type="button"
-            className={`btn btn-xs px-2.5 ${i === activeIndex ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveIndex(i)}>
-            体{i + 1}
-          </button>
-        ))}
-        <button type="button" className="btn btn-xs btn-secondary"
-          onClick={() => { setBodies([...bodies, { dbf: 1, weakness: 1 }]); setActiveIndex(bodies.length); }}>
-          +新增体
-        </button>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={`体${activeIndex + 1} 减防区`} value={bodies[activeIndex].dbf} onChange={v => update(activeIndex, 'dbf', v)} step={0.01} />
-        <Field label={`体${activeIndex + 1} 弱点区`} value={bodies[activeIndex].weakness} onChange={v => update(activeIndex, 'weakness', v)} step={0.01} />
-      </div>
-      <div className="flex items-center gap-2">
-        {activeIndex > 0 && (
-          <button type="button" className="btn btn-xs btn-secondary" onClick={() => copyFirstDbf(activeIndex)}>
-            复制体1的dbf
-          </button>
-        )}
-        {bodies.length > 1 && (
-          <button type="button" className="btn btn-xs btn-danger" onClick={() => {
-            const n = bodies.filter((_, j) => j !== activeIndex);
-            setBodies(n);
-            setActiveIndex(Math.min(activeIndex, n.length - 1));
-          }}>
-            删除此体
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function Num({ label, value, onChange, step }: { label: string; value: number; onChange: (v: number) => void; step?: number; }) {
   return (

@@ -141,9 +141,14 @@ export interface ScoreParams {
 }
 
 // ─── 多体（Multi-Body）───────────────────────────────────
+export interface MultiBodyBody {
+  debuffs: DebuffSkill[];     // 该体自己的主动减防技能
+  weaknesses: WeaknessSkill[]; // 该体自己的弱点加深技能
+}
+
 export interface MultiBodyConfig {
   enabled: boolean;
-  bodies: { dbf: number; weakness: number }[]; // 每体「减防区」「弱点区」乘数，直接填数值
+  bodies: MultiBodyBody[];
 }
 
 // ─── Turn Planner ───────────────────────────────────────────
@@ -276,8 +281,8 @@ export interface DamageResultData {
   // 多体结果（多体开启时才有值）
   multiBody?: {
     perBody: {
-      dbf: number;
-      weakness: number;
+      dbf: number;              // 该体「减防区」因子（由该体自己的减防技能 + 共享被动减防算出）
+      weakness: number;         // 该体「弱点区」因子（由该体自己的弱点技能 + 共享武器/属性弱点算出）
       preAttenuation: number;   // 该体衰减前伤害
       postAttenuation: number;  // 该体衰减后伤害
     }[];
