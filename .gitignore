@@ -1,36 +1,20 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
+# dependencies & build
+node_modules/
+dist/
 *.local
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# local database (never versioned)
+server/data/
+
+# environment / secrets
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / editor
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-~$encounter.xlsx
-.claude/settings.local.json
-
-# Cursor source packs (huge, WPF binaries — not committed)
-cursor/
-
-# Tutorial source (local only — regenerate guide.html via scripts/gen-guide.mjs)
-public/tutorial/*.md
-public/tutorial/*.png
-public/tutorial/.obsidian/
-Play Record.xlsx
-play record.xlsx
+Thumbs.db
