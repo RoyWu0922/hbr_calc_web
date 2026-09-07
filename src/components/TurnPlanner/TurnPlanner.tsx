@@ -318,6 +318,9 @@ function ODPanel() {
 
   const [sharedOpen, setSharedOpen] = useState(true);
 
+  // 总计OD：当前所有行的 OD 相加（showHit=hit数模式→折算实际hit；百分比模式→OD%）
+  const totalOD = rows.reduce((sum, row) => sum + calcODRow(row, shared).n, 0);
+
   return (
     <>
       {/* Always-visible tab at right edge */}
@@ -472,7 +475,15 @@ function ODPanel() {
             })}
           </div>
 
-          <button className="btn btn-secondary btn-xs w-full" onClick={addRow}>+ 添加行</button>
+          <div className="flex items-center gap-1.5">
+            <button className="btn btn-secondary btn-xs flex-shrink-0" onClick={addRow}>+ 添加行</button>
+            <div className="flex items-center gap-1 ml-auto" title="当前浮窗内所有行的 OD 相加">
+              <span className="text-[9px] text-text-muted flex-shrink-0">总计OD</span>
+              <span className={`text-[10px] font-bold text-accent min-w-[56px] text-right num ${showHit ? '' : 'tabular-nums'}`}>
+                {showHit ? `${(totalOD * 40).toFixed(3)}` : `${(totalOD * 100).toFixed(2)}%`}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
       )}
