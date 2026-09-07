@@ -140,6 +140,17 @@ export interface ScoreParams {
   exScore?: boolean; // ex打分：回合系数改用 ex 公式，无盾分
 }
 
+// ─── 多体（Multi-Body）───────────────────────────────────
+export interface MultiBodyBody {
+  debuffs: DebuffSkill[];     // 该体自己的主动减防技能
+  weaknesses: WeaknessSkill[]; // 该体自己的弱点加深技能
+}
+
+export interface MultiBodyConfig {
+  enabled: boolean;
+  bodies: MultiBodyBody[];
+}
+
 // ─── Turn Planner ───────────────────────────────────────────
 export interface TurnPlannerChar {
   name: string;
@@ -266,6 +277,18 @@ export interface DamageResultData {
     turnCoeff: number;
     totalScore: number;
   } | null;
+
+  // 多体结果（多体开启时才有值）
+  multiBody?: {
+    perBody: {
+      dbf: number;              // 该体「减防区」因子（由该体自己的减防技能 + 共享被动减防算出）
+      weakness: number;         // 该体「弱点区」因子（由该体自己的弱点技能 + 共享武器/属性弱点算出）
+      preAttenuation: number;   // 该体衰减前伤害
+      postAttenuation: number;  // 该体衰减后伤害
+    }[];
+    averagePreAttenuation: number;
+    averagePostAttenuation: number;
+  };
 }
 
 // ─── History ─────────────────────────────────────────────────
@@ -325,6 +348,7 @@ export interface DamageInput {
   midChainHits?: number;
   smallChainHits?: number;
   bodyWeightStr?: string;
+  multiBody?: MultiBodyConfig; // 多体：每体独立 dbf/weakness 乘数
 }
 
 // ─── 攻略资讯 (Guide) ─────────────────────────────────

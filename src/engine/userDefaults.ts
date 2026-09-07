@@ -4,7 +4,7 @@
  * which will be loaded on next visit.
  */
 
-import { SkillInput, Equipment, BonusArea, ScoreParams, BreakParams, ODParams } from '../types';
+import { SkillInput, Equipment, BonusArea, ScoreParams, BreakParams, ODParams, MultiBodyBody } from '../types';
 
 export interface UserDefaults {
   skill: Partial<SkillInput>;
@@ -23,6 +23,7 @@ export interface UserDefaults {
   midChainHits?: number;
   smallChainHits?: number;
   bodyWeightStr?: string;
+  multiBodyBodies?: MultiBodyBody[];
 }
 
 const STORAGE_KEY = 'hbr_calc_user_defaults';

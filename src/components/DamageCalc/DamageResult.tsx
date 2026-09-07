@@ -36,15 +36,24 @@ export default function DamageResult({ result, skill, floatVal,
     () => buildHitWeights(skill.hitCount || 1, superChainHits, bigChainHits, midChainHits, smallChainHits, customBodyWeights),
     [skill.hitCount, superChainHits, bigChainHits, midChainHits, smallChainHits, customBodyWeights]
   );
+  // 多体：最终伤害为各体平均 → 浮动偏差分布等价于把单体的 hit 权重复制 n 份（σ ÷ √n，特征函数法精确）
+  const bodyCount = result.multiBody?.perBody.length ?? 1;
+  const isMultiBody = bodyCount > 1;
+  const distWeights = useMemo(() => {
+    if (!isMultiBody) return hitWeights;
+    const out: number[] = [];
+    for (let i = 0; i < bodyCount; i++) out.push(...hitWeights);
+    return out;
+  }, [hitWeights, bodyCount, isMultiBody]);
   // Float distribution — manual compute (heavy calculation)
   const [floatDist, setFloatDist] = useState<FloatDistData>(() => computeFloatDistribution(buildHitWeights(skill.hitCount || 1, 0, 0, 0, 0, null), 200));
   const [floatDirty, setFloatDirty] = useState(true);
   const computeFloat = useCallback(() => {
-    setFloatDist(computeFloatDistribution(hitWeights, 200));
+    setFloatDist(computeFloatDistribution(distWeights, 200));
     setFloatDirty(false);
-  }, [hitWeights]);
+  }, [distWeights]);
   // Auto-mark dirty when inputs change
-  useEffect(() => { setFloatDirty(true); }, [hitWeights]);
+  useEffect(() => { setFloatDirty(true); }, [distWeights]);
 
   const [hover, setHover] = useState<{ x: number; y: number; pdfVal: number; survivalVal: number; dmg: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -125,6 +134,7 @@ export default function DamageResult({ result, skill, floatVal,
               : <span>{skill.hitCount || 1}本体</span>
             }
             {' + '}{superChainHits}特大 + {bigChainHits}大 + {midChainHits}中 + {smallChainHits}小 = {totalHits} hits
+            {isMultiBody && <span className="ml-1 text-amber-300/80">· {bodyCount}体平均</span>}
             <span className="ml-1 text-[10px] opacity-60">（精确公式：特征函数法）</span>
           </div>
           {currentPoint && (
