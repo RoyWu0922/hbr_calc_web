@@ -240,6 +240,7 @@ interface ODRow {
   earring: boolean;
   fixedOD: number;
   extraODRise: number;
+  resist: boolean;   // 抗性：所有hit产生的OD=0，但hit带来的耳环系数对固定OD的影响仍保留
 }
 
 function round4(v: number): number {
@@ -252,7 +253,7 @@ function floor2(v: number): number {
 }
 
 function calcODRow(row: ODRow, shared: ODShared) {
-  const { origHit, addHit, earring, fixedOD, extraODRise } = row;
+  const { origHit, addHit, earring, fixedOD, extraODRise, resist } = row;
   const { targets, odRate, odRise } = shared;
   const earringVal = earring ? 15 : 0;
 
@@ -265,8 +266,9 @@ function calcODRow(row: ODRow, shared: ODShared) {
   j = round4(j / 100 + 1 + (odRise + extraODRise) / 100);
 
   const part1 = floor2(fixedOD * j);
+  // 抗性(resist)：所有 hit 产生的 OD = 0；但由 hit 推导的耳环系数 j 对固定OD(part1)的影响仍然保留
   const j25 = floor2(j * 2.5);
-  const part2 = (origHit + addHit) * Math.floor(j25 * odRate + 1e-9) / 100 * targets;
+  const part2 = resist ? 0 : (origHit + addHit) * Math.floor(j25 * odRate + 1e-9) / 100 * targets;
   const n = (part1 + part2) / 100;
   const actualHits = n * 40;
   return { n, actualHits };
@@ -278,7 +280,7 @@ function ODPanel() {
   const [open, setOpen] = useState(false);
   const [shared, setShared] = useState<ODShared>({ targets: 1, odRate: 100, odRise: 0 });
   const [rows, setRows] = useState<ODRow[]>([
-    { origHit: 0, addHit: 0, earring: true, fixedOD: 0, extraODRise: 0 },
+    { origHit: 0, addHit: 0, earring: true, fixedOD: 0, extraODRise: 0, resist: false },
   ]);
   const [showHit, setShowHit] = useState(false);
   const [showExtraOD, setShowExtraOD] = useState<Record<number, boolean>>({});
@@ -307,7 +309,7 @@ function ODPanel() {
 
   const toggleShowHit = () => setShowHit(prev => !prev);
 
-  const addRow = () => setRows(prev => [...prev, { origHit: 0, addHit: 0, earring: true, fixedOD: 0, extraODRise: 0 }]);
+  const addRow = () => setRows(prev => [...prev, { origHit: 0, addHit: 0, earring: true, fixedOD: 0, extraODRise: 0, resist: false }]);
   const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
 
   const updateRow = (i: number, fn: (r: ODRow) => ODRow) => {
@@ -450,6 +452,15 @@ function ODPanel() {
                           <input className="bg-transparent border border-white/10 rounded text-center text-[10px] py-0.5" style={{ width: 48 }} type="number" step="0.01" placeholder="0"
                             value={row.extraODRise || ''}
                             onChange={e => updateRow(i, r => ({ ...r, extraODRise: parseFloat(e.target.value) || 0 }))} />
+                          <label
+                            className="flex items-center gap-0.5 cursor-pointer select-none flex-shrink-0"
+                            title="抗性：所有 hit 产生的 OD = 0；但由 hit 推导的耳环系数对固定 OD 的影响仍保留">
+                            <span className={`text-[9px] flex-shrink-0 ${row.resist ? 'text-red-400' : 'text-text-muted'}`}>抗性</span>
+                            <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-all ${row.resist ? 'bg-red-500 border-red-500' : 'toggle-off'}`}
+                              onClick={() => updateRow(i, r => ({ ...r, resist: !r.resist }))}>
+                              {row.resist && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                          </label>
                         </div>
                       )}
                     </div>
@@ -634,6 +645,9 @@ function DetailTable({
 }) {
   const { characters, turns, odMode, showBreak, showEncounter, showPursuit, exScore } = state;
   const showDrag = !!state.showDrag;
+  // OD 当前值显示精度：Hit数模式(120/200)用 3 位小数，百分比模式(300/500)维持 2 位
+  const odDec = odMode < 300 ? 3 : 2;
+  const odOverflowDec = odMode < 300 ? 3 : 1;
 
   const updateChar = (i: number, fn: (c: typeof characters[number]) => typeof characters[number]) => {
     const next = [...characters] as typeof characters;
@@ -1123,7 +1137,7 @@ function DetailTable({
                     </td>
                   )}
                   <td className={`text-center font-mono font-bold text-xs relative ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                    {(curResult?.odAssist ?? 0) - odMode > 0.005 ? <>{odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((curResult?.odAssist ?? 0) - odMode, 1)}</span></> : fmtFloat(curResult?.odCapped ?? 0, 2)}
+                    {(curResult?.odAssist ?? 0) - odMode > 0.005 ? <>{odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((curResult?.odAssist ?? 0) - odMode, odOverflowDec)}</span></> : fmtFloat(curResult?.odCapped ?? 0, odDec)}
                     <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
                       onClick={() => removeTurn(ti)} title="删除">✕</button>
                   </td>
@@ -1278,7 +1292,7 @@ function DetailTable({
 
                   {/* 当前OD (rowSpan=2) */}
                   <td className={`text-center font-mono font-bold text-xs ${!showBreak ? 'relative' : ''} ${(curResult?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`} rowSpan={2}>
-                    {(curResult?.odAssist ?? 0) - odMode > 0.005 ? <>{odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((curResult?.odAssist ?? 0) - odMode, 1)}</span></> : fmtFloat(curResult?.odCapped ?? 0, 2)}
+                    {(curResult?.odAssist ?? 0) - odMode > 0.005 ? <>{odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((curResult?.odAssist ?? 0) - odMode, odOverflowDec)}</span></> : fmtFloat(curResult?.odCapped ?? 0, odDec)}
                     {!showBreak && (
                       <button className="absolute -right-3 top-1/2 -translate-y-1/2 text-red-400/60 hover:text-red-400 text-sm leading-none"
                         onClick={() => removeTurn(ti)} title="删除">✕</button>
@@ -1402,6 +1416,9 @@ function SimpleTable({
   notes: string; setNotes: (v: string) => void;
 }) {
   const { characters, turns } = state;
+  // OD 当前值显示精度：Hit数模式(120/200)用 3 位小数，百分比模式(300/500)维持 2 位
+  const odDec = state.odMode < 300 ? 3 : 2;
+  const odOverflowDec = state.odMode < 300 ? 3 : 1;
 
   // Pre-compute OD color blocks
   const sOdStyles: string[] = new Array(turns.length).fill('');
@@ -1683,7 +1700,7 @@ function SimpleTable({
                       <td className="font-bold text-[10px] text-purple-400">词条{modNum}</td>
                       <td colSpan={6} className="text-xs text-left pl-1 text-text-muted">{turn.encounterModifier}</td>
                       <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                        {(result?.odAssist ?? 0) - state.odMode > 0.005 ? <>{state.odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((result?.odAssist ?? 0) - state.odMode, 1)}</span></> : fmtFloat(result?.odCapped ?? 0, 2)}
+                        {(result?.odAssist ?? 0) - state.odMode > 0.005 ? <>{state.odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((result?.odAssist ?? 0) - state.odMode, odOverflowDec)}</span></> : fmtFloat(result?.odCapped ?? 0, odDec)}
                       </td>
                     </tr>
                   );
@@ -1708,7 +1725,7 @@ function SimpleTable({
                         </Fragment>
                       ))}
                       <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                        {(result?.odAssist ?? 0) - state.odMode > 0.005 ? <>{state.odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((result?.odAssist ?? 0) - state.odMode, 1)}</span></> : fmtFloat(result?.odCapped ?? 0, 2)}
+                        {(result?.odAssist ?? 0) - state.odMode > 0.005 ? <>{state.odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((result?.odAssist ?? 0) - state.odMode, odOverflowDec)}</span></> : fmtFloat(result?.odCapped ?? 0, odDec)}
                       </td>
                     </tr>
                   </Fragment>
