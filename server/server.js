@@ -84,7 +84,9 @@ function userFromToken(token) {
   if (!payload) return null;
   const row = get('SELECT * FROM users WHERE id = ?', [payload.sub]);
   if (!row) return null;
-  return { id: row.id, username: row.username, email: row.email, user_metadata: JSON.parse(row.user_metadata || '{}'), created_at: row.created_at };
+  const meta = JSON.parse(row.user_metadata || '{}');
+  meta.username = row.username;
+  return { id: row.id, username: row.username, email: row.email, user_metadata: meta, created_at: row.created_at };
 }
 
 // ---------------------------------------------------------------------------
