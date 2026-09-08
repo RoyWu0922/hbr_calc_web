@@ -71,7 +71,7 @@ function buildWhere(type, filters, auth) {
   for (const [k, v] of Object.entries(filters || {})) {
     if (k === 'admin' || k === 'toAdmin') continue;
     parts.push(`${k} = ?`);
-    params.push(v);
+    params.push(typeof v === 'boolean' ? (v ? 1 : 0) : v);
   }
   return { where: parts.length ? 'WHERE ' + parts.join(' AND ') : '', params };
 }
@@ -101,7 +101,7 @@ async function handleAuth(method, pathname, body, req, res) {
     run('INSERT INTO users (id, username, email, encrypted_password, created_at, user_metadata) VALUES (?,?,?,?,?,?)',
       [id, username, email, hashPassword(password), Date.now(), JSON.stringify({ username })]);
     const token = signToken({ id, username });
-    return send(res, 200, { token, user: { id, username, email, user_metadata: { username }, created_at: Date.now() } });
+    return send(res, 200, { data: { token, user: { id, username, email, user_metadata: { username }, created_at: Date.now() } }, error: null });
   }
   if (pathname === '/api/auth/signin') {
     const password = String(body.password || '');
@@ -113,36 +113,40 @@ async function handleAuth(method, pathname, body, req, res) {
     }
     if (!row || !verifyPassword(password, row.encrypted_password)) return send(res, 401, { error: 'invalid credentials' });
     const token = signToken({ id: row.id, username: row.username });
-    return send(res, 200, { token, user: userFromToken(token) });
+    return send(res, 200, { data: { token, user: userFromToken(token) }, error: null });
   }
-  if (pathname === '/api/auth/signout') return send(res, 200, { ok: true });
+  if (pathname === '/api/auth/signout') return send(res, 200, { data: { ok: true }, error: null });
   if (pathname === '/api/auth/user' || pathname === '/api/auth/session') {
     const token = getToken(req);
-    return send(res, 200, { user: token ? userFromToken(token) : null });
+    return send(res, 200, { data: { user: token ? userFromToken(token) : null }, error: null });
   }
   return send(res, 404, { error: 'not found' });
 }
 
 async function handleData(method, pathname, body, req, res) {
   const auth = getAuth(req);
-  if (!auth) return send(res, 401, { error: 'unauthorized' });
   const m = pathname.match(/^\/api\/data\/([a-z_]+)$/);
   if (!m) return send(res, 404, { error: 'unknown table' });
   const name = m[1];
   const meta = TABLES[name];
   if (!meta) return send(res, 404, { error: 'unknown table' });
+  const uid = auth ? auth.sub : null;
+  // Public reads: approved guide entries/comments are viewable without login.
+  const isPublicRead = method === 'GET' && (name === 'guide_entries' || name === 'guide_comments');
+  if (!auth && !isPublicRead) return send(res, 401, { error: 'unauthorized' });
   const query = parseQuery(req);
   const filters = (() => { try { return JSON.parse(query.filters || '{}'); } catch { return {}; } })();
 
   if (method === 'GET') {
     let { where, params } = buildWhere(name, filters, auth);
+    const base = (where || '').replace(/^WHERE\s+/i, '').trim();
     if (name === 'guide_entries') {
-      const cond = ADMIN_IDS.has(auth.sub) ? 'deleted = 0' : "(status = 'approved' AND deleted = 0)";
-      where = where ? `(${where}) AND ${cond}` : 'WHERE ' + cond;
+      const cond = uid && ADMIN_IDS.has(uid) ? 'deleted = 0' : "(status = 'approved' AND deleted = 0)";
+      where = 'WHERE ' + [base ? `(${base})` : '', cond].filter(Boolean).join(' AND ');
     }
     if (name === 'guide_comments') {
-      const cond = ADMIN_IDS.has(auth.sub) ? 'deleted = 0' : "(deleted = 0 AND entry_id IN (SELECT id FROM guide_entries WHERE status = 'approved' AND deleted = 0))";
-      where = where ? `(${where}) AND ${cond}` : 'WHERE ' + cond;
+      const cond = uid && ADMIN_IDS.has(uid) ? 'deleted = 0' : "(deleted = 0 AND entry_id IN (SELECT id FROM guide_entries WHERE status = 'approved' AND deleted = 0))";
+      where = 'WHERE ' + [base ? `(${base})` : '', cond].filter(Boolean).join(' AND ');
     }
     const colSel = query.cols && query.cols !== '*' && query.cols !== 'null'
       ? query.cols.split(',').map((c) => c.trim()).filter((c) => meta.cols.includes(c)).join(', ')

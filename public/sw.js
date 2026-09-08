@@ -1,5 +1,5 @@
 /* HBR Toolbox Service Worker — offline cache */
-const CACHE = 'hbr-toolbox-v1';
+const CACHE = 'hbr-toolbox-v2';
 const SCOPE = self.registration.scope; // ends with '/', base-agnostic
 const INDEX = SCOPE;
 
