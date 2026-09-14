@@ -20,3 +20,6 @@ npm-debug.log*
 Thumbs.db
 
 Caddyfile
+caddy_data/
+server/start-services.ps1
+*.log
