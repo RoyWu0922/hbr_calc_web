@@ -1,5 +1,5 @@
 /* HBR Toolbox Service Worker — offline cache */
-const CACHE = 'hbr-toolbox-v2';
+const CACHE = 'hbr-toolbox-v3';
 const SCOPE = self.registration.scope; // ends with '/', base-agnostic
 const INDEX = SCOPE;
 
@@ -24,6 +24,9 @@ self.addEventListener('fetch', (e) => {
   // Same-origin only; let Supabase/fonts/analytics go through the network untouched
   if (url.origin !== self.location.origin) return;
   if (e.request.method !== 'GET') return;
+
+  // Never intercept API calls — they must always hit the network (local SQLite backend).
+  if (url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
 
   // Navigation: NetworkFirst with cached index fallback (offline shell)
   if (e.request.mode === 'navigate') {
