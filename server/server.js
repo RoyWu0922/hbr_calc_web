@@ -7,10 +7,10 @@ const PORT = Number(process.env.PORT || 8123);
 const ADMIN_IDS = new Set((process.env.HBR_ADMIN_IDS || 'c97da159-b8c1-442a-bf02-97b9de28e1c4').split(',').map(s => s.trim()));
 
 const TABLES = {
-  calc_history: { cols: ['user_id', 'uuid', 'data', 'timestamp', 'deleted'], json: ['data'], bool: ['deleted'], scope: 'user' },
-  planner_axles: { cols: ['user_id', 'uuid', 'data', 'timestamp', 'deleted'], json: ['data'], bool: ['deleted'], scope: 'user' },
-  white_stats: { cols: ['user_id', 'uuid', 'data', 'timestamp', 'deleted'], json: ['data'], bool: ['deleted'], scope: 'user' },
-  folders: { cols: ['user_id', 'name', 'type', 'timestamp', 'sort_order'], json: [], bool: [], scope: 'user' },
+  calc_history: { cols: ['id', 'user_id', 'uuid', 'data', 'timestamp', 'deleted'], json: ['data'], bool: ['deleted'], scope: 'user' },
+  planner_axles: { cols: ['id', 'user_id', 'uuid', 'data', 'timestamp', 'deleted'], json: ['data'], bool: ['deleted'], scope: 'user' },
+  white_stats: { cols: ['id', 'user_id', 'uuid', 'data', 'timestamp', 'deleted'], json: ['data'], bool: ['deleted'], scope: 'user' },
+  folders: { cols: ['id', 'user_id', 'name', 'type', 'timestamp', 'sort_order'], json: [], bool: [], scope: 'user' },
   custom_skills: { cols: ['user_id', 'data', 'updated_at'], json: ['data'], bool: [], scope: 'user' },
   medal_records: { cols: ['user_id', 'data', 'updated_at'], json: ['data'], bool: [], scope: 'user' },
   guide_entries: { cols: ['id', 'category', 'period', 'stage', 'attribute', 'weather', 'turns', 'team', 'author', 'video_url', 'image_url', 'notes', 'score', 'status', 'user_id', 'created_at', 'updated_at', 'deleted', 'like_count'], json: ['team'], bool: ['deleted', 'weather'], scope: 'guide' },
@@ -148,9 +148,10 @@ async function handleData(method, pathname, body, req, res) {
       const cond = uid && ADMIN_IDS.has(uid) ? 'deleted = 0' : "(deleted = 0 AND entry_id IN (SELECT id FROM guide_entries WHERE status = 'approved' AND deleted = 0))";
       where = 'WHERE ' + [base ? `(${base})` : '', cond].filter(Boolean).join(' AND ');
     }
-    const colSel = query.cols && query.cols !== '*' && query.cols !== 'null'
+    const colSelRaw = query.cols && query.cols !== '*' && query.cols !== 'null'
       ? query.cols.split(',').map((c) => c.trim()).filter((c) => meta.cols.includes(c)).join(', ')
       : '*';
+    const colSel = colSelRaw || '*';
     let sql = `SELECT ${colSel} FROM ${name} ${where}`;
     if (query.order) { const dir = query.asc === '0' ? 'DESC' : 'ASC'; sql += ` ORDER BY ${query.order} ${dir}`; }
     if (query.limit) sql += ` LIMIT ${Number(query.limit)}`;

@@ -249,6 +249,31 @@ async function syncFolders() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const db = await openDB('hbr-calc-db', 5);
+
+    // ─── Repair: dedupe local folders (older sync bugs flooded the store) ─────
+    const allLocal = await db.getAll('folders').catch(() => [] as any[]);
+    const keepByKey = new Map<string, number>();
+    const removeIds: number[] = [];
+    const remap = new Map<number, number>();
+    for (const f of allLocal) {
+      if (f.deleted) continue;
+      const key = f.type + ':' + f.name;
+      if (!keepByKey.has(key)) keepByKey.set(key, f.id);
+      else { removeIds.push(f.id); remap.set(f.id, keepByKey.get(key)!); }
+    }
+    if (removeIds.length) {
+      const hist = await db.getAll('history').catch(() => [] as any[]);
+      for (const e of hist) {
+        if (e.folderId != null && remap.has(e.folderId)) { e.folderId = remap.get(e.folderId); e.timestamp = Date.now(); await db.put('history', e); }
+      }
+      const pl = await db.getAll('planner_saves').catch(() => [] as any[]);
+      for (const s of pl) {
+        if (s.folderId != null && remap.has(s.folderId)) { s.folderId = remap.get(s.folderId); s.timestamp = Date.now(); await db.put('planner_saves', s); }
+      }
+      for (const id of removeIds) await db.delete('folders', id);
+      console.log(`[sync] repaired ${removeIds.length} duplicate local folders`);
+    }
+
     // Upload local folders not in cloud (handle rename + delete)
     const local = await db.getAll('folders').catch(() => [] as any[]);
     for (const f of local) {
@@ -275,7 +300,9 @@ async function syncFolders() {
       const localNames = new Set(local.map(f => f.type + ':' + f.name));
       const tx = db.transaction('folders', 'readwrite');
       for (const row of cloud) {
-        if (!localNames.has(row.type + ':' + row.name)) {
+        const key = row.type + ':' + row.name;
+        if (!localNames.has(key)) {
+          localNames.add(key); // dedupe within this pull too
           await tx.store.add({ name: row.name, type: row.type, timestamp: row.timestamp || 0, sortOrder: row.sort_order || 0 });
         }
       }

@@ -263,7 +263,17 @@ export async function createFolder(name: string, type: 'calc' | 'planner'): Prom
 export async function getFolders(type: 'calc' | 'planner'): Promise<Folder[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('folders', 'type', type);
-  return all.filter(f => !(f as any).deleted).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  // Dedupe by name: a polluted store (from older sync bugs) can hold thousands of
+  // duplicate rows, which would freeze the UI (each folder renders as a button/option).
+  const seen = new Set<string>();
+  const unique: Folder[] = [];
+  for (const f of all) {
+    if ((f as any).deleted) continue;
+    if (seen.has(f.name)) continue;
+    seen.add(f.name);
+    unique.push(f);
+  }
+  return unique.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }
 
 export async function updateFolder(id: number, updates: Partial<Pick<Folder, 'name' | 'sortOrder'>>): Promise<void> {
