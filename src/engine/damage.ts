@@ -533,7 +533,7 @@ export function calculateAll(input: DamageInput): DamageResultData {
   const activeAtk = calcBuffTotal(buffs);                        // 主动: 增强/蓄力/斗志等
   const passiveAtk = calcPassiveAtkSum(bonus);                   // 被动: 连击buff/永续加成等
   const equipAtk = calcEquipmentBonus(equipment, skill.hitCount);// 装备: 戒指/耳环/项链
-  const atkFactor = (activeAtk + passiveAtk + equipAtk) / 100 + 1;
+  let atkFactor = (activeAtk + passiveAtk + equipAtk) / 100 + 1;
 
   // ── 降防区 = 主动降防 + 被动降防 ────────────────────────────
   const activeDef = calcDebuffTotal(debuffs, skill.enemyAttr);   // 主动: 降防/脆弱等
@@ -551,9 +551,8 @@ export function calculateAll(input: DamageInput): DamageResultData {
 
   // ── 额外乘区（用户手动调节）─────────────────────────────────
 
-  // ── 共享乘区（不含 dbf/weakness）────────────────────────────
+  // ── 共享乘区（不含 atk/dbf/weakness，多体时三者均逐体计算）────
   const shared = skillResult.multiplier
-    * atkFactor
     * critFactor
     * chainMul
     * breakMul
@@ -573,25 +572,27 @@ export function calculateAll(input: DamageInput): DamageResultData {
   let multiBody: DamageResultData['multiBody'];
 
   if (useMultiBody && bodies) {
-    // 每体用自己的减防/弱点技能列表独立算因子；被动减防 + 武器/属性弱点为共享项
+    // 每体用自己的加攻/减防/弱点技能列表独立算因子；被动加攻/减防 + 装备 + 武器/属性弱点为共享项
     const perBody = bodies.map(b => {
+      const atk = (calcBuffTotal(b.buffs) + passiveAtk + equipAtk) / 100 + 1;
       const dbf = (calcDebuffTotal(b.debuffs, skill.enemyAttr) + passiveDef) / 100 + 1;
       const weakness = (skill.weaponWeak + 1)
         * (skill.elementWeak + calcWeaknessTotal(b.weaknesses, skill.enemyAttr) / 100 + 1);
-      const pre = shared * dbf * weakness;
+      const pre = shared * atk * dbf * weakness;
       const post = applyAtten(pre);
-      return { dbf, weakness, preAttenuation: pre, postAttenuation: post };
+      return { atk, dbf, weakness, preAttenuation: pre, postAttenuation: post };
     });
     const averagePreAttenuation = perBody.reduce((s, p) => s + p.preAttenuation, 0) / perBody.length;
     const averagePostAttenuation = perBody.reduce((s, p) => s + p.postAttenuation, 0) / perBody.length;
     preAttenuation = averagePreAttenuation;
     postAttenuation = averagePostAttenuation;
     attenuationApplied = isOver(averagePreAttenuation);
+    atkFactor = perBody.reduce((s, p) => s + p.atk, 0) / perBody.length;
     defFactor = perBody.reduce((s, p) => s + p.dbf, 0) / perBody.length;
     weaknessFactor = perBody.reduce((s, p) => s + p.weakness, 0) / perBody.length;
     multiBody = { perBody, averagePreAttenuation, averagePostAttenuation };
   } else {
-    preAttenuation = shared * defFactor * weaknessFactor;
+    preAttenuation = shared * atkFactor * defFactor * weaknessFactor;
     attenuationApplied = isOver(preAttenuation);
     postAttenuation = applyAtten(preAttenuation);
   }
