@@ -142,6 +142,7 @@ export interface ScoreParams {
 
 // ─── 多体（Multi-Body）───────────────────────────────────
 export interface MultiBodyBody {
+  buffs: BuffSkill[];         // 该体自己的主动加攻技能
   debuffs: DebuffSkill[];     // 该体自己的主动减防技能
   weaknesses: WeaknessSkill[]; // 该体自己的弱点加深技能
 }
@@ -281,6 +282,7 @@ export interface DamageResultData {
   // 多体结果（多体开启时才有值）
   multiBody?: {
     perBody: {
+      atk: number;              // 该体「加攻区」因子（由该体自己的加攻技能 + 共享被动加攻/装备算出）
       dbf: number;              // 该体「减防区」因子（由该体自己的减防技能 + 共享被动减防算出）
       weakness: number;         // 该体「弱点区」因子（由该体自己的弱点技能 + 共享武器/属性弱点算出）
       preAttenuation: number;   // 该体衰减前伤害
