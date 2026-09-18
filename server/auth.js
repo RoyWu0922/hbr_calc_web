@@ -1,6 +1,16 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import bcrypt from 'bcryptjs';
 
-export const JWT_SECRET = process.env.HBR_JWT_SECRET || 'hbr-local-dev-secret-change-me';
+let _secret = process.env.HBR_JWT_SECRET;
+if (!_secret) {
+  try {
+    const env = fs.readFileSync(new URL('./.env', import.meta.url), 'utf8');
+    const m = env.match(/^HBR_JWT_SECRET=(.+)$/m);
+    if (m) _secret = m[1].trim();
+  } catch { /* ignore */ }
+}
+export const JWT_SECRET = _secret || 'hbr-local-dev-secret-change-me';
 const JWT_ALG = 'HS256';
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
@@ -26,8 +36,10 @@ export function verifyPassword(password, stored) {
     const calc = crypto.scryptSync(password, salt, 64).toString('hex');
     return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(calc, 'hex'));
   }
-  // Migrated Supabase bcrypt hashes ($2a$/$2b$/$2y$) are verified in the migration step
-  // using the pure-JS bcryptjs (no native compile). Unreachable until migration adds bcryptjs.
+  // Migrated Supabase bcrypt hashes ($2a$/$2b$/$2y$).
+  if (/^\$(2[aby])\$/.test(stored)) {
+    try { return bcrypt.compareSync(password, stored); } catch { return false; }
+  }
   return false;
 }
 
