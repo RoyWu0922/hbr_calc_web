@@ -23,3 +23,5 @@ Caddyfile
 caddy_data/
 server/start-services.ps1
 *.log
+backups/
+backup.log
