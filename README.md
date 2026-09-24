@@ -10,6 +10,8 @@ Web 版全能红烧天堂计算工具箱，支持伤害计算、白值计算、O
 
 **Vercel Pages（需科学上网）**: [https://hbrtoolbox.vercel.app/](https://hbrtoolbox.vercel.app/)
 
+**独立网页(数据库不通用)**: [https://afsgtool.top/](https://afsgtool.top/)
+
 ## 功能模块
 
 ### 伤害计算
