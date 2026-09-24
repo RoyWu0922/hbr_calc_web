@@ -70,6 +70,7 @@ function buildWhere(type, filters, auth) {
   if (meta.scope === 'user' || meta.scope === 'like') { parts.push('user_id = ?'); params.push(auth.sub); }
   for (const [k, v] of Object.entries(filters || {})) {
     if (k === 'admin' || k === 'toAdmin') continue;
+    if (!meta.cols.includes(k)) continue; // whitelist: never interpolate unknown column names
     parts.push(`${k} = ?`);
     params.push(typeof v === 'boolean' ? (v ? 1 : 0) : v);
   }
@@ -153,8 +154,8 @@ async function handleData(method, pathname, body, req, res) {
       : '*';
     const colSel = colSelRaw || '*';
     let sql = `SELECT ${colSel} FROM ${name} ${where}`;
-    if (query.order) { const dir = query.asc === '0' ? 'DESC' : 'ASC'; sql += ` ORDER BY ${query.order} ${dir}`; }
-    if (query.limit) sql += ` LIMIT ${Number(query.limit)}`;
+    if (query.order && meta.cols.includes(query.order)) { const dir = query.asc === '0' ? 'DESC' : 'ASC'; sql += ` ORDER BY ${query.order} ${dir}`; }
+    if (query.limit) sql += ` LIMIT ${Math.max(1, Math.min(100000, Number(query.limit) || 1))}`;
     let rows;
     try { rows = all(sql, params); } catch (e) { return send(res, 500, { error: e.message }); }
     rows = rows.map((r) => rowOut(name, r));
