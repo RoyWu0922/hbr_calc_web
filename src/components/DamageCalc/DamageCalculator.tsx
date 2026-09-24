@@ -17,7 +17,7 @@ import DamageResult from './DamageResult';
 import ImageInfoTip from '../ImageInfoTip';
 import FloatingBiasCalc from '../FloatingBiasCalc';
 import Switch from '../Switch';
-import saPic from '/SA_pic.png';
+import saPic from '/SA_pic.webp';
 
 const defaultSkill: SkillInput = {
   sp: 0, skillLevel: 0, deviation: 1, token: 1,

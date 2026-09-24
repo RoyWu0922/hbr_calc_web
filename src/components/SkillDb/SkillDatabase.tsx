@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import ImageInfoTip from '../ImageInfoTip';
-import skillPic from '/Skill_pic.png';
+import skillPic from '/Skill_pic.webp';
 import { BUFF_SKILLS, DEBUFF_SKILLS, WEAKNESS_SKILLS } from '../../engine/skillDb';
 import {
   getCustomSkills, addCustomSkill, deleteCustomSkill,

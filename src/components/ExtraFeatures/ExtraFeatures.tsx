@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import ImageInfoTip from '../ImageInfoTip';
 import Switch from '../Switch';
-import saPic from '/SA_pic.png';
-import defensePic from '/defense.png';
+import saPic from '/SA_pic.webp';
+import defensePic from '/defense.webp';
 import { calcScore, calcBreakDetail, calcEncounterScore, calcIncomingDamage } from '../../engine/damage';
 import { SCORE_TABLE, TURN_COEFF } from '../../engine/skillDb';
 import { BreakParams } from '../../types';
