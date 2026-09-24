@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import readline from 'node:readline';
 import { db } from './db.js';
+import { toEmail } from './auth.js';
 
 const SRC = process.argv[2] || '\\\\tsclient\\Public\\supabase_backup.sql';
 if (!fs.existsSync(SRC)) { console.log('SRC not found: ' + SRC); process.exit(1); }
@@ -115,6 +116,7 @@ rl.on('close', () => {
     db.exec('BEGIN');
     let ok = 0;
     for (const r of rows) {
+      if (spec.table === 'users') r.email = toEmail(r.username); // canonical (base64 emails are case-sensitive)
       try { stmt.run(...cols.map((c) => r[c])); ok++; }
       catch (e) { console.log(`  skip row ${spec.table}: ${e.message}`); }
     }
