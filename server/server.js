@@ -80,6 +80,34 @@ const run = (sql, params = []) => db.prepare(sql).run(...params);
 const all = (sql, params = []) => db.prepare(sql).all(...params);
 const get = (sql, params = []) => db.prepare(sql).get(...params);
 
+// ─── Brute-force protection for auth endpoints (in-memory, per client IP) ───
+const FAILS = new Map(); // ip -> { n, start, blockedUntil }
+const WIN_MS = 5 * 60 * 1000;
+const MAX_FAILS = 8;
+const BLOCK_MS = 10 * 60 * 1000;
+function clientIp(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) return String(xff).split(',')[0].trim();
+  return req.socket?.remoteAddress || 'unknown';
+}
+function authBlocked(ip) {
+  const e = FAILS.get(ip);
+  if (e && e.blockedUntil && Date.now() < e.blockedUntil) return true;
+  return false;
+}
+function noteAuthFail(ip) {
+  const now = Date.now();
+  let e = FAILS.get(ip);
+  if (!e || now - e.start > WIN_MS) e = { n: 0, start: now, blockedUntil: 0 };
+  e.n++;
+  if (e.n >= MAX_FAILS) e.blockedUntil = now + BLOCK_MS;
+  FAILS.set(ip, e);
+  if (FAILS.size > 5000) { // bound memory
+    for (const [k, v] of FAILS) { if (now - v.start > WIN_MS && (!v.blockedUntil || now > v.blockedUntil)) FAILS.delete(k); }
+  }
+}
+function clearAuthFail(ip) { FAILS.delete(ip); }
+
 function userFromToken(token) {
   const payload = verifyToken(token);
   if (!payload) return null;
@@ -93,18 +121,23 @@ function userFromToken(token) {
 // ---------------------------------------------------------------------------
 async function handleAuth(method, pathname, body, req, res) {
   if (pathname === '/api/auth/signup') {
+    const ip = clientIp(req);
+    if (authBlocked(ip)) return send(res, 429, { error: 'too many attempts, try again later' });
     const username = String(body.username || '').trim();
     const password = String(body.password || '');
     if (!username || !password) return send(res, 400, { error: 'missing username/password' });
     const email = toEmail(username);
-    if (get('SELECT id FROM users WHERE username = ?', [username])) return send(res, 400, { error: 'username already exists' });
+    if (get('SELECT id FROM users WHERE username = ?', [username])) { noteAuthFail(ip); return send(res, 400, { error: 'username already exists' }); }
     const id = crypto.randomUUID();
     run('INSERT INTO users (id, username, email, encrypted_password, created_at, user_metadata) VALUES (?,?,?,?,?,?)',
       [id, username, email, hashPassword(password), Date.now(), JSON.stringify({ username })]);
+    clearAuthFail(ip);
     const token = signToken({ id, username });
     return send(res, 200, { data: { token, user: { id, username, email, user_metadata: { username }, created_at: Date.now() } }, error: null });
   }
   if (pathname === '/api/auth/signin') {
+    const ip = clientIp(req);
+    if (authBlocked(ip)) return send(res, 429, { error: 'too many failed attempts, try again later' });
     const password = String(body.password || '');
     let row;
     if (body.email) row = get('SELECT * FROM users WHERE email = ?', [String(body.email).trim().toLowerCase()]);
@@ -112,7 +145,8 @@ async function handleAuth(method, pathname, body, req, res) {
       const username = String(body.username).trim();
       row = get('SELECT * FROM users WHERE username = ? OR email = ?', [username, toEmail(username)]);
     }
-    if (!row || !verifyPassword(password, row.encrypted_password)) return send(res, 401, { error: 'invalid credentials' });
+    if (!row || !verifyPassword(password, row.encrypted_password)) { noteAuthFail(ip); return send(res, 401, { error: 'invalid credentials' }); }
+    clearAuthFail(ip);
     const token = signToken({ id: row.id, username: row.username });
     return send(res, 200, { data: { token, user: userFromToken(token) }, error: null });
   }
