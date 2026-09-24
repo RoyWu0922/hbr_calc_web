@@ -129,8 +129,13 @@ async function handleAuth(method, pathname, body, req, res) {
     const email = toEmail(username);
     if (get('SELECT id FROM users WHERE username = ?', [username])) { noteAuthFail(ip); return send(res, 400, { error: 'username already exists' }); }
     const id = crypto.randomUUID();
-    run('INSERT INTO users (id, username, email, encrypted_password, created_at, user_metadata) VALUES (?,?,?,?,?,?)',
-      [id, username, email, hashPassword(password), Date.now(), JSON.stringify({ username })]);
+    try {
+      run('INSERT INTO users (id, username, email, encrypted_password, created_at, user_metadata) VALUES (?,?,?,?,?,?)',
+        [id, username, email, hashPassword(password), Date.now(), JSON.stringify({ username })]);
+    } catch (e) {
+      if (/UNIQUE|constraint/i.test(String(e.message))) { noteAuthFail(ip); return send(res, 400, { error: 'username already exists' }); }
+      return send(res, 500, { error: e.message });
+    }
     clearAuthFail(ip);
     const token = signToken({ id, username });
     return send(res, 200, { data: { token, user: { id, username, email, user_metadata: { username }, created_at: Date.now() } }, error: null });
@@ -140,7 +145,9 @@ async function handleAuth(method, pathname, body, req, res) {
     if (authBlocked(ip)) return send(res, 429, { error: 'too many failed attempts, try again later' });
     const password = String(body.password || '');
     let row;
-    if (body.email) row = get('SELECT * FROM users WHERE email = ?', [String(body.email).trim().toLowerCase()]);
+    // NOTE: do NOT lowercase the email — non-ASCII usernames map to base64 emails,
+    // and base64 is case-sensitive (lowercasing would break the lookup).
+    if (body.email) row = get('SELECT * FROM users WHERE email = ?', [String(body.email).trim()]);
     else if (body.username) {
       const username = String(body.username).trim();
       row = get('SELECT * FROM users WHERE username = ? OR email = ?', [username, toEmail(username)]);
