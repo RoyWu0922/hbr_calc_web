@@ -311,6 +311,12 @@ const server = http.createServer(async (req, res) => {
     const pathname = url.pathname;
     const method = req.method;
     if (method === 'OPTIONS') return send(res, 204, null);
+
+    if (pathname === '/api/health') {
+      let dbOk = true;
+      try { dbOk = db.prepare('PRAGMA quick_check').get().quick_check === 'ok'; } catch { dbOk = false; }
+      return send(res, dbOk ? 200 : 503, { status: dbOk ? 'ok' : 'degraded', db: dbOk, uptime: Math.round(process.uptime()), time: new Date().toISOString() });
+    }
     if (pathname.startsWith('/api/auth/')) {
       const body = await readBody(req);
       return await handleAuth(method, pathname, body, req, res);

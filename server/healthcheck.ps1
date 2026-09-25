@@ -8,7 +8,7 @@ function Log($m) { Add-Content -LiteralPath $log -Value "$(Get-Date -Format s) $
 # 1) is the API actually answering?
 $apiOk = $false
 try {
-  $r = Invoke-WebRequest -Uri 'http://127.0.0.1:8123/api/auth/session' -UseBasicParsing -TimeoutSec 10
+  $r = Invoke-WebRequest -Uri 'http://127.0.0.1:8123/api/health' -UseBasicParsing -TimeoutSec 10
   $apiOk = ($r.StatusCode -eq 200)
 } catch { $apiOk = $false }
 
