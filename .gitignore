@@ -25,3 +25,4 @@ server/start-services.ps1
 *.log
 backups/
 backup.log
+.last_health_restart
