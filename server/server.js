@@ -31,7 +31,13 @@ function send(res, code, obj) {
 const readBody = (req) => new Promise((resolve) => {
   let data = '';
   req.on('data', (c) => { data += c; if (data.length > 5e6) req.destroy(); });
-  req.on('end', () => { try { resolve(data ? JSON.parse(data) : {}); } catch { resolve({}); } });
+  req.on('end', () => {
+    try {
+      const o = data ? JSON.parse(data) : {};
+      // always hand back a plain object (JSON null / array / primitive -> {})
+      resolve(o && typeof o === 'object' && !Array.isArray(o) ? o : {});
+    } catch { resolve({}); }
+  });
 });
 const getToken = (req) => {
   const h = req.headers['authorization'] || '';
@@ -121,6 +127,7 @@ function userFromToken(token) {
 // ---------------------------------------------------------------------------
 async function handleAuth(method, pathname, body, req, res) {
   if (pathname === '/api/auth/signup') {
+    if (method !== 'POST') return send(res, 405, { error: 'method not allowed' });
     const ip = clientIp(req);
     if (authBlocked(ip)) return send(res, 429, { error: 'too many attempts, try again later' });
     const username = String(body.username || '').trim();
@@ -141,6 +148,7 @@ async function handleAuth(method, pathname, body, req, res) {
     return send(res, 200, { data: { token, user: { id, username, email, user_metadata: { username }, created_at: Date.now() } }, error: null });
   }
   if (pathname === '/api/auth/signin') {
+    if (method !== 'POST') return send(res, 405, { error: 'method not allowed' });
     const ip = clientIp(req);
     if (authBlocked(ip)) return send(res, 429, { error: 'too many failed attempts, try again later' });
     const password = String(body.password || '');
