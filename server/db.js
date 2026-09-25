@@ -116,4 +116,29 @@ CREATE TABLE IF NOT EXISTS guide_comments (
 CREATE INDEX IF NOT EXISTS guide_comments_entry_idx ON guide_comments(entry_id, created_at);
 `);
 
+// ── Additive schema self-migration ─────────────────────────────────────────
+// CREATE TABLE IF NOT EXISTS never alters an existing table. To keep older
+// databases working when a new column is added, ensure each column exists and
+// ALTER TABLE ADD COLUMN any that are missing. (Additive only — types/defaults
+// of existing columns are not changed.) Keep this in sync with the DDL above
+// and with TABLES in server.js.
+const SCHEMA = {
+  users: { id: 'TEXT', username: 'TEXT', email: 'TEXT', encrypted_password: 'TEXT', created_at: 'INTEGER', user_metadata: 'TEXT' },
+  calc_history: { id: 'INTEGER', user_id: 'TEXT', uuid: 'TEXT', data: 'TEXT', timestamp: 'INTEGER', deleted: 'INTEGER' },
+  planner_axles: { id: 'INTEGER', user_id: 'TEXT', uuid: 'TEXT', data: 'TEXT', timestamp: 'INTEGER', deleted: 'INTEGER' },
+  white_stats: { id: 'INTEGER', user_id: 'TEXT', uuid: 'TEXT', data: 'TEXT', timestamp: 'INTEGER', deleted: 'INTEGER' },
+  folders: { id: 'INTEGER', user_id: 'TEXT', name: 'TEXT', type: 'TEXT', timestamp: 'INTEGER', sort_order: 'INTEGER' },
+  custom_skills: { user_id: 'TEXT', data: 'TEXT', updated_at: 'INTEGER' },
+  medal_records: { user_id: 'TEXT', data: 'TEXT', updated_at: 'INTEGER' },
+  guide_entries: { id: 'TEXT', category: 'TEXT', period: 'INTEGER', stage: 'TEXT', attribute: 'TEXT', weather: 'INTEGER', turns: 'INTEGER', team: 'TEXT', author: 'TEXT', video_url: 'TEXT', image_url: 'TEXT', notes: 'TEXT', score: 'INTEGER', status: 'TEXT', user_id: 'TEXT', created_at: 'TEXT', updated_at: 'TEXT', deleted: 'INTEGER', like_count: 'INTEGER' },
+  guide_likes: { entry_id: 'TEXT', user_id: 'TEXT', created_at: 'TEXT' },
+  guide_comments: { id: 'TEXT', entry_id: 'TEXT', user_id: 'TEXT', author: 'TEXT', content: 'TEXT', created_at: 'TEXT', deleted: 'INTEGER' },
+};
+for (const [table, cols] of Object.entries(SCHEMA)) {
+  const have = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((r) => r.name));
+  for (const [col, decl] of Object.entries(cols)) {
+    if (!have.has(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${decl}`);
+  }
+}
+
 export { crypto };
