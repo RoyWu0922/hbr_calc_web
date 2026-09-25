@@ -25,4 +25,9 @@ L '--- restart services ---'
 & powershell -NoProfile -ExecutionPolicy Bypass -File C:\hbr_start.ps1
 & $caddy reload --config Caddyfile --adapter caddyfile 2>&1 | Out-Null
 
+L '--- smoke test ---'
+$node = 'C:\Program Files\nodejs\node.exe'
+$smoke = & $node "$proj\server\tests\smoke.mjs" 2>&1
+L ($smoke | Select-Object -Last 1)
+
 L 'DEPLOY OK'
