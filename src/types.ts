@@ -2,6 +2,7 @@
 export interface SkillInput {
   sp: number;
   spTarget?: 'single' | 'group'; // SP模型目标：单体/群体（缺省=单体）
+  spDiffOverride?: number | null; // SP模型下手填基础差值（null/缺省=自动按 105+3sp 计算）
   skillLevel: number;
   deviation: number; // 偏向
   token: number;
