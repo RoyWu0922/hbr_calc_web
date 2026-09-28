@@ -207,10 +207,15 @@ export default function DamageCalculator({ initialData }: Props) {
   }, [initialData]);
 
   const effInput: DamageInput = useMemo(() => {
-    // SP模型开启时：最大威力/基础差值 由 SP + 目标数自动计算（不覆盖用户手填的原始值）；
+    // SP模型开启时：最大威力 由 SP + 目标数自动计算；基础差值 默认按 105+3sp 自动算，
+    // 若用户填了「基础差值」则用自填值（spDiffOverride）；
     // 公式值对应 技能等级=1，等级缩放仍由「技能等级」字段正常控制
     const effSkill = advanced.spModel
-      ? { ...skill, maxPower: spModelMaxPower(skill.sp, skill.spTarget ?? 'single'), baseDiff: spModelBaseDiff(skill.sp) }
+      ? {
+          ...skill,
+          maxPower: spModelMaxPower(skill.sp, skill.spTarget ?? 'single'),
+          baseDiff: skill.spDiffOverride != null ? skill.spDiffOverride : spModelBaseDiff(skill.sp),
+        }
       : skill;
     const mbOn = advanced.multiBody && multiBodyBodies.length > 0;
     const zeroB = (b: BuffSkill) => ({ ...b, moraleFighting: 0 });
@@ -742,18 +747,24 @@ function SkillParamsSection({ skill, updateSkill, result, hideWhiteBonus, spMode
         )}
       </div>
       {spModel ? (
-        <div className="grid grid-cols-5 gap-3 mb-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-3">
           <Field label="SP" value={skill.sp} onChange={v => updateSkill('sp', v)} />
           <div>
-            <div className="input-label">目标</div>
-            <input type="range" min={0} max={1} step={1}
-              value={skill.spTarget === 'group' ? 1 : 0}
-              onChange={e => updateSkill('spTarget', e.target.value === '1' ? 'group' : 'single')}
-              className="w-full mt-2 accent-accent" title="单体 750+60sp² / 群体 750+45sp²" />
-            <div className="flex justify-between text-[10px] text-text-muted mt-1 leading-tight">
-              <span>单体</span>
-              <span>群体</span>
-            </div>
+            <div className="input-label truncate">目标</div>
+            <select className="input-field" value={skill.spTarget ?? 'single'}
+              onChange={e => updateSkill('spTarget', e.target.value as 'single' | 'group')}
+              title="单体 750+60sp² / 群体 750+45sp²">
+              <option value="single">单体</option>
+              <option value="group">群体</option>
+            </select>
+          </div>
+          <div>
+            <div className="input-label truncate">基础差值</div>
+            <input className="input-field" type="number" step={1}
+              placeholder={String(spModelBaseDiff(skill.sp))}
+              value={skill.spDiffOverride ?? ''}
+              onChange={e => { const v = e.target.value; updateSkill('spDiffOverride', v === '' ? null : (parseFloat(v) || 0)); }}
+              onWheel={e => e.currentTarget.blur()} />
           </div>
           <Field label="技能等级" value={skill.skillLevel} onChange={v => updateSkill('skillLevel', v)} />
           <Field label="Hit数" value={skill.hitCount} onChange={v => updateSkill('hitCount', v)} />
