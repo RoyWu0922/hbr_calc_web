@@ -701,7 +701,7 @@ function ResultHeaderRow({ result, exAtten, onToggleExAtten }: {
             ? <div>弱点区 <span className="text-text-primary font-mono">[{mb.perBody.map(b => b.weakness.toFixed(3)).join(', ')}]</span></div>
             : <div>弱点区 <span className="text-text-primary font-mono">{result.weaknessFactor.toFixed(3)}</span>{copyBtn(result.weaknessFactor.toFixed(3))}</div>}
           <div className="text-white/20">|</div>
-          <div>爆伤区 <span className="text-text-primary font-mono">{result.critFactor.toFixed(1)}</span>{copyBtn(result.critFactor.toFixed(1))}</div>
+          <div>爆伤区 <span className="text-text-primary font-mono">{result.critFactor.toFixed(2)}</span>{copyBtn(result.critFactor.toFixed(2))}</div>
         </div>
         <div className="text-right flex-shrink-0 relative">
           <div className="text-xs text-text-muted flex items-center justify-end gap-1.5">
