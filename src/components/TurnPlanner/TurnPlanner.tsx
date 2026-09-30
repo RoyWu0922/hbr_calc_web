@@ -246,13 +246,16 @@ interface ODRow {
   resist: boolean;   // 抗性：所有hit产生的OD=0，但hit带来的耳环系数对固定OD的影响仍保留
 }
 
-function round4(v: number): number {
-  return Math.round(v * 10000) / 10000;
-}
-
 // 向下取整到2位小数（对浮点误差鲁棒：先加极小量再 floor，避免 50*1.1056=55.2799… 被截成 55.27）
 function floor2(v: number): number {
   return Math.floor(v * 100 + 1e-9) / 100;
+}
+
+// 四舍五入到2位小数。只给「OD计算」面板的直充项用（Excel 是 ROUND 不是 ROUNDDOWN），
+// 同样加极小量抵消浮点误差，免得正好落在 2 位小数上的值被少算 0.01。
+// 注意：详轴表格的 OD 走 engine/turnPlanner.ts 累加 fa.odGain，不经过这里。
+function round2(v: number): number {
+  return Math.round(v * 100 + 1e-9) / 100;
 }
 
 function calcODRow(row: ODRow, shared: ODShared) {
@@ -266,9 +269,11 @@ function calcODRow(row: ODRow, shared: ODShared) {
   else if (origHit === 0) j = 0;
   else if (earringVal === 0) j = 0;
   else j = ((origHit - 1) / 9 * (earringVal - 5) + 5);
-  j = round4(j / 100 + 1 + (odRise + extraODRise) / 100);
+  // 完整精度，不预先 round 到 4 位小数 —— 与 Excel 和「便捷OD计算」一致。
+  // 早先这里 round4 过，会让 fixedOD * j 在部分组合上（正负两个方向）差 0.01。
+  j = j / 100 + 1 + (odRise + extraODRise) / 100;
 
-  const part1 = floor2(fixedOD * j);
+  const part1 = round2(fixedOD * j);
   // 抗性(resist)：所有 hit 产生的 OD = 0；但由 hit 推导的耳环系数 j 对固定OD(part1)的影响仍然保留
   const j25 = floor2(j * 2.5);
   const part2 = resist ? 0 : (origHit + addHit) * Math.floor(j25 * odRate + 1e-9) / 100 * targets;

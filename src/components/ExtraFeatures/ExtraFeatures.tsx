@@ -125,7 +125,9 @@ function ODCalculator() {
     j = j / 100 + 1 + odRise / 100;
 
     // N: actual OD%
-    const part1 = Math.floor(fixedOD * j * 100) / 100;
+    // 直充项是 ROUND 不是 ROUNDDOWN（Excel: ROUND($B$19:$B$22*100*I27, 2)）；
+    // +1e-9 抵消浮点误差，免得正好落在 2 位小数上的值被少算 0.01
+    const part1 = Math.round(fixedOD * j * 100 + 1e-9) / 100;
     const j25 = Math.floor(j * 2.5 * 100) / 100;
     const part2 = (origHit + addHit) * (resist ? 0 : 1) * Math.floor(j25 * odRate) / 100 * targets;
     const n = (part1 + part2) / 100;
