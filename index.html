@@ -2,7 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/vite.png" />
+    <!-- The tab icon is the same 角色头像 the PWA install icons use. Do NOT
+         repoint this at public/favicon.svg: that file is the Vite scaffold's own
+         logo (a purple bolt) that has sat unused in the tree since the first
+         commit, and reaching for it because it is already a small SVG is exactly
+         how the app's icon got replaced by Vite's once already. -->
+    <link rel="icon" type="image/png" href="%BASE_URL%icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0e1a" />
     <link rel="manifest" href="%BASE_URL%manifest.json" />
