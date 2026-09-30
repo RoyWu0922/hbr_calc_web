@@ -55,6 +55,34 @@
   --simple-slot1: rgba(251, 146, 60, 0.1);
   --simple-slot2: rgba(129, 140, 248, 0.1);
   --simple-slot3: rgba(52, 211, 153, 0.08);
+
+  /* Row-style axle chart (简轴版式) — character palette.
+     Keyed by charIndex, NOT by the 25 planner themes: these are page-level and
+     must survive a theme switch, so they live here and in [data-theme="light"]
+     and are deliberately absent from PLANNER_STYLES. usePlannerStyle applies its
+     vars as inline styles on the TurnPlanner root, so it cannot shadow these.
+     Hues steer clear of red (OD / negative OD), green (追加) and purple (词条).
+     Must be hex or rgb — the export util strips oklch() to #666. */
+  --char-1: #60a5fa;  /* 蓝 */
+  --char-2: #fbbf24;  /* 琥珀 */
+  --char-3: #2dd4bf;  /* 青绿 */
+  --char-4: #f472b6;  /* 粉 */
+  --char-5: #fb923c;  /* 橙 */
+  --char-6: #818cf8;  /* 靛 */
+  --rc-grid: rgba(255, 255, 255, 0.08);
+  /* The app's three text tokens are all #f1f5f9 in dark (--app-text-primary,
+     -secondary and -muted are literally the same value), so secondary text in
+     the 简轴 轴图 would read at full strength. This is the feature-local muted
+     tone instead — same approach as --char-N above: define a token here rather
+     than change an app-wide value every other page depends on. Matches the
+     neutral marker colour so dots and secondary text agree. */
+  --rc-muted: #94a3b8;
+  /* Opaque background for the 角色泳道 frozen first column. It has to be OPAQUE
+     — the host scrolls horizontally, and a translucent frozen column lets the
+     scrolled cells read through it. The value is --app-bg-card's own base colour
+     (rgba(30,41,59,…)) taken to full alpha, so the frozen column sits flush on
+     the card instead of showing as a darker block. */
+  --rc-frozen: #1e293b;
   --bg-dimmer: 0;
   --card-opacity: 1;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -115,6 +143,31 @@
   --simple-slot1: rgba(251, 146, 60, 0.08);
   --simple-slot2: rgba(129, 140, 248, 0.08);
   --simple-slot3: rgba(52, 211, 153, 0.06);
+
+  /* Row-style axle chart — the same 6 hues, darkened until every one clears
+     WCAG AA (4.5:1) against the WORST row tint. The name text carries the
+     colour, so this is a legibility constraint rather than a taste call: the
+     row tints are light blue/purple/orange washes over the white card, and
+     S_BG2's purple (rgba(147,51,234,0.10) → #f4ebfd) is the darkest of the
+     five, so it sets the floor for all six. Measured worst-case ratio, before
+     → after: 青绿 3.23→4.72, 橙 3.07→6.30, 粉 3.96→5.21, 琥珀 4.33→6.11,
+     蓝 4.46→5.78, 靛 5.42 (already clear, unchanged). A ~4.5 floor rather than
+     comfortable 7:1 because darkening further starts losing the hues against
+     each other. The 25 planner themes cannot affect this: their --planner-col-*
+     vars are consumed only by the classic 表格, so the composite behind a name
+     measures identical under all of them. Values are independent of the dark
+     block: do not assume one derives from the other. */
+  --char-1: #1d4ed8;  /* 蓝 */
+  --char-2: #92400e;  /* 琥珀 */
+  --char-3: #0f766e;  /* 青绿 */
+  --char-4: #be185d;  /* 粉 */
+  --char-5: #9a3412;  /* 橙 */
+  --char-6: #4f46e5;  /* 靛 */
+  --rc-grid: rgba(0, 0, 0, 0.08);
+  --rc-muted: #64748b;
+  /* Light counterpart of the frozen column — same rule (opaque), same source
+     (--app-bg-card is rgba(255,255,255,0.85) here). */
+  --rc-frozen: #ffffff;
 }
 
 @theme {
@@ -776,6 +829,299 @@ input[type="checkbox"]:checked::after {
 [data-theme="light"] .planner-table tbody tr:hover td {
   background: var(--planner-row-hover);
 }
+
+/* ─── 简轴行式轴图 ───────────────────────────────────────────
+   0 · Shared primitives. All 7 版式 render from rowChartModel.ts through
+   RowChartPrimitives.tsx; only the three semantic cells (label / 3 action
+   slots / OD) and the empty-slot rule live here. Geometry is data — each
+   variant passes its own gridTemplateColumns — so a variant only ever
+   overrides colour, weight and background.
+
+   Every decoration in this feature is a REAL DOM NODE. The bundled html2canvas
+   never paints `content: ""` pseudo-elements (DocumentCloner.resolvePseudoContent
+   returns early when the parsed content is falsy), so a colour bar or rail built
+   with ::before would be silently missing from the exported PNG. Do not add one.
+   The empty-slot rule below is likewise the ONLY implementation — no variant may
+   re-derive it from charIndex. */
+
+/* Slot body: name gets 30%, action 70%, both on one line. */
+.rc-row {
+  display: grid;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--rc-grid);
+  font-size: 11px;
+}
+/* min-width:0 + ellipsis so a long round label (「后置OD1」 in E's narrower 58px
+   column) clips inside its own track instead of pushing into the slots. */
+/* Centred, not start-aligned: the 表格 version this replaces centres every cell
+   (.planner-table td wins over Tailwind's per-cell text-* utilities), so a
+   left-hugging 回合 column here reads as a regression against the format the
+   user is switching from. Same reason for .rc-nm / .rc-team / .rc-lane-rowhead
+   below — the alignment is a property of the axle, not of one 版式. */
+.rc-lbl {
+  font-weight: 700;
+  text-align: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rc-slots { display: flex; gap: 2px; min-width: 0; }
+.rc-slot { display: flex; align-items: center; flex: 1 1 0; gap: 3px; min-width: 0; }
+.rc-nm {
+  flex: 0 0 30%;
+  /* Floor, not a redesign of the 30/70 split. The mockups were reviewed on a
+     1000px chart where 30% is ~74px and a 4-character name fits; the real panel
+     is ~610px on a 1060px viewport, where 30% is 41px and 月城最中 ellipsised to
+     「月城…」. Below this floor the name wins and the action absorbs the
+     difference, which is the right trade — an unreadable character name defeats
+     the point of the 角色色带 / 角色泳道 版式. */
+  min-width: 52px;
+  text-align: center;
+  color: var(--rc-muted);
+}
+.rc-ac {
+  flex: 1 1 70%;
+  text-align: center;
+  color: var(--app-text-primary);
+}
+.rc-nm, .rc-ac { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* An empty slot's 「—」 takes the whole cell and centres — otherwise it would
+   sit inside the 30% name box, hugging the left edge. */
+.rc-empty { flex: 1 1 100%; width: 100%; text-align: center; color: var(--rc-muted); }
+
+.rc-od { text-align: center; }
+.rc-ov { margin-left: 2px; }
+
+/* Character colour bar — a real node, sized to the row it sits in. */
+.rc-bar { flex: 0 0 3px; align-self: stretch; min-height: 14px; border-radius: 2px; }
+
+/* Rail / node columns (轨道时间线, 行程表). */
+.rc-rail-list { position: relative; }
+/* One real span for the whole rail — not a per-row ::before (the export drops
+   `content:""`) and not a border on the dots (it would break between rows).
+   left is the dot centre: 8px row padding + 34px leading column / 2 = 25px,
+   minus half the 1px line so it stays centred. */
+.rc-rail {
+  position: absolute;
+  left: 24.5px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--rc-grid);
+}
+.rc-dot { width: 7px; height: 7px; border-radius: 999px; justify-self: center; }
+.rc-node { width: 8px; height: 8px; justify-self: center; display: block; }
+
+/* Header block + column header strip. B/C/K omit the column header; E/G/D keep
+   one because they introduce columns the reader has no prior for. */
+.rc-head { padding: 4px 8px 2px; border-bottom: 1px solid var(--rc-grid); }
+.rc-title { font-size: 11px; font-weight: 700; text-align: center; }
+.rc-team { font-size: 10px; color: var(--rc-muted); text-align: center; }
+.rc-notes {
+  font-size: 10px;
+  color: var(--rc-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.rc-colhead {
+  display: grid;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  /* Centred so each label sits over the column it names, now that the values
+     below it (回合 / 行动 / OD) are centred too. */
+  text-align: center;
+  color: var(--rc-muted);
+  background: var(--planner-header-bg);
+  border-bottom: 1px solid var(--rc-grid);
+}
+
+/* Modifier (词条) row — no action slots, so the text takes that whole column. */
+.rc-mod-lbl { color: #c084fc; }
+.rc-mod-txt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rc-muted);
+}
+
+/* The row-based 版式 use fixed pixel columns, so on a 375px screen the 1fr
+   would leave ~100px for three slots. Rather than invent a mobile layout, they
+   get a floor and the host's existing overflow-x-auto scrolls — the same
+   behaviour the 表格 版式 already has on mobile. */
+.rc-wide { min-width: 520px; }
+
+/* 1 · B 角色色带 */
+/* The bar spans the full row height, so the slots container has to stop
+   shrink-wrapping to the text. */
+.rc-band .rc-slots { align-self: stretch; }
+.rc-band .rc-slot { align-items: center; }
+.rc-band .rc-bar { margin-right: 1px; }
+
+/* 2 · C 极简斑马 */
+/* Explicit stripe class, driven by the model's raw-turn-index stripe — never
+   :nth-child, which a 词条行 at the same DOM level would throw off. */
+.rc-zebra .rc-zebra-alt { background: rgba(255, 255, 255, 0.025); }
+[data-theme="light"] .rc-zebra .rc-zebra-alt { background: rgba(0, 0, 0, 0.022); }
+/* Real border, not a pseudo-element. */
+.rc-zebra .rc-slot-div { border-left: 1px solid var(--rc-grid); padding-left: 5px; }
+
+/* 3 · D 角色泳道 (transposed) */
+/* One CSS grid for the whole matrix: corner + one header per round, then a
+   header + a cell per round for each character, then the OD row. Document order
+   fills the grid row by row, so the component must emit exactly one item per
+   column — that is the only layout contract here.
+
+   `width: max-content` + `min-width: 100%` is what makes the frozen first column
+   work, and it is not stylistic. A grid container's box is its own width, NOT the
+   sum of its tracks: with columns that overflow (minmax floors at 88px), the box
+   stays at the host width while the tracks spill out of it — and a sticky item's
+   containing block is inside that box, so the names stopped sticking the moment
+   the box scrolled past (measured: stuck at left:0 for scrollLeft 0→200, then
+   dragged off at scrollLeft 400). Sizing the box to the tracks is exactly what a
+   <table> does for free, and is why sticky columns are easy in a table and fiddly
+   in a div-grid. The `min-width: 100%` half keeps the opposite case — an axle
+   narrow enough to fit — filling the panel, where the tracks' 1fr then stretches
+   them evenly. */
+.rc-lane-grid {
+  display: grid;
+  width: max-content;
+  min-width: 100%;
+  font-size: 11px;
+  border-top: 1px solid var(--rc-grid);
+}
+/* Sticky first column. Opaque by necessity — see --rc-frozen. */
+.rc-lane-corner,
+.rc-lane-rowhead,
+.rc-lane-odlbl {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--rc-frozen);
+  border-right: 1px solid var(--rc-grid);
+  border-bottom: 1px solid var(--rc-grid);
+}
+/* 2px so a 1px border can still read as a status stripe under the round label.
+   The colour is applied inline from TONE_COLOR (RowChartPrimitives) — the same
+   source the row 版式 use for the OD red / 追加 green. */
+.rc-lane-colhead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  font-weight: 700;
+  border-bottom: 2px solid transparent;
+  border-right: 1px solid var(--rc-grid);
+}
+.rc-lane-corner { border-bottom-width: 2px; }
+/* Centred like the row 版式's name column — the dot and the name are one unit,
+   so they centre together rather than the name taking the leftover space. */
+.rc-lane-rowhead { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 3px 8px; min-height: 22px; }
+.rc-lane-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 999px; }
+.rc-lane-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+/* A cell stacks: the same character can fill two slots of one round. */
+.rc-lane-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 3px 6px;
+  min-height: 22px;
+  min-width: 0;
+  border-bottom: 1px solid var(--rc-grid);
+  border-right: 1px solid var(--rc-grid);
+}
+/* Content must not size the round columns — inline-size containment makes these
+   three cells contribute nothing to the tracks, so a round is always 88px (or the
+   stretched 1fr share) and a long action ellipsises in .rc-lane-act with its title
+   as the fallback. Without it the columns chase the longest action on the axle:
+   one 「破竹之势慈悲之刃」 widened EVERY round column uniformly (all minmax(88px,1fr)
+   tracks share one flex fraction, so it is all-or-nothing) and pushed an 8-round
+   axle into a scrollbar it should not have had. Note this is only safe because the
+   track has an explicit 88px floor — the containment zeroes the intrinsic
+   contribution, so a bare `1fr` track would collapse to nothing. */
+.rc-lane-colhead,
+.rc-lane-cell,
+.rc-lane-odcell { contain: inline-size; }
+.rc-lane-act {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--app-text-primary);
+}
+/* The 「—」 is the shared empty-slot character in the shared muted tone; it is
+   not SlotBody because a lane cell has no name/action pair to split 30/70. */
+.rc-lane-idle { color: var(--rc-muted); }
+.rc-lane-odlbl { display: flex; align-items: center; justify-content: center; min-height: 22px; font-weight: 700; color: var(--rc-muted); }
+.rc-lane-odcell { display: flex; align-items: center; justify-content: center; min-height: 22px; border-right: 1px solid var(--rc-grid); }
+
+/* 词条 strip — above the grid, because a 词条行 has no round row to be transposed
+   into. Rendered only while showEncounter is on (the model already filtered). */
+.rc-lane-mods { border-bottom: 1px solid var(--rc-grid); padding: 3px 8px; }
+.rc-lane-mod { display: flex; align-items: baseline; gap: 4px; font-size: 10px; line-height: 1.6; }
+.rc-lane-mod-round { color: var(--rc-muted); white-space: nowrap; }
+
+/* 4 · E 轨道时间线 */
+/* The 2px left padding this section used to nudge the label with is gone: it was
+   an optical correction for a start-aligned label, and against .rc-lbl's
+   centring it only shifts the label 1px off centre. The rail/diamond columns
+   need nothing beyond the shared .rc-dot / .rc-rail primitives in section 0. */
+.rc-colhead-od { text-align: center; }
+
+/* 5 · G 行程表 */
+/* The one 版式 without the 30/70 split: name and action sit inline as
+   `name · action`, so a slot reads as one pair instead of two columns. The
+   empty-slot rule still comes from section 0, just without the full-width box.
+
+   Each pair now takes an equal third of the track. It used to be `0 0 auto` with
+   `flex-wrap`, i.e. only as wide as its own text and unshrinkable, which broke
+   the layout two ways at an 832px host: the three pairs packed against the left
+   edge of a 630px track and left 276px of dead space before the OD column, and
+   their left edges drifted from row to row (row 1's third pair started at 862,
+   row 2's at 873) because every row's text widths differ. Equal thirds put the
+   three pairs at the same positions on every row, and `min-width: 0` lets long
+   content ellipsise inside its share instead of pushing into the OD column.
+
+   This is why the wrap is gone: with a zero flex basis the pairs never reach
+   their min-content floor, so a wrap could no longer trigger — and a wrap would
+   have re-introduced the drift, since it skips growth. G's rows therefore hold
+   the shared fixed height like every other 版式, and the full name / action stay
+   on their tooltips (SlotBody sets them), the same fallback 角色泳道 uses. */
+.rc-log .rc-slots { gap: 4px 12px; }
+.rc-log .rc-slot { flex: 1 1 0; min-width: 0; justify-content: center; }
+.rc-log .rc-nm,
+.rc-log .rc-ac { flex: 0 1 auto; min-width: 0; }
+.rc-log .rc-nm { font-weight: 600; }
+.rc-log .rc-empty { flex: 0 0 auto; width: auto; }
+/* Shared by 行程表 (name · action) and 角色泳道's 词条 strip. A real node, never
+   `content:"·"` — the export drops `content:""` pseudo-elements. */
+.rc-sep { color: var(--rc-muted); }
+
+/* 6 · K 双栏紧凑 */
+/* One list in two equal columns. The columns are `flex: 1 1 0` in a flex row
+   and the divider between them is a separate 1px flex item, so the free space
+   is split evenly BEFORE the divider is paid for. A `border-left` on the second
+   column would instead be deducted from that column's own border-box, leaving
+   the two halves 24px apart in content width. */
+.rc-split-cols { display: flex; align-items: flex-start; gap: 20px; }
+.rc-split-col { flex: 1 1 0; min-width: 0; }
+.rc-split-div { flex: 0 0 1px; align-self: stretch; background: var(--rc-grid); }
+/* K's slot track is half the width of every other 版式's, so the shared 52px
+   name floor (sized for a full-width slot) would leave the action ~1 character.
+   40px is the compromise: a 4-character name ellipsises to 「月城最…」 but stays
+   identifiable, and the action keeps room for a 3-character skill name.
+   Deliberately not lower — an unreadable name defeats the format, and the
+   breakpoint in RowChart.tsx is derived from this number. The full name is on
+   the tooltip either way. */
+.rc-split .rc-nm { min-width: 40px; }
 
 /* ─── Guide (计算攻略) ──────────────────────────────────── */
 .guide-content { line-height: 1.75; color: var(--app-text-primary); }

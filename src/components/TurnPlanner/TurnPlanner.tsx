@@ -5,9 +5,12 @@ import { loadPlannerState, savePlannerState, saveAxle, updateAxle, getSavedAxles
 import { getFolders, createFolder, updateFolder, deleteFolder } from '../../utils/storage';
 import { validateAxleImport } from '../../utils/importValidation';
 import { copyToClipboard } from '../../utils/copyToast';
+import { exportElementToPNG } from '../../utils/exportImage';
 import { supabase } from '../../utils/supabase';
 import { pullAll } from '../../utils/syncEngine';
 import type { Folder } from '../../types';
+import { buildChartMeta, buildChartModel, fmtFloat, isExtraRound, isODRound } from './rowChartModel';
+import { ChartHost, FORMATS, FORMAT_LABELS, useSimpleFormat, type ChartFormat } from './RowChart';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
 
@@ -496,12 +499,6 @@ function fmt(n: number): string {
   return Math.round(n).toLocaleString('zh-CN');
 }
 
-function fmtFloat(n: number, decimals = 1): string {
-  if (!isFinite(n)) return '—';
-  return Number(n.toFixed(decimals)).toLocaleString('zh-CN');
-}
-
-
 const OD_MODE_OPTIONS = [
   { value: '300', label: '百分比(300%)' },
   { value: '120', label: 'Hit数(120)' },
@@ -549,9 +546,6 @@ function convertODMode(state: TurnPlannerState, oldMode: number, newMode: number
     })),
   };
 }
-
-function isODRound(label: string): boolean { return label.includes('OD'); }
-function isExtraRound(label: string): boolean { return label.includes('追加'); }
 
 function getODLevel(label: string): number {
   if (label.includes('OD5')) return 5;
@@ -1406,12 +1400,6 @@ function DetailTable({
 
 // ─── Simple Table ─────────────────────────────────────────────
 
-const SIMPLE_SLOT_COLORS = [
-  'var(--simple-slot1)',
-  'var(--simple-slot2)',
-  'var(--simple-slot3)',
-] as const;
-
 function SimpleTable({
   state, computed, score, setScore, turnsCount, setTurnsCount, onTitleChange, onImportState,
   title, setTitle, author, setAuthor, notes, setNotes,
@@ -1426,128 +1414,29 @@ function SimpleTable({
   author: string; setAuthor: (v: string) => void;
   notes: string; setNotes: (v: string) => void;
 }) {
-  const { characters, turns } = state;
-  // OD 当前值显示精度：Hit数模式(120/200)用 3 位小数，百分比模式(300/500)维持 2 位
-  const odDec = state.odMode < 300 ? 3 : 2;
-  const odOverflowDec = state.odMode < 300 ? 3 : 1;
-
-  // Pre-compute OD color blocks
-  const sOdStyles: string[] = new Array(turns.length).fill('');
-  if (!state.showEncounter) {
-    let cur = '', bi = 0;
-    for (let i = 0; i < turns.length; i++) {
-      const t = turns[i];
-      if (isODRound(t.roundLabel) && !t.roundLabel.includes('OD内')) { bi++; cur = (['','s1','s2','s3'] as const)[bi % 3 || 3]; }
-      else if (t.roundLabel.includes('OD内')) { bi++; cur = (['','s1','s2','s3'] as const)[bi % 3 || 3]; }
-      else if (!isExtraRound(t.roundLabel)) { cur = ''; }
-      sOdStyles[i] = cur;
-    }
-  }
-  const sBg1 = 'rgba(59,130,246,0.10)', sBg2 = 'rgba(147,51,234,0.10)', sBg3 = 'rgba(234,88,12,0.08)';
+  // Every bit of row derivation — the OD tint blocks, the red chain, the
+  // modifier numbering, the OD cell, the empty-slot rule — now lives in
+  // rowChartModel.ts so all 7 版式 read one source instead of each copying the
+  // JSX map that used to sit here.
+  const model = useMemo(() => buildChartModel(state, computed), [state, computed]);
+  const meta = useMemo(() => buildChartMeta(state, title, author, notes), [state, title, author, notes]);
+  const { format, setFormat } = useSimpleFormat();
 
   const timelineRef = useRef<HTMLDivElement>(null);
 
-  const exportPNG = useCallback(async () => {
+  // Delegates to the shared export util. It carries the theme-following
+  // background, the oklch() stripping patch, SVG rendering, plus the two
+  // patches this table used to own inline: the <td>/<th> vertical-centering
+  // fix (guarded on a <table> being present) and the [data-timeline-export]
+  // width expansion for the overflow-x-auto container.
+  //
+  // The 版式 suffix keeps two exports of the same title from overwriting each
+  // other — the whole point of offering formats is to compare them side by side.
+  const exportPNG = useCallback(() => {
     const el = timelineRef.current;
     if (!el) { alert('未找到时间线元素'); return; }
-    try {
-      const html2canvas = (await import('../../utils/html2canvas.esm.js')).default;
-      const canvas = await html2canvas(el, {
-        // Match the current app theme (not forced light)
-        backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        onclone(_clonedDoc: Document) {
-          // Keep the current theme so the export matches the 简轴 display
-          // Force vertical center in table cells (html2canvas sometimes misaligns)
-          const fixCss = _clonedDoc.createElement('style');
-          fixCss.textContent = [
-            'td, th {',
-            '  vertical-align: middle !important;',
-            '  line-height: 1.4 !important;',
-            '  padding-top: 6px !important;',
-            '  padding-bottom: 6px !important;',
-            '  padding-left: 3px !important;',
-            '  padding-right: 3px !important;',
-            '}',
-            'td > *, th > * { vertical-align: middle !important; }',
-          ].join('\n');
-          _clonedDoc.head.appendChild(fixCss);
-
-          // Regex for unsupported CSS color functions (html2canvas v1.4.1 only supports rgb/rgba/hsl/hsla)
-          const UNSUPPORTED_COLOR_RE = /oklch\([^)]+\)|oklab\([^)]+\)|lch\([^)]+\)|lab\([^)]+\)|color-mix\([^)]+\)/gi;
-          const FALLBACK = '#666';
-
-          // 1. Convert <link> stylesheets to <style> so we can strip unsupported colors from CSS text.
-          //    In production builds, Tailwind v4 CSS is in a separate .css file loaded via <link>,
-          //    which means the <style>-only stripping below would miss all its oklch() values.
-          _clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach((link: Element) => {
-            const el = link as HTMLLinkElement;
-            try {
-              const sheet = el.sheet;
-              if (sheet && sheet.cssRules) {
-                const css = Array.prototype.slice.call(sheet.cssRules).map(
-                  (r: CSSRule) => (r as CSSStyleRule).cssText || ''
-                ).join('\n');
-                const cleaned = css.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
-                const style = _clonedDoc.createElement('style');
-                style.textContent = cleaned;
-                el.parentNode?.replaceChild(style, el);
-              }
-            } catch (_e) {
-              // Cross-origin or inaccessible sheet — remove the link so oklch() won't leak through
-              el.parentNode?.removeChild(el);
-            }
-          });
-
-          // 2. Strip unsupported colors from inline styles
-          _clonedDoc.querySelectorAll('*').forEach((el: Element) => {
-            const s = (el as HTMLElement).style;
-            for (let i = s.length - 1; i >= 0; i--) {
-              const val = s.getPropertyValue(s[i]);
-              if (UNSUPPORTED_COLOR_RE.test(val)) {
-                s.removeProperty(s[i]);
-              }
-            }
-            if (el.hasAttribute('style')) {
-              const attr = el.getAttribute('style') || '';
-              const cleaned = attr.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
-              if (cleaned !== attr) el.setAttribute('style', cleaned);
-            }
-          });
-
-          // 3. Strip unsupported colors from <style> tag text content
-          _clonedDoc.querySelectorAll('style').forEach((st: HTMLStyleElement) => {
-            if (st.textContent) {
-              st.textContent = st.textContent.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
-            }
-          });
-
-          // 4. 导出时把时间线容器展开到完整内容宽度。
-          //    overflow-x-auto 会让 html2canvas 只渲染可见框 —— 表格列宽合计约 588px,
-          //    容器更窄时(移动端整宽或旧版 48% 并排)超宽部分会被裁掉, 这就是"只能看见一部分"的根因。
-          const tl = _clonedDoc.querySelector('[data-timeline-export]') as HTMLElement | null;
-          if (tl) {
-            tl.style.overflow = 'visible';
-            tl.style.width = `${tl.scrollWidth}px`;
-          }
-        },
-      });
-      canvas.toBlob((blob: Blob | null) => {
-        if (!blob) { alert('生成图片失败'); return; }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `hbr-timeline-${title || 'axle'}-${new Date().toISOString().slice(0, 10)}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }, 'image/png');
-    } catch (e) {
-      console.error('导出失败', e);
-      alert('导出图片失败: ' + (e instanceof Error ? e.message : String(e)));
-    }
-  }, [title]);
+    void exportElementToPNG(el, `hbr-timeline-${title || 'axle'}-${format}-${new Date().toISOString().slice(0, 10)}.png`);
+  }, [title, format]);
 
   const shareAxle = () => {
     const data = { title, author, score, turns: turnsCount, notes, state };
@@ -1580,12 +1469,6 @@ function SimpleTable({
     }
   };
 
-  // Front/back: chars 0-2 = front, 3-5 = back (matches detail table layout)
-  const frontIndices = [0, 1, 2];
-  const backIndices = [3, 4, 5];
-  const frontNames = frontIndices.map(i => characters[i].name || `C${i+1}`).join('  ');
-  const backNames = backIndices.map(i => characters[i].name || `C${i+1}`).join('  ');
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -1606,6 +1489,17 @@ function SimpleTable({
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
           </svg>
         </button>
+        {/* 版式 belongs to this one chart — it is part of the export target, so it
+            sits with the chart's own toolbar. The page-level 25 配色主题 stays in
+            the page header: different scope, different level. */}
+        <select
+          className="input-field text-xs py-0.5 w-28"
+          value={format}
+          onChange={e => setFormat(e.target.value as ChartFormat)}
+          title="版式"
+        >
+          {FORMATS.map(f => <option key={f} value={f}>{FORMAT_LABELS[f]}</option>)}
+        </select>
       </div>
       {/* 移动端纵向堆叠(时间线在介绍卡下方, 整宽可完整截屏), 桌面端并排 */}
       <div className="flex flex-col md:flex-row gap-4 md:items-start">
@@ -1632,8 +1526,8 @@ function SimpleTable({
           <div>
             <div className="input-label">队伍组成</div>
             <div className="text-xs">
-              前: <span className="font-bold">{frontNames || '—'}</span><br/>
-              后: <span className="font-bold">{backNames || '—'}</span>
+              前: <span className="font-bold">{meta.front || '—'}</span><br/>
+              后: <span className="font-bold">{meta.back || '—'}</span>
             </div>
           </div>
           <div>
@@ -1642,109 +1536,10 @@ function SimpleTable({
           </div>
         </div>
 
-        {/* Right: Timeline table */}
-        <div ref={timelineRef} data-timeline-export className="card overflow-x-auto !p-0 w-full md:flex-1">
-          <table className="planner-table simple-timeline" style={{ tableLayout: 'fixed', width: '100%' }}>
-            <colgroup>
-              <col style={{ width: 56 }} />
-              <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[0] }} />
-              <col style={{ width: 100, background: SIMPLE_SLOT_COLORS[0] }} />
-              <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[1] }} />
-              <col style={{ width: 100, background: SIMPLE_SLOT_COLORS[1] }} />
-              <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[2] }} />
-              <col style={{ width: 100, background: SIMPLE_SLOT_COLORS[2] }} />
-              <col style={{ width: 64 }} />
-            </colgroup>
-            {/* Meta header rows */}
-            <thead>
-              <tr>
-                <td colSpan={8} className="font-bold text-xs text-center px-2" style={{ borderBottom: 'none' }}>【{title || '标题'}】 — 作者: {author || '—'}</td>
-              </tr>
-              <tr>
-                <td colSpan={8} className="text-[10px] text-left px-2" style={{ borderBottom: 'none' }}>
-                  前: <span className="font-bold">{frontNames || '—'}</span> | 后: <span className="font-bold">{backNames || '—'}</span>
-                </td>
-              </tr>
-              {notes && (
-                <tr>
-                  <td colSpan={8} className="text-[10px] text-left px-2" style={{ borderBottom: 'none', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}> {notes}</td>
-                </tr>
-              )}
-              <tr>
-                <th>回合</th>
-                <th colSpan={2} className="text-center">行动槽1</th>
-                <th colSpan={2} className="text-center">行动槽2</th>
-                <th colSpan={2} className="text-center">行动槽3</th>
-                <th>当前OD</th>
-              </tr>
-            </thead>
-            <tbody>
-              {turns.map((turn, origTi) => ({ turn, origTi })).filter(({ turn }) => state.showEncounter || turn.encounterModifier === undefined).map(({ turn, origTi }) => {
-                const ti = origTi;
-                const isModifier = state.showEncounter && turn.encounterModifier !== undefined;
-                const isOD = isODRound(turn.roundLabel);
-                const isExtra = isExtraRound(turn.roundLabel);
-                const isODin = turn.roundLabel.includes('OD内');
-                const prevTurn = ti > 0 ? turns[ti - 1] : null;
-                const prevIsOD = prevTurn ? isODRound(prevTurn.roundLabel) || prevTurn.roundLabel.includes('OD内') : false;
-                let redChain3 = isExtra && prevIsOD;
-                if (isExtra && !redChain3 && prevTurn) {
-                  for (let k = ti - 1; k >= 0; k--) {
-                    const t = turns[k];
-                    if (isODRound(t.roundLabel) || t.roundLabel.includes('OD内')) { redChain3 = true; break; }
-                    if (!isExtraRound(t.roundLabel)) break;
-                  }
-                }
-                const extraIsRed = redChain3;
-                const result = computed[ti];
-                const sOdStyle = sOdStyles[ti];
-                const rowBg = sOdStyle === 's1' ? sBg1
-                  : sOdStyle === 's2' ? sBg2
-                  : sOdStyle === 's3' ? sBg3
-                  : (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
-                let modNum = 0;
-                if (isModifier) { for (let k = 0; k <= ti; k++) { if (turns[k].encounterModifier !== undefined) modNum++; } }
-
-                if (isModifier) {
-                  return (
-                    <tr key={ti} className="planner-mod-row">
-                      <td className="font-bold text-[10px] text-purple-400">词条{modNum}</td>
-                      <td colSpan={6} className="text-xs text-left pl-1 text-text-muted">{turn.encounterModifier}</td>
-                      <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                        {(result?.odAssist ?? 0) - state.odMode > 0.005 ? <>{state.odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((result?.odAssist ?? 0) - state.odMode, odOverflowDec)}</span></> : fmtFloat(result?.odCapped ?? 0, odDec)}
-                      </td>
-                    </tr>
-                  );
-                }
-
-                const actionPairs = turn.frontActions.map(a => ({
-                  name: a.charIndex >= 0 ? (characters[a.charIndex].name || `C${a.charIndex + 1}`) : '',
-                  act: a.action || '',
-                }));
-
-                return (
-                  <Fragment key={ti}>
-                    <tr className={(isOD && !isODin ? 'planner-od-start ' : '') + (ti % 2 === 0 ? 'alt-row' : '')}>
-                      <td className={`font-bold text-xs ${(isOD || isODin || extraIsRed) ? 'text-red-400' : isExtra ? 'text-green-400' : ''}`}
-                        style={{ background: rowBg || undefined }}>
-                        {turn.roundLabel}
-                      </td>
-                      {actionPairs.map((pair, ai) => (
-                        <Fragment key={ai}>
-                          <td className="font-medium text-xs text-right pr-1">{pair.name}</td>
-                          <td className="text-xs text-left pl-1">{pair.act}</td>
-                        </Fragment>
-                      ))}
-                      <td className={`font-mono font-bold text-xs text-center ${(result?.odCapped ?? 0) < 0 ? 'text-red-400' : 'text-accent'}`}>
-                        {(result?.odAssist ?? 0) - state.odMode > 0.005 ? <>{state.odMode}<span className="text-[8px] text-text-muted ml-0.5">+{fmtFloat((result?.odAssist ?? 0) - state.odMode, odOverflowDec)}</span></> : fmtFloat(result?.odCapped ?? 0, odDec)}
-                      </td>
-                    </tr>
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {/* Right: the chart. ChartHost owns the export container, so all 7 版式
+            share one ref and one data-timeline-export marker — which is also why
+            no "temporarily switch format to export" logic is needed. */}
+        <ChartHost model={model} meta={meta} format={format} hostRef={timelineRef} />
       </div>
     </div>
   );
