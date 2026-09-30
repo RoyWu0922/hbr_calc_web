@@ -10,7 +10,7 @@ import { supabase } from '../../utils/supabase';
 import { pullAll } from '../../utils/syncEngine';
 import type { Folder } from '../../types';
 import { buildChartMeta, buildChartModel, fmtFloat, isExtraRound, isODRound } from './rowChartModel';
-import { ChartHost, FORMATS, FORMAT_LABELS, useSimpleFormat, type ChartFormat } from './RowChart';
+import { ChartHost, FORMATS, FORMAT_LABELS, useShowCharSkills, useSimpleFormat, type ChartFormat } from './RowChart';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
 
@@ -1421,6 +1421,9 @@ function SimpleTable({
   const model = useMemo(() => buildChartModel(state, computed), [state, computed]);
   const meta = useMemo(() => buildChartMeta(state, title, author, notes), [state, title, author, notes]);
   const { format, setFormat } = useSimpleFormat();
+  // 角色技能栏 visibility. A per-viewer display preference like the 版式, so it
+  // lives in localStorage and stays out of TurnPlannerState.
+  const { show: showSkills, setShow: setShowSkills } = useShowCharSkills();
 
   const timelineRef = useRef<HTMLDivElement>(null);
 
@@ -1500,6 +1503,22 @@ function SimpleTable({
         >
           {FORMATS.map(f => <option key={f} value={f}>{FORMAT_LABELS[f]}</option>)}
         </select>
+        {/* 角色技能栏. Same scope as 版式 — it is part of the export target, so it
+            belongs to this chart's toolbar rather than the page header. A plain
+            button, not the app's <Toggle>: that component is a private copy in
+            two other files and is not exported, and the toolbar's own idiom is
+            an icon button that lights up. */}
+        <button
+          className={`btn btn-xs px-2 ${showSkills ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setShowSkills(!showSkills)}
+          title="角色技能栏（同时影响导出的图片）"
+          aria-pressed={showSkills}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
       </div>
       {/* 移动端纵向堆叠(时间线在介绍卡下方, 整宽可完整截屏), 桌面端并排 */}
       <div className="flex flex-col md:flex-row gap-4 md:items-start">
@@ -1539,7 +1558,7 @@ function SimpleTable({
         {/* Right: the chart. ChartHost owns the export container, so all 7 版式
             share one ref and one data-timeline-export marker — which is also why
             no "temporarily switch format to export" logic is needed. */}
-        <ChartHost model={model} meta={meta} format={format} hostRef={timelineRef} />
+        <ChartHost model={model} meta={meta} format={format} hostRef={timelineRef} showSkills={showSkills} />
       </div>
     </div>
   );
