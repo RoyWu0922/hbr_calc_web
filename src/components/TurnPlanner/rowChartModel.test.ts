@@ -11,8 +11,8 @@ import { describe, expect, it } from 'vitest';
 import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner';
 import type { ComputedTurnResult, FrontAction, PlannerTurn, TurnPlannerState } from '../../types';
 import {
-  S_BG1, S_BG2, buildChartModel, buildTeamNames, charColor, computeOdStyles, computeRedChain3,
-  countModifiers, fmtFloat, toSlot, type ChartModel, type ChartTurnRow,
+  S_BG1, S_BG2, buildCharSkills, buildChartModel, buildTeamNames, charColor, computeOdStyles, skillKeys,
+  computeRedChain3, countModifiers, fmtFloat, toSlot, type ChartModel, type ChartTurnRow,
 } from './rowChartModel';
 
 // ─── Fixtures ─────────────────────────────────────────────────
@@ -425,5 +425,237 @@ describe('integration with computeTurnPlanner', () => {
     // '追加' trails an OD round, so it is red.
     expect(turnRows(model)[2].extraIsRed).toBe(true);
     expect(model.laneByChar[1][1].map(l => l.action)).toEqual(['大招']);
+  });
+});
+
+// ─── 角色技能栏 ────────────────────────────────────────────────
+
+describe('buildCharSkills', () => {
+  it('emits one row per character slot, always 6', () => {
+    const rows = buildCharSkills(modelOf(createDefaultState()));
+    expect(rows).toHaveLength(6);
+    expect(rows.map(r => r.name)).toEqual(['C1', 'C2', 'C3', 'C4', 'C5', 'C6']);
+    expect(rows.every(r => r.skills.length === 0)).toBe(true);
+  });
+
+  it('dedupes per character and keeps first-use order', () => {
+    const s = state({
+      turns: [
+        turn('1', { frontActions: [fa(0, '破竹之势'), fa(1, '圣夜的赠礼'), fa(-1)] }),
+        turn('2', { frontActions: [fa(0, '无情歼灭'), fa(1, '圣夜的赠礼'), fa(-1)] }),
+        turn('3', { frontActions: [fa(0, '破竹之势'), fa(-1), fa(-1)] }),
+      ],
+    });
+    const rows = buildCharSkills(modelOf(s));
+    // The repeat on turn 3 adds nothing, and the repeat is what would break a
+    // Set-free implementation's order (it would sort or re-append).
+    expect(rows[0].skills).toEqual(['破竹之势', '无情歼灭']);
+    // Each character gets their own entry for a shared skill name.
+    expect(rows[1].skills).toEqual(['圣夜的赠礼']);
+  });
+
+  it('keeps the skills while 遭遇战词条 are hidden', () => {
+    const turns = [
+      turn('1', { frontActions: [fa(0, '增强'), fa(-1), fa(-1)] }),
+      mod('敌方全体攻击力 +30%'),
+      turn('2', { frontActions: [fa(0, '大招'), fa(-1), fa(-1)] }),
+    ];
+    const off = buildCharSkills(modelOf(state({ turns, showEncounter: false })));
+    const on = buildCharSkills(modelOf(state({ turns, showEncounter: true })));
+    // The 词条行 has no frontActions, so both sources agree — but they must agree
+    // rather than one of them blanking the character out.
+    expect(off[0].skills).toEqual(['增强', '大招']);
+    expect(on[0].skills).toEqual(['增强', '大招']);
+  });
+
+  it('keeps turn order across a hidden 词条行', () => {
+    const turns = [
+      turn('1', { frontActions: [fa(3, '甲'), fa(-1), fa(-1)] }),
+      mod('词条'),
+      turn('2', { frontActions: [fa(3, '乙'), fa(-1), fa(-1)] }),
+    ];
+    expect(buildCharSkills(modelOf(state({ turns, showEncounter: false })))[3].skills).toEqual(['甲', '乙']);
+  });
+
+  it('collects both actions when one character fills two slots of a turn', () => {
+    const s = state({ turns: [turn('1', { frontActions: [fa(2, '破竹之势'), fa(2, '慈悲之刃'), fa(-1)] })] });
+    expect(buildCharSkills(modelOf(s))[2].skills).toEqual(['破竹之势', '慈悲之刃']);
+  });
+
+  it('skips a slot whose action is blank or only whitespace', () => {
+    const s = state({ turns: [turn('1', { frontActions: [fa(0, '   '), fa(0, '大招'), fa(-1)] })] });
+    expect(buildCharSkills(modelOf(s))[0].skills).toEqual(['大招']);
+  });
+
+  it('strips padding, so spacing does not create a second entry', () => {
+    const s = state({
+      turns: [
+        turn('1', { frontActions: [fa(0, '大招'), fa(-1), fa(-1)] }),
+        turn('2', { frontActions: [fa(0, ' 大招 '), fa(-1), fa(-1)] }),
+      ],
+    });
+    expect(buildCharSkills(modelOf(s))[0].skills).toEqual(['大招']);
+  });
+
+  it('files a levelled and a parenthesised variant under the bare name', () => {
+    const s = state({
+      turns: [
+        turn('1', { frontActions: [fa(0, '破竹之势慈悲之刃'), fa(-1), fa(-1)] }),
+        turn('2', { frontActions: [fa(0, '破竹之势慈悲之刃2'), fa(-1), fa(-1)] }),
+        turn('3', { frontActions: [fa(0, '破竹之势慈悲之刃(强化)'), fa(-1), fa(-1)] }),
+        turn('4', { frontActions: [fa(0, '破竹之势慈悲之刃（弱化）'), fa(-1), fa(-1)] }),
+      ],
+    });
+    expect(buildCharSkills(modelOf(s))[0].skills).toEqual(['破竹之势慈悲之刃']);
+  });
+
+  it('keeps what follows a separator, so 角色-技能-类型 names stay distinct', () => {
+    // The regression guard for the normalisation: this app's own skill names are
+    // `胜利之弧-普加攻` / `胜利之弧-心眼`. Identity is the whole 汉字/字母 run,
+    // so the hyphen and everything after it is kept — a leading-run-only rule
+    // would file both as `胜利之弧` and the bar would stop naming the skill.
+    const s = state({
+      turns: [
+        turn('1', { frontActions: [fa(0, '胜利之弧-普加攻'), fa(-1), fa(-1)] }),
+        turn('2', { frontActions: [fa(0, '胜利之弧-心眼'), fa(-1), fa(-1)] }),
+      ],
+    });
+    expect(buildCharSkills(modelOf(s))[0].skills).toEqual(['胜利之弧普加攻', '胜利之弧心眼']);
+  });
+
+  it('splits one slot holding two skills on the plus', () => {
+    const s = state({
+      turns: [turn('1', { frontActions: [fa(0, '破竹之势+慈悲之刃＋终焉之刃'), fa(-1), fa(-1)] })],
+    });
+    expect(buildCharSkills(modelOf(s))[0].skills).toEqual(['破竹之势', '慈悲之刃', '终焉之刃']);
+  });
+
+  it('names a character exactly as the lane header and the slots do', () => {
+    const chars0 = createDefaultState().characters;
+    const chars = chars0.map((c, i) => (i === 4 ? { ...c, name: '白河结奈' } : c)) as typeof chars0;
+    const s = state({ characters: chars, turns: [turn('1', { frontActions: [fa(4, '终焉之刃'), fa(-1), fa(-1)] })] });
+    expect(buildCharSkills(modelOf(s))[4]).toEqual({ charIndex: 4, name: '白河结奈', skills: ['终焉之刃'] });
+  });
+
+  it('drops a NaN slot instead of filing it under a lane', () => {
+    const s = state({ turns: [turn('1', { frontActions: [fa(NaN, '大招'), fa(1, '增强'), fa(-1)] })] });
+    const rows = buildCharSkills(modelOf(s));
+    expect(rows.every(r => r.skills.includes('大招'))).toBe(false);
+    expect(rows[1].skills).toEqual(['增强']);
+  });
+
+  it("strips the axle's own character names, and the arrow tail, out of the bar", () => {
+    const chars0 = createDefaultState().characters;
+    const chars = chars0.map((c, i) => (i === 0 ? { ...c, name: '月城最中' } : c)) as typeof chars0;
+    const s = state({
+      characters: chars,
+      turns: [
+        turn('1', { frontActions: [fa(0, '月城最中-破竹之势'), fa(-1), fa(-1)] }),
+        // Same skill, written with the arrow the app's own names use.
+        turn('2', { frontActions: [fa(0, '破竹之势->强化'), fa(-1), fa(-1)] }),
+      ],
+    });
+    // Both spellings file under the one skill.
+    expect(buildCharSkills(modelOf(s))[0].skills).toEqual(['破竹之势']);
+  });
+
+  it("strips only the axle's names, not some other character's", () => {
+    // 圣华 is a plausible character name that is NOT in this axle — it stays.
+    const chars0 = createDefaultState().characters;
+    const s = state({
+      characters: chars0.map((c, i) => (i === 0 ? { ...c, name: '月城最中' } : c)) as typeof chars0,
+      turns: [turn('1', { frontActions: [fa(0, '圣华-火加攻'), fa(-1), fa(-1)] })],
+    });
+    expect(buildCharSkills(modelOf(s))[0].skills).toEqual(['圣华火加攻']);
+  });
+});
+
+describe('skillKeys', () => {
+  it('keeps 汉字 and Latin letters and drops everything else', () => {
+    expect(skillKeys('Spot of Tea')).toEqual(['SpotofTea']);
+    expect(skillKeys('破竹之势慈悲之刃２')).toEqual(['破竹之势慈悲之刃']);
+    expect(skillKeys('胜利之弧-普加攻')).toEqual(['胜利之弧普加攻']);
+  });
+
+  it('strips a parenthesised suffix, ASCII or full-width', () => {
+    expect(skillKeys('指挥(别改)')).toEqual(['指挥']);
+    expect(skillKeys('指挥（别改）')).toEqual(['指挥']);
+  });
+
+  it('does not split on a plus inside parentheses', () => {
+    // Parentheses come off first, so the plus is part of the suffix rather than
+    // a skill separator.
+    expect(skillKeys('技能A(1+2)')).toEqual(['技能A']);
+  });
+
+  it('splits on a plus anywhere else', () => {
+    expect(skillKeys('技能A+技能B')).toEqual(['技能A', '技能B']);
+    expect(skillKeys('技能A＋技能B')).toEqual(['技能A', '技能B']);
+  });
+
+  it('yields nothing for text with no 汉字/字母 to name it by', () => {
+    expect(skillKeys('')).toEqual([]);
+    expect(skillKeys('   ')).toEqual([]);
+    expect(skillKeys('123')).toEqual([]);
+    expect(skillKeys('+')).toEqual([]);
+    // …and drops only the unnamed part, keeping the named one
+    expect(skillKeys('技能A+')).toEqual(['技能A']);
+  });
+
+  it('keeps the written order of the skills in one slot', () => {
+    expect(skillKeys('丙+甲+乙')).toEqual(['丙', '甲', '乙']);
+  });
+
+  it('drops everything from an arrow on', () => {
+    // `->` is a "targets / leads to" annotation, never part of the name.
+    expect(skillKeys('充能->月城最中')).toEqual(['充能']);
+    expect(skillKeys('充能→月城最中')).toEqual(['充能']);
+    // The whole tail goes, plus separating anything after it.
+    expect(skillKeys('破竹之势->强化+心眼')).toEqual(['破竹之势']);
+    // No arrow, no truncation.
+    expect(skillKeys('破竹之势')).toEqual(['破竹之势']);
+  });
+
+  it('does not cut on an arrow inside parentheses', () => {
+    // Parentheses come off first, so the arrow is inside a suffix being dropped
+    // anyway and cannot end the name early.
+    expect(skillKeys('技能A(1->2)')).toEqual(['技能A']);
+  });
+
+  it('strips the axle character names out of the skill text', () => {
+    expect(skillKeys('圣华-热带大杂烩-火加攻', ['圣华'])).toEqual(['热带大杂烩火加攻']);
+    expect(skillKeys('月城最中-破竹之势', ['月城最中'])).toEqual(['破竹之势']);
+    // A name is not special-cased: it is only stripped where it appears.
+    expect(skillKeys('破竹之势', ['圣华'])).toEqual(['破竹之势']);
+  });
+
+  it('strips the longest matching name first', () => {
+    // `月` alone must not eat the `月` of `月歌`, or `月歌-大招` would come out
+    // as `歌大招` instead of `大招`.
+    expect(skillKeys('月歌-大招', ['月', '月歌'])).toEqual(['大招']);
+  });
+
+  it('drops a part that is nothing but a character name', () => {
+    // Nothing left to name the skill by — a nameless entry is worse than none.
+    expect(skillKeys('圣华', ['圣华'])).toEqual([]);
+    expect(skillKeys('圣华+大招', ['圣华'])).toEqual(['大招']);
+  });
+
+  it('matches a character name whatever the case', () => {
+    // The roster's Latin names are all-caps; nobody types them that way.
+    expect(skillKeys('MONA-大招', ['Mona'])).toEqual(['大招']);
+  });
+
+  it('leaves the text alone when the axle has no names', () => {
+    expect(skillKeys('圣华-火加攻')).toEqual(['圣华火加攻']);
+    expect(skillKeys('圣华-火加攻', [])).toEqual(['圣华火加攻']);
+    expect(skillKeys('圣华-火加攻', ['  '])).toEqual(['圣华火加攻']);
+  });
+
+  it('keeps a name out of the middle of a real skill name', () => {
+    // 三乡 is a character AND a substring of nothing here — the point is that
+    // only a whole written occurrence goes, not the characters scattered.
+    expect(skillKeys('三乡-活力声援-普加攻', ['三乡'])).toEqual(['活力声援普加攻']);
+    expect(skillKeys('活力声援-普加攻', ['三乡'])).toEqual(['活力声援普加攻']);
   });
 });

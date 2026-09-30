@@ -16,6 +16,7 @@
  */
 import { useState, type ComponentType, type RefObject } from 'react';
 import { useElementWidth } from '../../hooks/useElementWidth';
+import { CharSkillSummary } from './CharSkillSummary';
 import type { ChartMeta, ChartModel } from './rowChartModel';
 import { RowChartTable } from './RowChartTable';
 import {
@@ -84,13 +85,37 @@ export function useSimpleFormat() {
   return { format, setFormat: setAndSave };
 }
 
+const SKILLS_KEY = 'planner-simple-skilllist';
+
+/**
+ * 角色技能栏 visibility. Same shape as useSimpleFormat, and localStorage-only for
+ * the same reason: it is a per-viewer display preference, so it must not ride
+ * along in share codes, saved axles or the Supabase sync.
+ *
+ * Default OFF, unlike the 版式 default. The 版式 default only had to preserve
+ * what existing users already saw; this section ADDS to the exported image, and
+ * an export that silently grew a block the user never asked for is a worse
+ * default than one they have to switch on.
+ *
+ * Stored as '1'/'0' rather than a boolean-looking word so a hand-edited value
+ * reads as obviously-not-a-flag; an unreadable value falls back to off, which is
+ * the same thing `=== '1'` gives for free.
+ */
+export function useShowCharSkills() {
+  const [show, setShow] = useState(() => localStorage.getItem(SKILLS_KEY) === '1');
+  const setAndSave = (v: boolean) => { setShow(v); localStorage.setItem(SKILLS_KEY, v ? '1' : '0'); };
+  return { show, setShow: setAndSave };
+}
+
 export function ChartHost({
-  model, meta, format, hostRef,
+  model, meta, format, hostRef, showSkills,
 }: {
   model: ChartModel;
   meta: ChartMeta;
   format: ChartFormat;
   hostRef: RefObject<HTMLDivElement | null>;
+  /** 角色技能栏. Off by default — it changes the exported PNG. */
+  showSkills: boolean;
 }) {
   const Variant = VARIANTS[format];
   // Measured on the live DOM, not a container query: the export clone rewrites
@@ -102,6 +127,11 @@ export function ChartHost({
   return (
     <div ref={hostRef} data-timeline-export className="card overflow-x-auto !p-0 w-full md:flex-1">
       <Variant model={model} meta={meta} cols={cols} />
+      {/* Inside the export container on purpose: the PNG captures this element,
+          so the summary needs no export-side handling and cannot drift out of
+          sync with what is on screen. It renders under all 7 版式 — it is an
+          appendix to the chart, not an alternative to it. */}
+      {showSkills && <CharSkillSummary model={model} />}
     </div>
   );
 }

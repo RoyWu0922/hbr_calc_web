@@ -168,6 +168,13 @@ export interface ChartModel {
   laneByChar: ChartLane[][][];
   /** The transposed view's row headers, one per character slot (always 6). */
   laneRows: ChartLaneRow[];
+  /**
+   * The axle's own character names — raw, trimmed, empties dropped. Deliberately
+   * NOT `laneRows[].name`: that one falls back to `C{n}` for an unnamed slot, and
+   * the 角色技能栏 strips these names out of skill text, where a `C1` would match
+   * the `C` of every skill that happens to contain one.
+   */
+  charNames: string[];
   /** Number of kind==='turn' rows in `rows`. */
   nTurns: number;
   odDec: number;
@@ -400,8 +407,141 @@ export function buildChartModel(state: TurnPlannerState, computed: ComputedTurnR
     colStatus,
     laneByChar,
     laneRows: characters.map((_, ci) => ({ charIndex: ci, name: charDisplayName(characters, ci) })),
+    charNames: characters.map(c => c.name.trim()).filter(Boolean),
     nTurns: rows.reduce((n, r) => (r.kind === 'turn' ? n + 1 : n), 0),
     odDec,
     odOverflowDec,
   };
+}
+
+// ─── Per-character skill list ─────────────────────────────────
+
+/** One row of the 角色技能栏: a character and the skills they used. */
+export interface CharSkillRow {
+  charIndex: number;
+  name: string;
+  /** Distinct actions in first-use order; [] for a character who never acted. */
+  skills: string[];
+}
+
+/**
+ * The distinct skills each character used — the 角色技能栏 rendered under the
+ * chart by ChartHost.
+ *
+ * Reads `laneByChar`, NOT `rows`. `rows` is filtered by showEncounter, and
+ * turning 遭遇战词条 off must not delete a character's skills from this list:
+ * the list describes the axle, not what is currently visible. (A 词条行 carries
+ * no frontActions, so it contributes nothing either way — the two sources differ
+ * only in the rows they omit, never in the actions they hold.)
+ *
+ * Order is first use. `laneByChar[ci]` is indexed by raw `ti` and each cell
+ * holds its actions in slot order, so walking ti ascending walks the axle
+ * chronologically — a turn that `rows` hides still gets its actions listed here.
+ *
+ * Dedup is on the normalised key (see skillKeys), so the several ways a player
+ * writes one skill — a trailing level, a parenthesised variant — collapse into
+ * one entry. Two characters using one skill each get their own entry; one
+ * character using it twice gets one. A blank action (an occupied slot the user
+ * never typed into) is skipped rather than filed as a skill.
+ *
+ * One row per character slot, always 6 — the same fixed set as `laneRows`, so an
+ * idle character renders as 「—」 in place instead of collapsing the list.
+ */
+export function buildCharSkills(model: ChartModel): CharSkillRow[] {
+  return model.laneRows.map(lr => {
+    const seen = new Set<string>();
+    const skills: string[] = [];
+    // `?? []` because ChartModel.laneByChar is indexed by an arbitrary charIndex.
+    // laneRows is built from `characters` so the lookup always hits, but the
+    // optional chain is what the declared type allows — and it is the same guard
+    // the 角色泳道 renderer uses.
+    for (const cell of model.laneByChar[lr.charIndex] ?? []) {
+      for (const lane of cell) {
+        for (const key of skillKeys(lane.action, model.charNames)) {
+          if (seen.has(key)) continue;
+          seen.add(key);
+          skills.push(key);
+        }
+      }
+    }
+    return { charIndex: lr.charIndex, name: lr.name, skills };
+  });
+}
+
+/** One slot can hold several skills, written together with a plus. */
+const SKILL_SPLIT_RE = /[+\uFF0B]/;
+
+/** Parenthesised suffixes — ASCII or full-width. */
+const SKILL_PAREN_RE = /[\uFF08(][^\uFF09)]*[\uFF09)]/g;
+
+/**
+ * What a skill's identity may consist of: 汉字 and Latin letters. Ranges are
+ * CJK Ext-A, CJK Unified, CJK Compatibility Ideographs.
+ */
+const SKILL_KEEP_RE = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFFA-Za-z]/g;
+
+/**
+ * What follows `->` (or `→`) — a "targets / leads to" annotation, e.g.
+ * `充能->月城最中` or `破竹之势->强化`. Always a suffix, so everything from the
+ * first arrow on is dropped.
+ */
+const SKILL_ARROW_RE = /(?:->|→)[\s\S]*/;
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * A regex matching any of the axle's character names, or null when the axle has
+ * none. Longest first, so `月歌` is not eaten by a shorter `月` before it can
+ * match; case-insensitive because the roster's Latin names are all-caps
+ * (MONA / QUEEN / VIOLET) and nobody types them that way.
+ */
+function nameStripper(names: readonly string[]): RegExp | null {
+  const parts = names.map(n => n.trim()).filter(Boolean).map(escapeRe);
+  if (parts.length === 0) return null;
+  parts.sort((a, b) => b.length - a.length);
+  return new RegExp(parts.join('|'), 'gi');
+}
+
+/**
+ * The skill identities carried by one 行动槽 text, in the order written.
+ *
+ * A player writes one skill several ways and the bar has to file them as one:
+ * `破竹之势慈悲之刃`, `破竹之势慈悲之刃2` and `破竹之势慈悲之刃(强化)` are a
+ * single skill whose suffix varies. Identity is therefore "the 汉字/字母 in the
+ * text" — digits, punctuation, parenthesised suffixes and every space are
+ * dropped, which is exactly the part that varies.
+ *
+ * The steps are ordered, and each one needs the one before it:
+ *
+ *   1. parentheses off first — they are self-delimiting, so an arrow or a plus
+ *      inside one (`技能A(1+2)`) is part of a suffix and neither truncates nor
+ *      manufactures a skill;
+ *   2. then the arrow, because `->` means "and everything after it goes";
+ *   3. then spaces, so a two-word name (`Spot of Tea`) survives the split as one
+ *      token;
+ *   4. then the plus split — `A+B` is two skills in one slot;
+ *   5. then the axle's own character names, which get written into the skill
+ *      text when copying out of a guide (`圣华-热带大杂烩-火加攻`);
+ *   6. and only then keep the 汉字/字母.
+ *
+ * The kept run is the WHOLE text's 汉字/字母, deliberately not just its leading
+ * run. Leading-only would collapse this app's own skill names — `胜利之弧-普加攻`
+ * vs `胜利之弧-心眼`, `圣华-热带大杂烩-火加攻` vs `圣华-茜色-普加攻`,
+ * `nnm-祈祷之花-普加攻` — down to `胜利之弧` / `圣华` / `nnm`, and the bar would
+ * stop saying which skill was used at all.
+ *
+ * A part that keeps nothing (`123`, `++`, or a bare character name) yields no
+ * skill: there is no name to print, and an entry the bar cannot name is worse
+ * than a missing one.
+ */
+export function skillKeys(raw: string, charNames: readonly string[] = []): string[] {
+  const strip = nameStripper(charNames);
+  const body = raw.replace(SKILL_PAREN_RE, '').replace(SKILL_ARROW_RE, '').replace(/\s+/g, '');
+  const keys: string[] = [];
+  for (const part of body.split(SKILL_SPLIT_RE)) {
+    const named = strip ? part.replace(strip, '') : part;
+    const key = named.match(SKILL_KEEP_RE)?.join('');
+    if (key) keys.push(key);
+  }
+  return keys;
 }

@@ -1123,6 +1123,73 @@ input[type="checkbox"]:checked::after {
    the tooltip either way. */
 .rc-split .rc-nm { min-width: 40px; }
 
+/* 7 · 角色技能栏 —— 7 个版式通用（它不是版式，是图表的附属） */
+/* Rendered by ChartHost inside the export container, under whichever 版式 is
+   selected. It takes NO template from the registry: the row 版式 use six
+   different label tracks (68 / 58 / 62 / 56px …), so tracking any one of them
+   would misalign it under the other six. A fixed 68px name column is the
+   角色色带 / 极简斑马 track — the majority case — and reads as deliberate under
+   the rest.
+
+   Deliberately NOT position:sticky. The host is overflow-x-auto, so a wide axle
+   (角色泳道, or B/C/E/G on a narrow screen) scrolls this block out of view, and
+   pinning it needs an OPAQUE background or the scrolled rows read through the
+   text. No token matches the card: it paints .card::before's --app-component-bg
+   through a backdrop-filter at var(--card-opacity), while the only opaque values
+   on offer are --rc-frozen (#1e293b) and --app-component-bg (#111827) — the
+   first is the wrong colour, the second ignores --card-opacity. So pinning it
+   would trade a scroll-away in one format for a visible seam in all seven. It
+   scrolls with the chart instead; the EXPORT is unaffected either way, because
+   the width-expansion patch widens the container to its full scrollWidth and
+   this block is width:100% of that. */
+.rc-skills {
+  padding: 4px 8px 6px;
+  border-top: 1px solid var(--rc-grid);
+  font-size: 11px;
+}
+.rc-skills-head {
+  margin-bottom: 3px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--rc-grid);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--rc-muted);
+  text-align: center;
+}
+.rc-skills-row {
+  display: grid;
+  grid-template-columns: 68px 1fr;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 18px;
+  padding: 1px 0;
+}
+/* Centred and tinted by the character's own colour, matching .rc-nm in the chart
+   above — 角色色带 and 行程表 colour the name with the same charColor(charIndex),
+   so a name reads as the same character in the chart and in this list. */
+.rc-skills-nm {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-weight: 600;
+}
+/* Wraps, unlike every chart row: those must all hold one fixed height or the
+   columns shear, whereas an appendix row is allowed to grow — and a skill list
+   silently truncated to 「…」 would defeat the point of the section. */
+.rc-skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 5px;
+  min-width: 0;
+}
+.rc-skills-item { color: var(--app-text-primary); }
+/* The 「—」 for a character who never acted — the shared empty-slot character in
+   the shared muted tone, exactly as .rc-lane-idle does for a lane cell. */
+.rc-skills-idle { color: var(--rc-muted); }
+
 /* ─── Guide (计算攻略) ──────────────────────────────────── */
 .guide-content { line-height: 1.75; color: var(--app-text-primary); }
 .guide-content p { margin: 0.6em 0; }
