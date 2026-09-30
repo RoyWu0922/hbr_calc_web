@@ -6556,6 +6556,37 @@ var FontMetrics = /** @class */ (function () {
         this._document = document;
     }
     FontMetrics.prototype.parseMetrics = function (fontFamily, fontSize) {
+        // ── LOCAL PATCH (not upstream) ────────────────────────────────────
+        // Upstream derives the baseline from the DOM probe below
+        // (`img.offsetTop - span.offsetTop + 2`). In Chrome that over-reports
+        // the ascent by ~6px at every size — measured 18 where the true ascent
+        // of a 12px font is 12, and 17 vs 11 at 11px, so the error is a
+        // constant, not a proportion.
+        //
+        // CanvasRenderer draws each run at `textBounds.top + baseline`, and
+        // textBounds.top is the Range rect, whose top is the top of the
+        // inline CONTENT box (Range height == ascent + descent, independent of
+        // line-height). So the painted baseline landed ~6px below the real
+        // one on every export: in a 22px lane row (.rc-nm/.rc-ac are
+        // overflow:hidden) the bottom of the glyphs was clipped away, and in a
+        // table row it was overpainted by the next row's background — the
+        // "下面一半会被遮住" symptom.
+        //
+        // TextMetrics reports the same ascent the content box is built from,
+        // so it needs no probe and no fudge constant.
+        try {
+            var m = this._document.createElement('canvas').getContext('2d');
+            m.font = fontSize + ' ' + fontFamily;
+            var metrics = m.measureText(SAMPLE_TEXT);
+            var asc = metrics.fontBoundingBoxAscent;
+            var desc = metrics.fontBoundingBoxDescent;
+            if (asc > 0) {
+                // `middle` is only read for line-through; the content box's
+                // own midpoint is what a browser strikes through anyway.
+                return { baseline: asc, middle: asc - (asc + desc) / 2 };
+            }
+        }
+        catch (e) { /* fall through to the original DOM probe */ }
         var container = this._document.createElement('div');
         var img = this._document.createElement('img');
         var span = this._document.createElement('span');
