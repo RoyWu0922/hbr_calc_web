@@ -22,9 +22,8 @@ $buildOut = & $npm run build 2>&1
 if ($LASTEXITCODE -ne 0) { L "DEPLOY FAILED: build`n$($buildOut -join "`n")"; exit 1 }
 
 L '--- unit tests ---'
-$testOut = & $npm test 2>&1
-$testLine = ($testOut | Select-String -Pattern 'Tests\s+\d+' | Select-Object -Last 1)
-if ($LASTEXITCODE -ne 0) { L "DEPLOY WARN: unit tests failed  $($testLine)" } else { L "tests: $($testLine -replace '\s+',' ')" }
+& $npm test 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { L 'DEPLOY WARN: unit tests failed' } else { L 'unit tests: OK' }
 
 L '--- restart services ---'
 & powershell -NoProfile -ExecutionPolicy Bypass -File C:\hbr_start.ps1
