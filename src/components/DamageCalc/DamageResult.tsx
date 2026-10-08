@@ -135,7 +135,9 @@ export default function DamageResult({ result, skill, floatVal,
             }
             {' + '}{superChainHits}特大 + {bigChainHits}大 + {midChainHits}中 + {smallChainHits}小 = {totalHits} hits
             {isMultiBody && <span className="ml-1 text-amber-300/80">· {bodyCount}体平均</span>}
-            <span className="ml-1 text-[10px] opacity-60">（精确公式：特征函数法）</span>
+            <span className="ml-1 text-[10px] opacity-60">
+              （{floatDist.exact ? '解析样条公式' : '特征函数回退：hits 过多，解析式抵消失效'}）
+            </span>
           </div>
           {currentPoint && (
             <div className="text-xs text-amber-300/90 mb-2">
