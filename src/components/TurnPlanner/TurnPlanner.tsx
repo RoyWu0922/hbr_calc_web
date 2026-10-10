@@ -827,9 +827,12 @@ function DetailTable({
 
   return (
     <div className="card overflow-x-auto">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-base font-bold">排轴详表</h3>
-        <div className="flex gap-1.5 items-center">
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        {/* shrink-0 + nowrap: this h3 is a flex item next to a toolbar that wants
+            ~340px, so on a phone it collapsed to ~18px and rendered one
+            character per line (排/轴/详/表). */}
+        <h3 className="text-base font-bold shrink-0 whitespace-nowrap">排轴详表</h3>
+        <div className="flex gap-1.5 items-center flex-wrap">
           <span className="text-[10px] text-text-muted">OD</span>
           <select className="input-field text-[10px] py-0.5 w-28"
             value={String(odMode)} onChange={e => setState(convertODMode(state, odMode, parseInt(e.target.value)))}>
@@ -1920,14 +1923,14 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
       ) : (
         <>
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">排轴</h2>
+            <h2 className="page-title">排轴</h2>
             <div className="flex gap-0 items-center">
               <button onClick={() => setSubTab('detail')} className={`sub-tab text-xs ${subTab === 'detail' ? 'active' : ''}`}>排轴</button>
               <button onClick={() => setSubTab('simple')} className={`sub-tab text-xs ${subTab === 'simple' ? 'active' : ''}`}>简轴</button>
               <select className="input-field text-xs py-0.5 w-20 ml-1" value={style} onChange={e => setStyle(e.target.value as PlannerStyleName)}>
                 {Object.keys(PLANNER_STYLES).map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-              <button className="btn btn-secondary btn-xs ml-1 px-2 h-10" title="重置" onClick={() => {
+              <button className="btn btn-secondary btn-xs ml-1 px-2 h-8" title="重置" onClick={() => {
                 if (confirm('确定重置排轴？所有未保存的内容将丢失。')) {
                   setState({ ...createDefaultState(), turns: syncNormalLabels(createDefaultState().turns) });
                 }
@@ -1936,7 +1939,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
                   <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
               </button>
-              <button className="btn btn-primary btn-xs ml-1 px-2 h-10" title="保存到记录" onClick={async () => {
+              <button className="btn btn-primary btn-xs ml-1 px-2 h-8" title="保存到记录" onClick={async () => {
                 const label = axleTitle.trim() || new Date().toLocaleString('zh-CN');
                 if (loadedAxleId != null) {
                   await updateAxle(loadedAxleId, label, state, axleScore, axleTurns, simpleAuthor, simpleNotes);
@@ -1946,13 +1949,15 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
                   alert('已保存');
                 }
               }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {/* 16px like every sibling — this icon was 32px in the same 40px box,
+                    which is why only the save button read as oversized. */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                   <polyline points="17 21 17 13 7 13 7 21"/>
                   <polyline points="7 3 7 8 15 8"/>
                 </svg>
               </button>
-              <button className="btn btn-secondary btn-xs ml-1 px-2 h-10" title="新建排轴"
+              <button className="btn btn-secondary btn-xs ml-1 px-2 h-8" title="新建排轴"
                 onClick={async () => {
                   if (state.turns.length > 1 && confirm('当前有排轴数据，是否保存后再新建？')) {
                     const label = axleTitle.trim() || new Date().toLocaleString('zh-CN');

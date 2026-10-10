@@ -27,7 +27,7 @@ const SIMPLE_SLOT_COLORS = [
 
 export function RowChartTable({ model, meta }: { model: ChartModel; meta: ChartMeta }) {
   return (
-    <table className="planner-table simple-timeline" style={{ tableLayout: 'fixed', width: '100%' }}>
+    <table className="planner-table simple-timeline" style={{ tableLayout: 'fixed', width: 588, minWidth: '100%' }}>
       <colgroup>
         <col style={{ width: 56 }} />
         <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[0] }} />

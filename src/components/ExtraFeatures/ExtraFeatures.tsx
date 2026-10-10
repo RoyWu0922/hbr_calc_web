@@ -13,12 +13,16 @@ import MedalRecord from '../MedalRecord/MedalRecord';
 function fmt(n: number): string { return Math.floor(n).toLocaleString('zh-CN'); }
 function fmtDec(n: number, d = 2): string { return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d }); }
 
-// Collapse toggle for card headers
+// Collapse toggle for section headings — same markup as the shared
+// CollapsibleSection so both render the identical heading treatment. These sit
+// inside .card panels, so the surface (and its 组件透明度) belongs to the parent.
 function CollapseHeader({ title, open, setOpen }: { title: React.ReactNode; open: boolean; setOpen: (v: boolean) => void }) {
   return (
-    <div className="card-header flex justify-between items-center cursor-pointer select-none" onClick={() => setOpen(!open)}>
-      <span>{title}</span>
-      <span className="text-text-muted text-lg transition-transform" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+    <div className="section-head">
+      <button type="button" className="section-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="section-title">{title}</span>
+        <span className="section-caret" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+      </button>
     </div>
   );
 }
@@ -49,9 +53,14 @@ export default function ExtraFeatures({ sub }: { sub: 'tools' | 'progress' }) {
     e.target.value = '';
   };
   return (
-    <div className="space-y-6">
-      <div style={{ display: sub === 'tools' ? 'block' : 'none' }}>
-        <h2 className="text-xl font-bold">额外功能</h2>
+    <div className="space-y-8">
+      <div style={{ display: sub === 'tools' ? 'block' : 'none' }} className="space-y-8">
+        <div className="page-head">
+          <div>
+            <h2 className="page-title">额外计算</h2>
+            <p className="page-sub">便捷 OD、加权破坏、便捷打分、遭遇战出分与受击伤害，按需展开</p>
+          </div>
+        </div>
         <div className="grid gap-6 lg:grid-cols-2">
           <ODCalculator />
           <BreakCalculator />
@@ -61,7 +70,15 @@ export default function ExtraFeatures({ sub }: { sub: 'tools' | 'progress' }) {
         <IncomingDamageCalc />
       </div>
 
-      <div style={{ display: sub === 'progress' ? 'block' : 'none' }} className="space-y-4">
+      <div style={{ display: sub === 'progress' ? 'block' : 'none' }} className="space-y-8">
+        {/* This view had no page title at all — the 额外功能 heading lived in the
+            sibling block, so switching here left the page headless. */}
+        <div className="page-head">
+          <div>
+            <h2 className="page-title">进度记录</h2>
+            <p className="page-sub">勋章 9 大类 66 档位与 19 种宝玉精通度，支持多份记录、云端同步与 JSON 导出导入</p>
+          </div>
+        </div>
         {/* 全局记录切换器：每份记录 = 独立的勋章/宝玉进度 */}
         <div className="card p-2 flex items-center gap-1.5 flex-wrap">
           {medalStore.records.map(r => (
@@ -167,7 +184,7 @@ function ODCalculator() {
           </div>
           <Toggle label="耐性" value={resist} onChange={setResist} />
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <StatBox label="实际OD上升量" value={fmtDec(r.j, 4)} />
           <StatBox label="实际OD%" value={(r.n * 100).toFixed(2) + '%'} />
           <StatBox label="实际hit数(参考)" value={fmtDec(r.actualHits, 3)} />
@@ -219,7 +236,7 @@ function BreakCalculator() {
         <Field label="技能原始Hit数" value={origHits} onChange={setOrigHits} />
       </div>
       {/* Row 3: 4 chain types */}
-      <div className="grid grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         <Field label="特大连击50%" value={superChain} onChange={setSuperChain} />
         <Field label="大连击25%" value={bigChain} onChange={setBigChain} />
         <Field label="中连击12%" value={midChain} onChange={setMidChain} />
@@ -442,7 +459,7 @@ function IncomingDamageCalc() {
           <div className="text-xs text-text-muted">敌人白值: <span className="font-mono">{result.biasValue.toFixed(1)}</span></div>
           <div className="text-xs text-text-muted">加防乘区: <span className="font-mono">{result.defMultiplier.toFixed(4)}</span></div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <StatBox label="均伤" value={fmt(result.avgDmg)}highlight />
           <StatBox label="下限 (0.9×)" value={fmt(result.minDmg)} />
           <StatBox label="上限 (1.1×)" value={fmt(result.maxDmg)}  />
