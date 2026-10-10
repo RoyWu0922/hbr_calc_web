@@ -1393,11 +1393,11 @@ body.cursor-hover .cursor-ring {
   max-width: 66ch;
 }
 
-/* Every module paints its own surface, and its presence is separately adjustable:
-   --mod-opacity (set per module, inline, by CollapsibleSection) falls back to
-   --module-opacity (the global default in 设置). 0 = flat, which is the shipped
-   default so the typographic layout stays as designed — raise it, globally or for
-   one module, to bring that panel back. */
+/* Every module paints its own surface, and its presence follows 组件透明度 — the
+   same knob as the card and field fills. A field inside a flat panel reads as a
+   chip floating in space, so the two must move together; the panel sits a shade
+   lighter than the field and any module can still deviate via --mod-opacity (set
+   inline by CollapsibleSection from its saved per-module value). */
 .section {
   min-width: 0;
   position: relative;
@@ -1409,7 +1409,7 @@ body.cursor-hover .cursor-ring {
   inset: -12px -16px -14px;
   border-radius: 10px;
   background: var(--app-component-bg);
-  opacity: var(--mod-opacity, var(--module-opacity, 0));
+  opacity: var(--mod-opacity, var(--card-opacity, 1));
   z-index: -1;
   transition: opacity 0.25s;
   pointer-events: none;

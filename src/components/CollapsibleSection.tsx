@@ -11,10 +11,12 @@ import { useAppSettings } from '../utils/appSettings';
  * objects you can act on. Pass `wrapper` to get the boxed form where a genuine
  * panel is wanted.
  *
- * Every module can also have its own surface presence ("模块底色", 0 = flat): the
- * value is stored per module id and falls back to the global setting. The control
- * sits in the section head, appears on hover (always where there is no hover), and
- * turns accent-coloured once the module differs from the global default.
+ * Every module can also have its own surface presence ("模块底色"): by default it
+ * follows 组件透明度 — the same knob as the card and field fills, because a solid
+ * field on a flat panel reads as a chip floating in space. A module whose value is
+ * saved in settings.moduleOpacityOverrides deviates from that; its control sits in
+ * the section head, appears on hover (always where there is no hover), and turns
+ * accent-coloured once the module differs from the rest.
  */
 export default function CollapsibleSection({ title, defaultOpen, wrapper, moduleId, children }: {
   title: ReactNode;
@@ -31,9 +33,9 @@ export default function CollapsibleSection({ title, defaultOpen, wrapper, module
   const w = wrapper ?? false;
   const id = moduleId ?? (typeof title === 'string' ? title : undefined);
   const override = id ? settings.moduleOpacityOverrides[id] : undefined;
-  // A module with no override follows the global default (--module-opacity, which
-  // the provider writes on <html>).
-  const value = override ?? settings.moduleOpacity;
+  // No override: follow 组件透明度, the same knob as the card and field fills
+  // (see .section::before in index.css).
+  const value = override ?? settings.cardOpacity;
 
   useEffect(() => {
     if (!popOpen) return;
