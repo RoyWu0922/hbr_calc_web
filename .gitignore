@@ -6,6 +6,12 @@ dist/
 # local database (never versioned)
 server/data/
 
+# Tutorial source (Obsidian markdown + raw screenshots, ~34 MB). Only the
+# generated public/tutorial/guide.html + *.webp ship, so the source must stay out
+# of public/ — and out of commits via `git add -A`. Remove this line if you would
+# rather version the guide source after all.
+docs/tutorial-src/
+
 # environment / secrets
 .env
 .env.*
