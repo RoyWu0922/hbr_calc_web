@@ -431,7 +431,8 @@ export async function checkCloudChanges(): Promise<CloudChange[]> {
     for (const t of CHECK_TABLES) {
       const { data } = await supabase.from(t.table).select(t.col).eq('user_id', user.id).order(t.col, { ascending: false }).limit(1);
       if (!data?.length) continue;
-      const ts = Number((data[0] as Record<string, unknown>)[t.col]) || 0;
+      // Dynamic column name, so the library's row type cannot be expressed here.
+      const ts = Number((data[0] as unknown as Record<string, unknown>)[t.col]) || 0;
       if (!ts) continue;
       const known = Math.max(readStamp('down', user.id, t.table), readStamp('decl', user.id, t.table));
       if (ts > known) out.push({ table: t.table, label: t.label, ts });
