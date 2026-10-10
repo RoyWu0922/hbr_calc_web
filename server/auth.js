@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import bcrypt from 'bcryptjs';
 
+const DEV_SECRET = 'hbr-local-dev-secret-change-me';
 let _secret = process.env.HBR_JWT_SECRET;
 if (!_secret) {
   try {
@@ -10,7 +11,20 @@ if (!_secret) {
     if (m) _secret = m[1].trim();
   } catch { /* ignore */ }
 }
-export const JWT_SECRET = _secret || 'hbr-local-dev-secret-change-me';
+if (!_secret) {
+  // Never boot a public deployment on the built-in secret: every token would be
+  // forgeable by anyone who has read this repository. Failing loudly beats a
+  // silently insecure server.
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[hbr] FATAL: HBR_JWT_SECRET is not set (checked the environment and server/.env).');
+    console.error('[hbr] Refusing to start with the built-in development secret. See server/.env.example.');
+    process.exit(1);
+  }
+  console.warn('[hbr] WARNING: HBR_JWT_SECRET is not set — signing with the built-in DEVELOPMENT secret.');
+  console.warn('[hbr] WARNING: every token is forgeable. Set HBR_JWT_SECRET (see server/.env.example).');
+  _secret = DEV_SECRET;
+}
+export const JWT_SECRET = _secret;
 const JWT_ALG = 'HS256';
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
@@ -61,7 +75,7 @@ export function signToken(user) {
   };
   const h = b64url(JSON.stringify({ alg: JWT_ALG, typ: 'JWT' }));
   const p = b64url(JSON.stringify(payload));
-  const sig = crypto.createHmac('sha256', JWT_SECRET).update(h + '.' + p).digest('base64').replace(/[+/=]/g, '_');
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(h + '.' + p).digest('base64url');
   return h + '.' + p + '.' + sig;
 }
 
@@ -69,8 +83,17 @@ export function verifyToken(token) {
   try {
     const [h, p, s] = String(token).split('.');
     if (!h || !p || !s) return null;
-    const expected = crypto.createHmac('sha256', JWT_SECRET).update(h + '.' + p).digest('base64').replace(/[+/=]/g, '_');
-    if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(s))) return null;
+    const mac = crypto.createHmac('sha256', JWT_SECRET).update(h + '.' + p).digest('base64');
+    // base64url is the correct encoding: '+' -> '-', '/' -> '_', padding dropped.
+    // The legacy form collapsed '+', '/' AND '=' all onto '_', which is not
+    // injective and needlessly shrank the signature's alphabet. New tokens use
+    // base64url; the legacy spelling stays accepted so existing logins survive.
+    const candidates = [
+      mac.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+      mac.replace(/[+/=]/g, '_'),
+    ];
+    const ok = candidates.some((c) => c.length === s.length && crypto.timingSafeEqual(Buffer.from(c), Buffer.from(s)));
+    if (!ok) return null;
     const payload = JSON.parse(b64urlDecode(p).toString('utf8'));
     if (payload.exp && payload.exp * 1000 < Date.now()) return null;
     return payload;

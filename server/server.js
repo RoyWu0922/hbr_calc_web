@@ -28,16 +28,27 @@ function send(res, code, obj) {
   });
   res.end(body);
 }
+const MAX_BODY = 5e6;
 const readBody = (req) => new Promise((resolve) => {
   let data = '';
-  req.on('data', (c) => { data += c; if (data.length > 5e6) req.destroy(); });
+  let done = false;
+  const finish = (v) => { if (!done) { done = true; resolve(v); } };
+  req.on('data', (c) => {
+    data += c;
+    if (data.length > MAX_BODY) { req.destroy(); finish({}); }
+  });
   req.on('end', () => {
     try {
       const o = data ? JSON.parse(data) : {};
       // always hand back a plain object (JSON null / array / primitive -> {})
-      resolve(o && typeof o === 'object' && !Array.isArray(o) ? o : {});
-    } catch { resolve({}); }
+      finish(o && typeof o === 'object' && !Array.isArray(o) ? o : {});
+    } catch { finish({}); }
   });
+  // An aborted or destroyed request never emits 'end'. Without these the promise
+  // never settles and the async handler awaiting it is retained forever — one
+  // leaked closure per oversized/aborted upload.
+  req.on('close', () => finish({}));
+  req.on('error', () => finish({}));
 });
 const getToken = (req) => {
   const h = req.headers['authorization'] || '';
@@ -272,11 +283,15 @@ async function handleData(method, pathname, body, req, res) {
       }
       row.updated_at = nowISO();
     }
-    if (name === 'guide_comments' && !ADMIN_IDS.has(auth.sub)) {
-      const idv = filters.id;
-      if (idv) { const owner = get('SELECT user_id FROM guide_comments WHERE id = ?', [idv]); if (owner && owner.user_id !== auth.sub) return send(res, 403, { error: 'no permission' }); }
-    }
     let { where, params } = buildWhere(name, filters, auth);
+    // Non-admins may only touch their own comments. Gating on `filters.id` alone was
+    // not enough: guide_comments has no default user scope in buildWhere, so a request
+    // filtered by anything else (e.g. {entry_id}) skipped the ownership lookup entirely
+    // and rewrote EVERY comment under that entry. Force the constraint into the SQL.
+    if (name === 'guide_comments' && !ADMIN_IDS.has(auth.sub)) {
+      where = `${where ? where + ' AND' : 'WHERE'} user_id = ?`;
+      params = [...params, auth.sub];
+    }
     if (!where) return send(res, 400, { error: 'scope/filters empty' });
     try { run(`UPDATE ${name} SET ${setCols.map((c) => `${c} = ?`).join(', ')} ${where}`, [...setCols.map((c) => row[c]), ...params]); }
     catch (e) { return send(res, 500, { error: e.message }); }
@@ -286,9 +301,11 @@ async function handleData(method, pathname, body, req, res) {
   if (method === 'DELETE') {
     let { where, params } = buildWhere(name, filters, auth);
     if (name === 'guide_entries' && !ADMIN_IDS.has(auth.sub)) return send(res, 403, { error: 'admin only' });
+    // Same constraint as PATCH: never let a non-admin delete rows it does not own,
+    // however the request happens to be filtered (see the note above).
     if (name === 'guide_comments' && !ADMIN_IDS.has(auth.sub)) {
-      const idv = filters.id;
-      if (idv) { const owner = get('SELECT user_id FROM guide_comments WHERE id = ?', [idv]); if (owner && owner.user_id !== auth.sub) return send(res, 403, { error: 'no permission' }); }
+      where = `${where ? where + ' AND' : 'WHERE'} user_id = ?`;
+      params = [...params, auth.sub];
     }
     if (!where) return send(res, 400, { error: 'scope/filters empty' });
     try { run(`DELETE FROM ${name} ${where}`, params); } catch (e) { return send(res, 500, { error: e.message }); }
@@ -322,7 +339,15 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/health') {
       let dbOk = true;
-      try { dbOk = db.prepare('PRAGMA quick_check').get().quick_check === 'ok'; } catch { dbOk = false; }
+      // Liveness only. This used to run PRAGMA quick_check on every call, which
+      // scans the whole database file — and the Windows watchdog polls this
+      // endpoint. A trivial query proves the handle is alive and readable; the
+      // deep scan is still available, just not by default: /api/health?deep=1
+      try {
+        dbOk = url.searchParams.get('deep') === '1'
+          ? db.prepare('PRAGMA quick_check').get().quick_check === 'ok'
+          : db.prepare('SELECT 1').get() != null;
+      } catch { dbOk = false; }
       return send(res, dbOk ? 200 : 503, { status: dbOk ? 'ok' : 'degraded', db: dbOk, uptime: Math.round(process.uptime()), time: new Date().toISOString() });
     }
     if (pathname.startsWith('/api/auth/')) {
