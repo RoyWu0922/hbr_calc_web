@@ -12,7 +12,7 @@ const PRESETS = [
 ];
 
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
-  const { settings, setAccent, setBackground, clearBackground, setCardOpacity, setCursorStyle, setRingSize, setFont } = useAppSettings();
+  const { settings, setAccent, setBackground, clearBackground, setCardOpacity, setModuleOpacity, setModuleOpacityFor, setCursorStyle, setRingSize, setFont } = useAppSettings();
   const [accent, setAccentLocal] = useState(settings.accentColor);
   const [bgUrl, setBgUrl] = useState(settings.bgImage || '');
   const [bgOpacity, setBgOpacity] = useState(settings.bgOpacity);
@@ -151,6 +151,36 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             <span className="text-xs text-text-muted">实色</span>
             <span className="text-xs text-text-muted w-8 text-right">{Math.round(cardOpacity * 100)}%</span>
           </div>
+        </div>
+
+        {/* ── Module Surface ────────────────────────────────── */}
+        <div className="mt-5 pt-4 border-t" style={{ borderColor: 'var(--app-glass-border)' }}>
+          <div className="text-sm font-semibold mb-1">模块底色</div>
+          <div className="text-xs text-text-muted mb-2">
+            每个模块（小节）的底色浓度。0% 是现在的纯排版外观；也可以把鼠标移到任意小节的标题上，单独调那一个。
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-text-muted">透明</span>
+            <input type="range" min="0" max="1" step="0.05" value={settings.moduleOpacity}
+              onChange={e => setModuleOpacity(parseFloat(e.target.value))}
+              className="flex-1"
+              style={{ accentColor: accent }}
+            />
+            <span className="text-xs text-text-muted">实色</span>
+            <span className="text-xs text-text-muted w-8 text-right">{Math.round(settings.moduleOpacity * 100)}%</span>
+          </div>
+          {Object.keys(settings.moduleOpacityOverrides).length > 0 && (
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs text-text-muted">
+                已有 {Object.keys(settings.moduleOpacityOverrides).length} 个模块单独设置
+              </span>
+              <button
+                className="text-xs underline"
+                style={{ color: 'var(--app-text-muted)' }}
+                onClick={() => Object.keys(settings.moduleOpacityOverrides).forEach(k => setModuleOpacityFor(k, null))}
+              >全部跟随全局</button>
+            </div>
+          )}
         </div>
 
         {/* ── Mouse Cursor (collapsible) ───────────────────── */}

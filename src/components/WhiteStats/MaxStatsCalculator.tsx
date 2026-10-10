@@ -104,10 +104,10 @@ export default function MaxStatsCalculator() {
   }, [style, support, equip, ur, urOn]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">顶配计算器</h2>
+          <h2 className="page-title">顶配计算器</h2>
           <p className="text-sm text-text-muted">{maxStatsData.note}</p>
         </div>
       </div>

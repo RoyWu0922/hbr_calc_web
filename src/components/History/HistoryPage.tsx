@@ -261,7 +261,7 @@ export default function HistoryPage({ onLoad }: { onLoad: (entry: CalcHistoryEnt
       )}
 
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">计算历史 ({entries.length}{search ? '/' + allEntries.length : ''})</h2>
+        <h2 className="page-title">计算历史 ({entries.length}{search ? '/' + allEntries.length : ''})</h2>
         <div className="flex gap-2 items-center">
           <div className="flex gap-1.5">
             <input className="input-field w-64 text-xs py-1.5" placeholder="分享码导入（回车确认）"

@@ -393,9 +393,9 @@ export default function DamageCalculator({ initialData }: Props) {
   const earringBonus = equipment.hpEarring ? (skill.hitCount >= 10 ? 5 : Math.max(5, 15 - skill.hitCount * 10 / 9 + 10 / 9)) : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-xl font-bold">伤害计算器</h2>
+    <div className="space-y-8">
+      <div className="page-head">
+        <h2 className="page-title">伤害计算器</h2>
         <div className="flex gap-2 items-center">
           <input className="input-field w-40" placeholder="计算标签（可选）" value={calcLabel} onChange={e => setCalcLabel(e.target.value)} />
           <input className="input-field w-32 text-xs" placeholder="备注（可选）" value={calcNotes} onChange={e => setCalcNotes(e.target.value)} />
@@ -547,7 +547,7 @@ export default function DamageCalculator({ initialData }: Props) {
             </div>
           </div>
 
-          <CollapsibleSection title={<span>主动加攻区 <InfoTip id="buff" /><span className="text-xs text-text-muted font-normal"> · 体{activeBodyIndex + 1}</span></span>} defaultOpen>
+          <CollapsibleSection moduleId="主动加攻区" title={<span>主动加攻区 <InfoTip id="buff" /><span className="text-xs text-text-muted font-normal"> · 体{activeBodyIndex + 1}</span></span>} defaultOpen>
             <SkillListCard skills={mbCur.buffs} lookup={buildLookup(BUFF_SKILLS, 'buff')}
               onUpdate={(i, s) => { const arr = mbCur.buffs.map((b, j) => (j === i ? s as BuffSkill : b)); updateMbBody(activeBodyIndex, 'buffs', arr); }}
               onAdd={() => updateMbBody(activeBodyIndex, 'buffs', [...mbCur.buffs, emptyBuff()])}
@@ -555,7 +555,7 @@ export default function DamageCalculator({ initialData }: Props) {
               type="buff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
           </CollapsibleSection>
 
-          <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /><span className="text-xs text-text-muted font-normal"> · 体{activeBodyIndex + 1}</span></span>} defaultOpen>
+          <CollapsibleSection moduleId="主动减防区" title={<span>主动减防区 <InfoTip id="debuff" /><span className="text-xs text-text-muted font-normal"> · 体{activeBodyIndex + 1}</span></span>} defaultOpen>
             <SkillListCard skills={mbCur.debuffs} lookup={buildLookup(DEBUFF_SKILLS, 'debuff')}
               onUpdate={(i, s) => { const arr = mbCur.debuffs.map((d, j) => (j === i ? s as DebuffSkill : d)); updateMbBody(activeBodyIndex, 'debuffs', arr); }}
               onAdd={() => updateMbBody(activeBodyIndex, 'debuffs', [...mbCur.debuffs, emptyDebuff()])}
@@ -563,7 +563,7 @@ export default function DamageCalculator({ initialData }: Props) {
               type="debuff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
           </CollapsibleSection>
 
-          <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /><span className="text-xs text-text-muted font-normal"> · 体{activeBodyIndex + 1}</span></span>} defaultOpen>
+          <CollapsibleSection moduleId="弱点加深区" title={<span>弱点加深区 <InfoTip id="weakness" /><span className="text-xs text-text-muted font-normal"> · 体{activeBodyIndex + 1}</span></span>} defaultOpen>
             <SkillListCard skills={mbCur.weaknesses} lookup={buildLookup(WEAKNESS_SKILLS, 'weakness')}
               onUpdate={(i, s) => { const arr = mbCur.weaknesses.map((w, j) => (j === i ? s as WeaknessSkill : w)); updateMbBody(activeBodyIndex, 'weaknesses', arr); }}
               onAdd={() => updateMbBody(activeBodyIndex, 'weaknesses', [...mbCur.weaknesses, emptyWeakness()])}
@@ -573,21 +573,21 @@ export default function DamageCalculator({ initialData }: Props) {
         </>
       ) : (
         <>
-          <CollapsibleSection title={<span>主动加攻区 <InfoTip id="buff" /></span>} defaultOpen>
+          <CollapsibleSection moduleId="主动加攻区" title={<span>主动加攻区 <InfoTip id="buff" /></span>} defaultOpen>
             <SkillListCard skills={buffs} lookup={buildLookup(BUFF_SKILLS, 'buff')}
               onUpdate={(i, s) => { const n = [...buffs]; n[i] = s as BuffSkill; setBuffs(n); }}
               onAdd={() => setBuffs([...buffs, emptyBuff()])}
               onRemove={i => setBuffs(buffs.filter((_, j) => j !== i))} type="buff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
           </CollapsibleSection>
 
-          <CollapsibleSection title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen>
+          <CollapsibleSection moduleId="主动减防区" title={<span>主动减防区 <InfoTip id="debuff" /></span>} defaultOpen>
             <SkillListCard skills={debuffs} lookup={buildLookup(DEBUFF_SKILLS, 'debuff')}
               onUpdate={(i, s) => { const n = [...debuffs]; n[i] = s as DebuffSkill; setDebuffs(n); }}
               onAdd={() => setDebuffs([...debuffs, emptyDebuff()])}
               onRemove={i => setDebuffs(debuffs.filter((_, j) => j !== i))} type="debuff" enemyAttr={skill.enemyAttr} hideWhiteBonus={advanced.hideWhiteBonus} manualSkill={advanced.manualSkill} />
           </CollapsibleSection>
 
-          <CollapsibleSection title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen>
+          <CollapsibleSection moduleId="弱点加深区" title={<span>弱点加深区 <InfoTip id="weakness" /></span>} defaultOpen>
             <SkillListCard skills={weaknesses} lookup={buildLookup(WEAKNESS_SKILLS, 'weakness')}
               onUpdate={(i, s) => { const n = [...weaknesses]; n[i] = s as WeaknessSkill; setWeaknesses(n); }}
               onAdd={() => setWeaknesses([...weaknesses, emptyWeakness()])}
@@ -601,7 +601,7 @@ export default function DamageCalculator({ initialData }: Props) {
           skill={skill} updateSkill={updateSkill} atkSum={atkSum} defSum={defSum} critSum={critSum} earringBonus={earringBonus} />
       </CollapsibleSection>
 
-      <CollapsibleSection title={
+      <CollapsibleSection moduleId="其它乘区" title={
         <span className="flex items-center justify-between w-full gap-3">
           <span>其它乘区</span>
           <span className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
@@ -646,7 +646,7 @@ export default function DamageCalculator({ initialData }: Props) {
         </div>
       )}
 
-      <CollapsibleSection title={
+      <CollapsibleSection moduleId="打分计算" title={
         <span className="flex items-center justify-between w-full gap-3">
           <span>打分计算 <ImageInfoTip src={saPic} alt="打分计算说明" /></span>
           <span className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
@@ -771,7 +771,7 @@ function SkillParamsSection({ skill, updateSkill, result, hideWhiteBonus, spMode
           <Toggle label="暴击" value={skill.isCrit} onChange={v => updateSkill('isCrit', v)} />
         </div>
       ) : (
-        <div className="grid grid-cols-5 gap-3 mb-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
           <Field label="最大威力" value={skill.maxPower} onChange={v => updateSkill('maxPower', v)} />
           <Field label="技能等级" value={skill.skillLevel} onChange={v => updateSkill('skillLevel', v)} />
           <Field label="基础差值" value={skill.baseDiff} onChange={v => updateSkill('baseDiff', v)} />
@@ -972,7 +972,7 @@ function BonusSection({ bonus, setBonus, equipment, setEquipment, skill, updateS
   atkSum: number; defSum: number; critSum: number; earringBonus: number;
 }) {
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <PassiveBlock title={<span>被动加攻区% <InfoTip id="passiveAtk" /></span>} entries={bonus.passiveAtkEntries} total={atkSum} totalClass="text-heal"
         onUpdate={e => setBonus({ ...bonus, passiveAtkEntries: e })} placeholder="加攻被动名" />
       <PassiveBlock title="被动减防区%" entries={bonus.passiveDefEntries} total={defSum} totalClass="text-accent"

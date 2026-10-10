@@ -215,14 +215,14 @@ export default function SkillDatabase() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-xl font-bold">技能数据库</h2>
+    <div className="space-y-8">
+      <div className="page-head">
+        <h2 className="page-title">技能数据库</h2>
         <button className="btn btn-primary btn-sm" onClick={() => showForm ? resetForm() : startAdd()}>
           {showForm ? '取消' : '+ 添加自定义技能'}
         </button>
       </div>
-      <p className="text-sm text-text-muted">数据来源: <a href="https://hbr.quest" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">hbr.quest</a><ImageInfoTip src={skillPic} alt="技能数据库说明" /> — 可编辑/删除内置技能，修改保存在本地</p>
+      <p className="page-sub">数据来源: <a href="https://hbr.quest" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">hbr.quest</a><ImageInfoTip src={skillPic} alt="技能数据库说明" /> — 可编辑/删除内置技能，修改保存在本地</p>
 
       {showForm && !editingName && (
         <div className="card border-accent/30">

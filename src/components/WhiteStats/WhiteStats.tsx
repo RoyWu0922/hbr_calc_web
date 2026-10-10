@@ -84,12 +84,12 @@ export default function WhiteStats() {
   const char = CHAR_GROWTH.find(c => c.shortId === shortId);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="space-y-8">
+        <div className="page-head">
           <div>
-            <h2 className="text-xl font-bold">白值计算</h2>
-            <p className="text-sm text-text-muted">数据来源: 凛冬_ 白值计算器2026.6.5版</p>
+            <h2 className="page-title">白值计算</h2>
+            <p className="page-sub">数据来源: 凛冬_ 白值计算器2026.6.5版</p>
           </div>
           <button className="btn btn-primary btn-sm" onClick={handleSave}>保存到历史</button>
         </div>
@@ -152,7 +152,7 @@ export default function WhiteStats() {
           <Field label="缺力器型" value={missingPowerDex} onChange={setMissingPowerDex} />
         </div>
         <div className="text-xs text-text-muted mb-2">基础值修正</div>
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <Field label="Pow" value={baseFix.pow} onChange={v => setBaseFix(f => ({ ...f, pow: v }))} />
           <Field label="Dex" value={baseFix.dex} onChange={v => setBaseFix(f => ({ ...f, dex: v }))} />
           <Field label="Tough" value={baseFix.tough} onChange={v => setBaseFix(f => ({ ...f, tough: v }))} />
@@ -219,7 +219,7 @@ export default function WhiteStats() {
           </div>
         </div>
         <div className="text-xs text-text-muted mb-2">支援修正</div>
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <Field label="Pow(力量)" value={support.pow} onChange={v => setSupport(f => ({ ...f, pow: v }))} />
           <Field label="Dex(灵巧)" value={support.dex} onChange={v => setSupport(f => ({ ...f, dex: v }))} />
           <Field label="Tough(体力)" value={support.tough} onChange={v => setSupport(f => ({ ...f, tough: v }))} />
@@ -231,7 +231,7 @@ export default function WhiteStats() {
 
       {/* Output1: 基础状态值 */}
       <CollapsibleSection title="Output1 — 基础状态值" defaultOpen>
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatBox label="Power(力量)" value={fmt(result.baseStats.pow)} />
           <StatBox label="Dexterity(灵巧)" value={fmt(result.baseStats.dex)} />
           <StatBox label="Toughness(体力)" value={fmt(result.baseStats.tough)} />
@@ -243,7 +243,7 @@ export default function WhiteStats() {
 
       {/* Output2: 合计状态值 */}
       <CollapsibleSection title="Output2 — 合计状态值" defaultOpen>
-        <div className="grid grid-cols-6 gap-3 mb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-2">
           <StatBox label="Power(力量)" value={fmt(result.totalStats.pow)} highlight />
           <StatBox label="Dexterity(灵巧)" value={fmt(result.totalStats.dex)} highlight />
           <StatBox label="Toughness(体力)" value={fmt(result.totalStats.tough)} highlight />
@@ -258,8 +258,8 @@ export default function WhiteStats() {
       </CollapsibleSection>
 
       {/* Output3-共鸣有效值 */}
-      <CollapsibleSection title={<span>Output3 — 共鸣有效值 <span className="text-text-muted font-normal text-xs">(不含配装/专武/共鸣，十位向上取整)</span></span>} defaultOpen>
-        <div className="grid grid-cols-6 gap-3">
+      <CollapsibleSection moduleId="Output3" title={<span>Output3 — 共鸣有效值 <span className="text-text-muted font-normal text-xs">(不含配装/专武/共鸣，十位向上取整)</span></span>} defaultOpen>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatBox label="Power" value={fmt(result.resonanceEff.pow)} />
           <StatBox label="Dexterity" value={fmt(result.resonanceEff.dex)} />
           <StatBox label="Toughness" value={fmt(result.resonanceEff.tough)} />
@@ -272,7 +272,7 @@ export default function WhiteStats() {
       {/* Output3: 有效值 */}
       <div className="grid grid-cols-2 gap-4">
         <CollapsibleSection title="攻击技能有效值" defaultOpen>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <StatBox label="HP偏有效值" value={result.hpEff.toFixed(1)} />
             <StatBox label="DP偏有效值" value={result.dpEff.toFixed(1)} />
             <StatBox label="无偏有效值" value={result.neutralEff.toFixed(1)} />
@@ -293,15 +293,19 @@ export default function WhiteStats() {
       </div>
       </div>
 
-      {/* History panel */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--app-text-primary)' }}>历史记录</h3>
+      {/* History panel — a genuine side panel, so it keeps a card surface while
+          the form column stays flat. Its rows are list items, not cards: nesting
+          a card per record inside a card panel is the pattern removed above. */}
+      <div className="card space-y-3">
+        <div className="section-head" style={{ cursor: 'default' }}>
+          <span className="section-title">历史记录</span>
+        </div>
         {history.length === 0 ? (
           <p className="text-xs text-text-muted">暂无保存记录</p>
         ) : (
-          <div className="space-y-2 max-h-[80vh] overflow-y-auto">
+          <div className="panel-list max-h-[80vh] overflow-y-auto">
             {history.map(entry => (
-              <div key={entry.id} className="card !p-3">
+              <div key={entry.id} className="py-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-medium" style={{ color: 'var(--app-text-primary)' }}>{entry.label}</span>
                   <span className="text-[10px] text-text-muted">{new Date(entry.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>

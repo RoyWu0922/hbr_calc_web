@@ -4,12 +4,19 @@
 :root {
   color-scheme: dark;
   --app-bg: #0a0e1a;
-  --app-component-bg: #111827;
-  --app-bg-card: rgba(30, 41, 59, 0.6);
-  --app-bg-input: rgba(51, 65, 85, 0.5);
-  --app-text-primary: #f1f5f9;
-  --app-text-secondary: #f1f5f9;
-  --app-text-muted: #f1f5f9;
+  /* Card / input surfaces are OPAQUE. A real surface colour reads as a surface;
+     translucent-white-over-navy plus backdrop blur is what made every panel look
+     like frosted glass and the whole app look like a generated dashboard. Layers
+     that genuinely float above scrolling content (the sticky header, modal
+     scrims) keep their blur — see .glass-header / .modal-overlay. */
+  --app-component-bg: #141c26;
+  --app-bg-card: #161e29;
+  --app-bg-input: #10171f;
+  /* Three real levels. In dark these were ALL #f1f5f9 — literally one value — so
+     labels and values rendered at identical strength and nothing had hierarchy. */
+  --app-text-primary: #eef2f7;
+  --app-text-secondary: #aab6c4;
+  --app-text-muted: #7d8b9c;
   --app-glass-bg: rgba(255, 255, 255, 0.1);
   --app-glass-bg-strong: rgba(255, 255, 255, 0.14);
   --app-glass-border: rgba(255, 255, 255, 0.08);
@@ -18,7 +25,7 @@
   --app-glass-highlight-strong: rgba(255, 255, 255, 0.06);
   --app-card-bg: rgba(255, 255, 255, 0.1);
   --app-card-border: rgba(255, 255, 255, 0.07);
-  --app-input-bg: rgba(255, 255, 255, 0.1);
+  --app-input-bg: #10171f;
   --app-input-border: rgba(255, 255, 255, 0.08);
   --app-nav-bg: rgba(255, 255, 255, 0.05);
   --app-nav-hover-bg: rgba(255, 255, 255, 0.08);
@@ -34,13 +41,13 @@
   --app-checkbox-bg: rgba(255, 255, 255, 0.04);
   --app-checkbox-border: rgba(255, 255, 255, 0.15);
   --app-shadow: rgba(0, 0, 0, 0.2);
-  --app-shadow-card: rgba(0, 0, 0, 0.15);
+  --app-shadow-card: rgba(0, 0, 0, 0.35);
   --app-shadow-strong: rgba(0, 0, 0, 0.25);
   --app-select-arrow: %2364748b;  /* #64748b URL-encoded */
   --app-toggle-bg: rgba(255, 255, 255, 0.05);
   --app-toggle-border: rgba(255, 255, 255, 0.2);
-  --app-stat-bg: rgba(255, 255, 255, 0.05);
-  --app-stat-border: rgba(255, 255, 255, 0.05);
+  --app-stat-bg: rgba(255, 255, 255, 0.03);
+  --app-stat-border: rgba(255, 255, 255, 0.06);
 
   /* Planner table — spreadsheet aesthetic */
   --planner-grid-border: rgba(255, 255, 255, 0.1);
@@ -70,12 +77,10 @@
   --char-5: #fb923c;  /* 橙 */
   --char-6: #818cf8;  /* 靛 */
   --rc-grid: rgba(255, 255, 255, 0.08);
-  /* The app's three text tokens are all #f1f5f9 in dark (--app-text-primary,
-     -secondary and -muted are literally the same value), so secondary text in
-     the 简轴 轴图 would read at full strength. This is the feature-local muted
-     tone instead — same approach as --char-N above: define a token here rather
-     than change an app-wide value every other page depends on. Matches the
-     neutral marker colour so dots and secondary text agree. */
+  /* 简轴 轴图 secondary text. The app's three text tokens are now three real
+     levels (--app-text-primary/-secondary/-muted in dark are distinct), but this
+     stays as a feature-local token so the 轴图's neutrality doesn't shift with the
+     app-wide scale. Matches the neutral marker colour so dots and text agree. */
   --rc-muted: #94a3b8;
   /* Opaque background for the 角色泳道 frozen first column. It has to be OPAQUE
      — the host scrolls horizontally, and a translucent frozen column lets the
@@ -93,8 +98,8 @@
   color-scheme: light;
   --app-bg: #f1f5f9;
   --app-component-bg: #ffffff;
-  --app-bg-card: rgba(255, 255, 255, 0.85);
-  --app-bg-input: rgba(255, 255, 255, 0.8);
+  --app-bg-card: #ffffff;
+  --app-bg-input: #ffffff;
   --app-text-primary: #1e293b;
   --app-text-secondary: #475569;
   --app-text-muted: #64748b;
@@ -106,7 +111,7 @@
   --app-glass-highlight-strong: rgba(255, 255, 255, 0.9);
   --app-card-bg: rgba(255, 255, 255, 0.6);
   --app-card-border: rgba(0, 0, 0, 0.06);
-  --app-input-bg: rgba(255, 255, 255, 0.75);
+  --app-input-bg: #ffffff;
   --app-input-border: rgba(0, 0, 0, 0.1);
   --app-nav-bg: rgba(0, 0, 0, 0.03);
   --app-nav-hover-bg: rgba(0, 0, 0, 0.05);
@@ -122,7 +127,7 @@
   --app-checkbox-bg: rgba(0, 0, 0, 0.03);
   --app-checkbox-border: rgba(0, 0, 0, 0.15);
   --app-shadow: rgba(0, 0, 0, 0.08);
-  --app-shadow-card: rgba(0, 0, 0, 0.06);
+  --app-shadow-card: rgba(0, 0, 0, 0.08);
   --app-shadow-strong: rgba(0, 0, 0, 0.1);
   --app-select-arrow: %23475669;  /* #475569 URL-encoded */
   --app-toggle-bg: rgba(0, 0, 0, 0.03);
@@ -174,9 +179,11 @@
   --color-bg-dark: var(--app-bg);
   --color-bg-card: var(--app-bg-card);
   --color-bg-input: var(--app-bg-input);
-  --color-accent-r: 91;
-  --color-accent-g: 155;
-  --color-accent-b: 213;
+  /* Fallback accent — same value as DEFAULTS.accentColor in utils/appSettings.tsx,
+     which overrides these at runtime with the user's pick. Kept in sync by hand. */
+  --color-accent-r: 201;
+  --color-accent-g: 69;
+  --color-accent-b: 90;
   --color-accent: rgb(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b));
   --color-accent-hover: rgb(calc(var(--color-accent-r) + 30), calc(var(--color-accent-g) + 30), calc(var(--color-accent-b) + 30));
   --color-gold: #f59e0b;
@@ -254,8 +261,6 @@ input[type="number"] { -moz-appearance: textfield; }
   inset: 0;
   border-radius: inherit;
   background: var(--app-component-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   opacity: var(--card-opacity, 1);
   z-index: -1;
   transition: opacity 0.3s;
@@ -275,8 +280,6 @@ input[type="number"] { -moz-appearance: textfield; }
   inset: 0;
   border-radius: inherit;
   background: var(--app-component-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   opacity: var(--card-opacity, 1);
   z-index: -1;
   transition: opacity 0.3s;
@@ -284,10 +287,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .glass-input {
   background: var(--app-input-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--app-input-border);
-  box-shadow: inset 0 1px 3px var(--app-shadow);
   transition: background 0.3s, border-color 0.3s;
 }
 
@@ -300,27 +300,19 @@ input[type="number"] { -moz-appearance: textfield; }
 .nav-tab {
   @apply px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer border-0;
   background: var(--app-nav-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid transparent;
-  color: var(--app-text-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  color: var(--app-text-secondary);
 }
 .nav-tab.active {
-  @apply bg-accent/80 text-white;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-color: rgba(255,255,255,0.1);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 10px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.15);
+  @apply text-white;
+  background: rgb(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b));
 }
 .nav-tab:not(.active):hover {
   background: var(--app-nav-hover-bg);
   border-color: var(--app-nav-hover-border);
   color: var(--app-text-primary);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-  transform: translateY(-1px);
 }
-.nav-tab:active { transform: scale(0.95); }
+.nav-tab:active { transform: scale(0.98); }
 
 /* Sub-tab: underline style */
 .sub-tab {
@@ -331,6 +323,10 @@ input[type="number"] { -moz-appearance: textfield; }
   color: var(--app-text-secondary);
   border-bottom: 2px solid transparent;
   border-radius: 6px 6px 0 0;
+  /* Inside a `flex gap-0 items-center` toolbar these were shrinking until each
+     label broke into one character per line (排/轴, 简/轴). */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .sub-tab.active {
   background: rgba(255,255,255,0.03);
@@ -347,52 +343,41 @@ input[type="number"] { -moz-appearance: textfield; }
 
 /* ─── Cards ────────────────────────────────────────────── */
 .card {
-  @apply rounded-xl p-5;
+  @apply p-5;
+  border-radius: 10px;
   position: relative;
   isolation: isolate;
-  background: transparent;
+  /* The fill is painted on the element, NOT on a ::before. Pseudo-elements do not
+     render on replaced elements (<input>/<select>), so the old ::before approach
+     silently painted nothing there — the input fill had never been visible and
+     --card-opacity had no effect on it. color-mix keeps the single opacity knob.
+     The first declaration is the fallback for browsers without color-mix(). */
+  background: var(--app-component-bg);
+  background: color-mix(in srgb, var(--app-component-bg) calc(var(--card-opacity, 1) * 100%), transparent);
   border: 1px solid var(--app-card-border);
-  box-shadow: 0 4px 24px var(--app-shadow-card);
-  transition: border-color 0.3s, box-shadow 0.3s, transform 0.25s ease;
+  box-shadow: 0 1px 2px var(--app-shadow-card);
+  transition: border-color 0.2s;
   animation: cardIn 0.4s ease both;
 }
+/* No lift, no accent halo. Raising EVERY card on hover is what made the whole
+   app feel like a template; hover feedback belongs to things you can click. */
 .card:hover {
-  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.35);
-  box-shadow: 0 8px 32px var(--app-shadow-card), 0 0 0 1px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.06);
-  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
 }
-.card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--app-component-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  opacity: var(--card-opacity, 1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); /* top edge highlight */
-  z-index: -1;
-  transition: opacity 0.3s;
-}
+/* (The .card surface used to be a ::before here. It is now painted on the element
+   itself — see .card above — because ::before does not render on <input>/<select>
+   and the same pattern was used for .input-field. */
+/* Section label, quietly. No accent bar and no uppercase/tracking — uppercase is
+   meaningless on CJK and the letter-spacing just wedged gaps between Chinese
+   characters; the glowing 3×13px bar was the single most "generated template"
+   element on the page. */
 .card-header {
-  @apply text-sm font-semibold uppercase tracking-wider mb-3;
-  color: var(--app-text-primary);
+  @apply text-[13px] font-semibold mb-3;
+  color: var(--app-text-secondary);
   position: relative;
   z-index: 1;
-  padding-left: 10px;
 }
-.card-header::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 13px;
-  border-radius: 2px;
-  background: var(--color-accent);
-  box-shadow: 0 0 6px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.5);
-}
+.card-header::before { display: none; }
 
 /* Entrance: subtle fade + rise on mount */
 @keyframes cardIn {
@@ -406,30 +391,25 @@ input[type="number"] { -moz-appearance: textfield; }
   position: relative;
   isolation: isolate;
   color: var(--app-text-primary);
-  background: transparent;
+  /* Fill painted on the element: ::before does not render on <input>/<select>. */
+  background: var(--app-input-bg);
+  background: color-mix(in srgb, var(--app-input-bg) calc(var(--card-opacity, 1) * 100%), transparent);
   border: 1px solid var(--app-input-border);
+  /* Grid/flex items default to min-width:auto, so a <select> whose longest
+     option is wider than its column stretched the whole track and pushed the row
+     out of its card (the 额外功能 / 伤害计算 stat rows overflowed by 4-13px).
+     Let the track win and the control shrink. */
+  min-width: 0;
 }
-.input-field::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--app-component-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  opacity: var(--card-opacity, 1);
-  z-index: -1;
-  transition: opacity 0.3s;
-}
+/* (The .input-field fill was a ::before here; see .input-field above.) */
 .input-field:focus {
   outline: none;
-  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.6);
-  box-shadow: 0 0 0 3px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.15),
-    0 0 14px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.12);
+  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.7);
+  box-shadow: 0 0 0 3px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.16);
 }
 /* 进度记录筛选栏的下拉框：内容自适应宽度，不再占满整行 */
 .input-field.input-inline { width: auto; }
-.input-label { @apply text-xs mb-1 font-medium; color: var(--app-text-primary); }
+.input-label { @apply text-xs mb-1 font-medium; color: var(--app-text-muted); }
 
 select.input-field {
   appearance: none;
@@ -465,85 +445,57 @@ select option {
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
 }
-.btn:hover {
-  box-shadow: 0 3px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
-  transform: translateY(-1px);
-}
-.btn:active {
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-  transform: translateY(0);
-}
+/* Flat buttons: no blur, no drop shadow, no hover lift. Feedback comes from the
+   fill and border shifting, the way a real product does it — not from every
+   control floating up under the cursor. */
+.btn:active { transform: translateY(0.5px); }
 .btn-primary {
-  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.7);
+  /* Full-strength accent instead of 70% alpha over a blurred panel. The default
+     accent (#c9455a) is dark enough to carry white text at ~4.7:1. */
+  background: rgb(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b));
   color: white;
   border: 1px solid rgba(255,255,255,0.1);
-  position: relative;
-  overflow: hidden;
 }
-.btn-primary::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -60%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
-  transform: skewX(-20deg);
-  pointer-events: none;
-}
-.btn-primary:hover {
-  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.85);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.35), 0 0 12px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.2);
-}
-.btn-primary:hover::after { animation: btnShine 0.6s ease; }
-
-/* Highlight sweep across accent buttons on hover */
-@keyframes btnShine {
-  0%   { left: -60%; }
-  100% { left: 130%; }
-}
+.btn-primary:hover { filter: brightness(1.12); }
+.btn-primary:active { filter: brightness(0.94); }
 .btn-accent {
-  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.8);
+  background: rgb(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b));
   color: white;
   border: 1px solid rgba(255,255,255,0.12);
 }
-.btn-accent:hover {
-  background: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.95);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.35), 0 0 12px rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.25);
-}
+.btn-accent:hover { filter: brightness(1.12); }
 .btn-secondary {
   background: var(--app-btn-secondary-bg);
   color: var(--app-text-secondary);
   border: 1px solid var(--app-btn-secondary-border);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  transition: background 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.2s, transform 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 .btn-secondary:hover {
   background: var(--app-btn-secondary-hover-bg);
   color: var(--app-text-primary);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-  transform: translateY(-1px);
-}
-.btn-secondary:active {
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-  transform: translateY(0);
+  border-color: rgba(255,255,255,0.14);
 }
 .btn-danger {
   background: rgba(239, 68, 68, 0.15);
   color: var(--color-danger);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: background 0.2s, border-color 0.2s;
 }
-.btn-danger:hover { background: rgba(239, 68, 68, 0.25); box-shadow: 0 2px 6px rgba(0,0,0,0.25); transform: translateY(-1px); }
-.btn-danger:active { transform: translateY(0); }
+.btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
 .btn-sm { @apply px-2.5 py-1.5 text-xs; }
 .btn-xs { @apply px-1.5 py-1 text-xs; }
 
-.result-value { @apply text-2xl font-bold; }
+/* Touch targets: btn-sm/btn-xs land at 26px tall, well under the 44px/48dp
+   minimum. Give them room on phones only, and leave the planner grid alone —
+   its toolbar buttons live inside dense table headers where an extra 6px per
+   row would bloat the whole sheet. */
+@media (max-width: 767px) {
+  .btn-sm, .btn-xs { min-height: 2rem; }
+  .planner-table .btn-sm, .planner-table .btn-xs { min-height: 0; }
+}
+
+.result-value { @apply text-2xl font-bold; font-variant-numeric: tabular-nums; }
 
 /* ─── Tables ───────────────────────────────────────────── */
 table { @apply w-full text-sm; }
@@ -561,8 +513,7 @@ tr { transition: background 0.2s; }
   transition: border-color 0.3s, transform 0.2s ease;
 }
 .glass-row:hover {
-  border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.3);
-  transform: translateX(2px);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 .glass-row:hover::before { filter: brightness(1.15); }
 .glass-row::before {
@@ -571,32 +522,29 @@ tr { transition: background 0.2s; }
   inset: 0;
   border-radius: inherit;
   background: var(--app-component-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   opacity: var(--card-opacity, 1);
   z-index: -1;
   transition: opacity 0.3s, filter 0.3s;
 }
 
 /* ─── Header ───────────────────────────────────────────── */
+/* The header is the one place that genuinely floats above scrolling content, so
+   it is the one place that keeps the glass treatment — matching the mobile bottom
+   nav, which already used --app-header-bg with an inline blur. Note this used to
+   live on ::before as `background: var(--app-component-bg)` + blur, where the
+   opaque background painted straight over the blur (so the header was a solid bar
+   and the blur did nothing) and the declaration pair also got collapsed away by
+   the CSS minifier. One translucent background + one unprefixed blur, on the
+   element, actually blurs. */
 .glass-header {
   position: relative;
   isolation: isolate;
-  background: transparent;
+  background: var(--app-header-bg);
+  backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--app-header-border);
   box-shadow: 0 1px 8px rgba(0,0,0,0.15);
 }
-.glass-header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--app-component-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  opacity: var(--card-opacity, 1);
-  z-index: -1;
-  transition: opacity 0.3s;
-}
+.glass-header::before { display: none; }
 
 /* ─── iOS-style Switch ─────────────────────────────────── */
 .switch {
@@ -704,7 +652,13 @@ input[type="checkbox"]:checked::after {
 /* ─── Planner Table ─────────────────────────────────────── */
 .planner-table {
   width: max-content;
-  min-width: 100%;
+  /* Every column has an explicit <colgroup> width, so the table has a natural
+     size well past 700px. On a phone `width: max-content` alone still let the
+     browser squeeze the tracks into the viewport and the cells wrapped or
+     clipped; clamping the floor makes the wrapper (div.card.overflow-x-auto)
+     actually scroll instead of compressing. Desktop is unaffected — there 100%
+     already exceeds the floor. */
+  min-width: max(100%, 760px);
   font-size: 0.625rem;
   border-collapse: collapse;
 }
@@ -734,6 +688,15 @@ input[type="checkbox"]:checked::after {
   border: 1px solid var(--planner-grid-border);
 }
 
+/* Each row's hover 删除 button is absolutely positioned 12px *outside* its cell
+   (`-right-3`), which made the table's content 12px wider than the table itself —
+   a stray 11px horizontal scrollbar inside the planner card, on desktop and on
+   phones. Extra padding on the column does NOT help (an absolutely positioned
+   element is offset from its container's padding box, so it moves out with it);
+   pull the button back inside on the last column, where the centred value leaves
+   room for it. */
+.planner-table tr > *:last-child button { right: 0; }
+
 /* thicker left border at start of each character group */
 .planner-col-group-start {
   border-left: 2px solid var(--planner-grid-border);
@@ -756,7 +719,7 @@ input[type="checkbox"]:checked::after {
   border: 1px solid var(--planner-input-border);
   transition: box-shadow 120ms ease;
 }
-.planner-table .input-field::before { display: none; }
+/* Input fills are painted on the elements now, so there is no ::before to hide. */
 .planner-table .input-field:focus {
   border-color: rgba(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b), 0.5);
   box-shadow: none;
@@ -1395,3 +1358,212 @@ body.cursor-hover .cursor-ring {
   justify-content: center; padding: 1rem;
   background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Page & section rhythm
+   ═══════════════════════════════════════════════════════════════════════════
+   A page is one column of sections. A section is a typographic group — title,
+   hairline, content — not another bordered box. Previously every section drew
+   its own .card and the page was a vertical stack of them, so each screen read
+   as a dashboard of equal-weight panels with no focal point: the single biggest
+   reason it looked machine-assembled rather than designed. The card surface is
+   now reserved for objects you can act on (a saved axle, a character, a dialog).
+   Because a section no longer supplies padding, the page container does. */
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px 16px;
+  flex-wrap: wrap;
+}
+.page-title {
+  margin: 0;
+  font-size: 25px;
+  line-height: 1.15;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--app-text-primary);
+}
+.page-sub {
+  margin: 7px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--app-text-muted);
+  max-width: 66ch;
+}
+
+/* Every module paints its own surface, and its presence is separately adjustable:
+   --mod-opacity (set per module, inline, by CollapsibleSection) falls back to
+   --module-opacity (the global default in 设置). 0 = flat, which is the shipped
+   default so the typographic layout stays as designed — raise it, globally or for
+   one module, to bring that panel back. */
+.section {
+  min-width: 0;
+  position: relative;
+  isolation: isolate;
+}
+.section::before {
+  content: '';
+  position: absolute;
+  inset: -12px -16px -14px;
+  border-radius: 10px;
+  background: var(--app-component-bg);
+  opacity: var(--mod-opacity, var(--module-opacity, 0));
+  z-index: -1;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+.section-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 0 0 9px;
+  border-bottom: 1px solid var(--app-card-border);
+}
+/* The row itself is no longer the button: the per-module opacity control sits
+   beside the title, and a <button> inside a <button> is invalid. */
+.section-toggle {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+/* Deliberately no uppercase and no letter-spacing — both are noise on CJK
+   section labels (the old .card-header had tracking-wider for exactly that). */
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text-secondary);
+}
+.section-caret {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--app-text-muted);
+  transition: transform 0.2s ease;
+}
+.section-body { padding-top: 16px; }
+
+/* ─── Per-module opacity control ─────────────────────────── */
+.module-opacity-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--app-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+/* Hidden until you look for it — but always visible once it has been used, and
+   always visible where there is no hover (touch). */
+.section-head:hover .module-opacity-btn,
+.module-opacity-btn:focus-visible,
+.module-opacity-btn[data-open='true'],
+.module-opacity-btn[data-changed='true'] { opacity: 1; }
+@media (hover: none) { .module-opacity-btn { opacity: 1; } }
+.module-opacity-btn:hover { color: var(--app-text-primary); background: rgba(255, 255, 255, 0.06); }
+.module-opacity-btn[data-changed='true'] { color: rgb(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b)); }
+.module-opacity-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: 212px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 10px;
+  background: var(--app-bg-card);
+  box-shadow: 0 10px 28px var(--app-shadow-card);
+}
+
+/* Rows inside a panel (e.g. 白值计算's 历史记录): list items separated by a
+   hairline, instead of one bordered card per row. */
+.panel-list > * + * { border-top: 1px solid var(--app-card-border); }
+
+/* ─── Top bar ───────────────────────────────────────────── */
+.wordmark {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--app-text-primary);
+  white-space: nowrap;
+}
+/* Two nav levels, two treatments: the top level only brightens (never the
+   accent), the page-level tab strip carries the accent underline. Tinting BOTH
+   with the accent made 「伤害计算」 appear twice in the same colour — the top nav
+   and its own first tab are the same words. */
+.nav-top {
+  background: none;
+  border: 0;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--app-text-muted);
+  transition: color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.nav-top:hover { color: var(--app-text-primary); }
+.nav-top.active { color: var(--app-text-primary); font-weight: 600; }
+
+.tabs { display: flex; gap: 24px; overflow-x: auto; }
+.nav-link {
+  position: relative;
+  background: none;
+  border: 0;
+  padding: 8px 0 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--app-text-muted);
+  transition: color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.nav-link:hover { color: var(--app-text-secondary); }
+.nav-link.active { color: var(--app-text-primary); }
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: rgb(var(--color-accent-r), var(--color-accent-g), var(--color-accent-b));
+}
+
+.icon-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: var(--app-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.icon-ghost:hover { color: var(--app-text-primary); background: rgba(255, 255, 255, 0.06); }

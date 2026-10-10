@@ -17,7 +17,7 @@ import { useTheme } from './utils/theme';
 import { decodeShareData } from './utils/shareUrl';
 import { setToastHandler } from './utils/copyToast';
 import { AuthProvider, useAuth } from './utils/auth';
-import { attachSyncTriggers, uploadAll, pullAll } from './utils/syncEngine';
+import { attachSyncTriggers, uploadAll, pullAll, checkCloudChanges, markCloudDeclined } from './utils/syncEngine';
 import { CalcHistoryEntry, DamageResultData } from './types';
 
 type PrimaryTab = 'damage' | 'white' | 'extra' | 'planner' | 'guideInfo';
@@ -100,34 +100,23 @@ function AppInner() {
     }
   }, [user]);
 
-  // Periodic cloud check (every 2 min) + manual refresh
+  // Periodic cloud check (every 2 min) + manual refresh.
+  // checkCloudChanges answers from cloud-observed watermarks, so it reports only
+  // records this device has genuinely never seen — the old version compared the
+  // cloud's newest timestamp against a local wall-clock mark, which drifted and
+  // made the dialog fire when nothing new existed. See syncEngine.ts.
   const checkCloud = async () => {
     if (!user) return;
-    const { supabase } = await import('./utils/supabase');
-    // medal_records / custom_skills use updated_at, not timestamp
-    const tables = [
-      { name: 'calc_history', col: 'timestamp' },
-      { name: 'planner_axles', col: 'timestamp' },
-      { name: 'white_stats', col: 'timestamp' },
-      { name: 'medal_records', col: 'updated_at' },
-      { name: 'custom_skills', col: 'updated_at' },
-    ];
-    let newCount = 0;
-    for (const t of tables) {
-      const { data } = await supabase.from(t.name).select(t.col).eq('user_id', user.id).order(t.col, { ascending: false }).limit(1);
-      if (data?.length) {
-        const lastSync = localStorage.getItem('hbr_last_sync');
-        const remoteTs = (data[0] as unknown as Record<string, number | null>)[t.col];
-        if (remoteTs && (!lastSync || remoteTs > parseInt(lastSync))) newCount++;
-      }
-    }
-    if (newCount > 0) {
-      // Always bump last_sync so cancelled prompts don't re-fire every 2 min
-      localStorage.setItem('hbr_last_sync', String(Date.now()));
-      if (confirm(`云端有 ${newCount} 类新记录，是否更新？`)) {
-        await pullAll();
-        window.location.reload();
-      }
+    const changed = await checkCloudChanges();
+    if (!changed.length) return;
+    const names = changed.map(c => c.label).join('、');
+    if (confirm(`云端有新的${names}，是否更新？`)) {
+      await pullAll();
+      window.location.reload();
+    } else {
+      // Remember the refusal against these exact stamps so the same data does not
+      // re-prompt every two minutes; genuinely newer data still will.
+      await markCloudDeclined(changed);
     }
   };
 
@@ -136,9 +125,9 @@ function AppInner() {
     const tick = async () => {
       await checkCloud();
       // Reliability: don't depend solely on page-exit uploads — push local
-      // changes periodically, then bump last_sync so our own rows don't re-prompt
+      // changes periodically. uploadAll now sends only rows whose timestamp moved
+      // past this device's last successful push, so an idle tick is nearly free.
       await uploadAll();
-      localStorage.setItem('hbr_last_sync', String(Date.now()));
     };
     const timer = setInterval(tick, 120000);
     return () => clearInterval(timer);
@@ -195,102 +184,74 @@ function AppInner() {
           已复制到剪贴板
         </div>
         <header className="glass-header sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-3 md:px-4 py-2 md:py-3">
-          <div className="flex items-center gap-2 md:gap-4">
-            <h1 className="text-lg font-bold whitespace-nowrap" style={{ color: 'var(--app-text-primary)' }}>HBR Toolbox</h1>
-            <nav className="hidden md:flex gap-1.5">
-              {PRIMARY_TABS.map(t => (
-                <button key={t.key} onClick={() => switchPrimary(t.key)} className={`nav-tab ${primaryTab === t.key ? 'active' : ''}`}>{t.fullLabel}</button>
-              ))}
-            </nav>
-            {primaryTab === 'damage' && (
-              <div className="hidden md:flex gap-1 ml-2 border-l border-white/10 pl-3">
-                {SUB_TABS.map(t => (
-                  <button key={t.key} onClick={() => setSubTab(t.key)} className={`sub-tab text-xs ${subTab === t.key ? 'active' : ''}`}>{t.label}</button>
+          <div className="mx-auto max-w-[1200px] px-5 md:px-8">
+            <div className="flex h-14 items-center gap-6">
+              <h1 className="wordmark">HBR Toolbox</h1>
+              <nav className="hidden md:flex items-center gap-6">
+                {PRIMARY_TABS.map(t => (
+                  <button key={t.key} onClick={() => switchPrimary(t.key)} className={`nav-top ${primaryTab === t.key ? 'active' : ''}`}>{t.fullLabel}</button>
                 ))}
-              </div>
-            )}
-            {primaryTab === 'planner' && (
-              <div className="hidden md:flex gap-1 ml-2 border-l border-white/10 pl-3">
-                <button onClick={() => setPlannerSubTab('editor')} className={`sub-tab text-xs ${plannerSubTab === 'editor' ? 'active' : ''}`}>排轴编辑</button>
-                <button onClick={() => setPlannerSubTab('saved')} className={`sub-tab text-xs ${plannerSubTab === 'saved' ? 'active' : ''}`}>轴表记录</button>
-              </div>
-            )}
-            {primaryTab === 'extra' && (
-              <div className="hidden md:flex gap-1 ml-2 border-l border-white/10 pl-3">
-                <button onClick={() => setExtraSubTab('tools')} className={`sub-tab text-xs ${extraSubTab === 'tools' ? 'active' : ''}`}>额外计算</button>
-                <button onClick={() => setExtraSubTab('progress')} className={`sub-tab text-xs ${extraSubTab === 'progress' ? 'active' : ''}`}>进度记录</button>
-              </div>
-            )}
-            {primaryTab === 'white' && (
-              <div className="hidden md:flex gap-1 ml-2 border-l border-white/10 pl-3">
-                <button onClick={() => setWhiteSubTab('calc')} className={`sub-tab text-xs ${whiteSubTab === 'calc' ? 'active' : ''}`}>白值计算</button>
-                <button onClick={() => setWhiteSubTab('max')} className={`sub-tab text-xs ${whiteSubTab === 'max' ? 'active' : ''}`}>顶配计算器</button>
-              </div>
-            )}
-            <div className="flex-1" />
-            <button className="btn btn-secondary btn-sm flex items-center gap-1" onClick={() => setShowSettings(true)} title="外观设置">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 19l-1.5-4L3 8.5V7l7.5-1L12 2l1.5 4L21 7v1.5l-7.5 6.5L12 19z" />
-                <path d="M9.5 11.5l3 3" />
-                <circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
-                <path d="M2 22l2.5-7" />
-                <path d="M22 22l-4-11" />
-              </svg>
-            </button>
-            {user && (
-              <button className="btn btn-secondary btn-xs px-1.5" onClick={checkCloud} title="检查云端更新">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </nav>
+              <div className="flex-1" />
+              {user && (
+                <button className="icon-ghost" onClick={checkCloud} title="检查云端更新">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                </button>
+              )}
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <span className="hidden text-xs text-text-muted sm:inline">{(user.user_metadata?.username as string) || user.email?.replace('@hbrcalc.dev', '')}</span>
+                  <button className="nav-top" onClick={() => { localStorage.removeItem('hbr_sync_done'); syncedRef.current = false; signOut(); }}>登出</button>
+                </div>
+              ) : (
+                <button className="btn btn-primary btn-xs" onClick={() => setShowAuth(true)}>登录</button>
+              )}
+              <button className="icon-ghost" onClick={toggleTheme} title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}>
+                {theme === 'dark' ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                )}
               </button>
-            )}
-            {user ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-text-muted">{(user.user_metadata?.username as string) || user.email?.replace('@hbrcalc.dev', '')}</span>
-                <button className="btn btn-secondary btn-xs" onClick={() => { localStorage.removeItem('hbr_sync_done'); syncedRef.current = false; signOut(); }}>登出</button>
-              </div>
-            ) : (
-              <button className="btn btn-accent btn-xs" onClick={() => setShowAuth(true)}>登录</button>
-            )}
-            <button
-              className="btn btn-secondary btn-sm flex items-center gap-1.5"
-              onClick={toggleTheme}
-              title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
-            >
-              {theme === 'dark' ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              )}
-              {theme === 'dark' ? '' : ''}
-            </button>
-          </div>
-          {/* Mobile sub-tabs: horizontal scroll row */}
-          {(primaryTab === 'damage' || primaryTab === 'planner' || primaryTab === 'extra' || primaryTab === 'white') && (
-            <div className="md:hidden flex gap-1 mt-1 overflow-x-auto whitespace-nowrap -mx-1 px-1">
-              {primaryTab === 'damage' ? SUB_TABS.map(t => (
-                <button key={t.key} onClick={() => setSubTab(t.key)} className={`sub-tab text-xs ${subTab === t.key ? 'active' : ''}`}>{t.label}</button>
-              )) : primaryTab === 'planner' ? (
-                <>
-                  <button onClick={() => setPlannerSubTab('editor')} className={`sub-tab text-xs ${plannerSubTab === 'editor' ? 'active' : ''}`}>排轴编辑</button>
-                  <button onClick={() => setPlannerSubTab('saved')} className={`sub-tab text-xs ${plannerSubTab === 'saved' ? 'active' : ''}`}>轴表记录</button>
-                </>
-              ) : primaryTab === 'extra' ? (
-                <>
-                  <button onClick={() => setExtraSubTab('tools')} className={`sub-tab text-xs ${extraSubTab === 'tools' ? 'active' : ''}`}>功能</button>
-                  <button onClick={() => setExtraSubTab('progress')} className={`sub-tab text-xs ${extraSubTab === 'progress' ? 'active' : ''}`}>进度记录</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => setWhiteSubTab('calc')} className={`sub-tab text-xs ${whiteSubTab === 'calc' ? 'active' : ''}`}>白值计算</button>
-                  <button onClick={() => setWhiteSubTab('max')} className={`sub-tab text-xs ${whiteSubTab === 'max' ? 'active' : ''}`}>顶配计算器</button>
-                </>
-              )}
+              <button className="icon-ghost" onClick={() => setShowSettings(true)} title="外观设置">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 19l-1.5-4L3 8.5V7l7.5-1L12 2l1.5 4L21 7v1.5l-7.5 6.5L12 19z" />
+                  <path d="M9.5 11.5l3 3" />
+                  <circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
+                  <path d="M2 22l2.5-7" />
+                  <path d="M22 22l-4-11" />
+                </svg>
+              </button>
             </div>
-          )}
+            {/* One page-level tab strip for every breakpoint. These used to be
+                wedged beside the wordmark behind a `hidden md:flex`, with a
+                second copy in a `md:hidden` row — two sets of the same tabs. */}
+            {(primaryTab === 'damage' || primaryTab === 'planner' || primaryTab === 'extra' || primaryTab === 'white') && (
+              <div className="tabs">
+                {primaryTab === 'damage' ? SUB_TABS.map(t => (
+                  <button key={t.key} onClick={() => setSubTab(t.key)} className={`nav-link ${subTab === t.key ? 'active' : ''}`}>{t.label}</button>
+                )) : primaryTab === 'planner' ? (
+                  <>
+                    <button onClick={() => setPlannerSubTab('editor')} className={`nav-link ${plannerSubTab === 'editor' ? 'active' : ''}`}>排轴编辑</button>
+                    <button onClick={() => setPlannerSubTab('saved')} className={`nav-link ${plannerSubTab === 'saved' ? 'active' : ''}`}>轴表记录</button>
+                  </>
+                ) : primaryTab === 'extra' ? (
+                  <>
+                    <button onClick={() => setExtraSubTab('tools')} className={`nav-link ${extraSubTab === 'tools' ? 'active' : ''}`}>额外计算</button>
+                    <button onClick={() => setExtraSubTab('progress')} className={`nav-link ${extraSubTab === 'progress' ? 'active' : ''}`}>进度记录</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => setWhiteSubTab('calc')} className={`nav-link ${whiteSubTab === 'calc' ? 'active' : ''}`}>白值计算</button>
+                    <button onClick={() => setWhiteSubTab('max')} className={`nav-link ${whiteSubTab === 'max' ? 'active' : ''}`}>顶配计算器</button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </header>
 
-        <main ref={mainRef} className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 pb-24 md:pb-6">
+        <main ref={mainRef} className="mx-auto max-w-[1200px] px-5 md:px-8 py-7 md:py-11 pb-28 md:pb-16">
           {/* Use display:none to preserve component state */}
           <div style={{ display: primaryTab === 'damage' && subTab === 'calculator' ? 'block' : 'none' }}>
             <DamageCalculator initialData={historyToLoad} />
@@ -320,7 +281,10 @@ function AppInner() {
         </main>
 
         {/* Left side floating icons */}
-        <div className="fixed left-2 bottom-1/3 flex flex-col gap-2 z-40">
+        {/* Desktop-only rails: on a phone these 38px/50px fixed strips sit on top
+            of the content (they covered form controls and a table column), since
+            there is no side margin to fall into below the md breakpoint. */}
+        <div className="hidden md:flex fixed left-2 bottom-1/3 flex-col gap-2 z-40">
           <a href="https://github.com/RoyWu0922/hbr_calc_web" target="_blank" rel="noopener noreferrer"
             className="bg-bg-card border border-white/10 rounded-lg p-2 text-text-muted hover:text-text-primary hover:border-white/20 transition-all shadow-lg" title="GitHub">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>

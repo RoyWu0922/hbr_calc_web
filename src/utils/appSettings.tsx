@@ -4,7 +4,9 @@ export interface AppSettings {
   accentColor: string;   // hex e.g. "#5b9bd5"
   bgImage: string;       // data URI or URL, empty = none
   bgOpacity: number;     // 0.1 – 1.0
-  cardOpacity: number;   // 0.3 – 1.0
+  cardOpacity: number;   // 0.3 – 1.0 — card and input fills
+  moduleOpacity: number; // 0 – 1 — default surface presence for every module
+  moduleOpacityOverrides: Record<string, number>; // per-module override, keyed by module id
   cursorStyle: string;   // '' = dot+ring, 'native', else pack slug e.g. 'yuni'
   ringSize: number;      // cursor ring diameter in px (dot mode)
   fontText: string;      // font-family for body text
@@ -12,10 +14,18 @@ export interface AppSettings {
 }
 
 const DEFAULTS: AppSettings = {
-  accentColor: '#5b9bd5',
+  // Deep crimson (HBR's own colour family) rather than the default #5b9bd5 blue
+  // every generated dashboard ships with. Must stay in sync with the
+  // --color-accent-r/g/b fallback in index.css: this one is applied as an inline
+  // style on <html>, so it wins over :root.
+  accentColor: '#c9455a',
   bgImage: '',
   bgOpacity: 0.3,
   cardOpacity: 1,
+  // 0 = modules are flat, which is the shipped typographic layout. Raise this, or
+  // override one module with setModuleOpacityFor, to bring panel surfaces back.
+  moduleOpacity: 0,
+  moduleOpacityOverrides: {},
   cursorStyle: '',
   ringSize: 28,
   fontText: 'Inter',
@@ -34,6 +44,8 @@ function load(): AppSettings {
         bgImage: parsed.bgImage || '',
         bgOpacity: typeof parsed.bgOpacity === 'number' ? parsed.bgOpacity : DEFAULTS.bgOpacity,
         cardOpacity: typeof parsed.cardOpacity === 'number' ? parsed.cardOpacity : DEFAULTS.cardOpacity,
+        moduleOpacity: typeof parsed.moduleOpacity === 'number' ? parsed.moduleOpacity : DEFAULTS.moduleOpacity,
+        moduleOpacityOverrides: (parsed.moduleOpacityOverrides && typeof parsed.moduleOpacityOverrides === 'object' && !Array.isArray(parsed.moduleOpacityOverrides)) ? parsed.moduleOpacityOverrides : {},
         cursorStyle: typeof parsed.cursorStyle === 'string' ? parsed.cursorStyle : DEFAULTS.cursorStyle,
         ringSize: typeof parsed.ringSize === 'number' ? parsed.ringSize : DEFAULTS.ringSize,
         fontText: typeof parsed.fontText === 'string' ? parsed.fontText : DEFAULTS.fontText,
@@ -123,6 +135,9 @@ interface SettingsCtx {
   setBackground: (image: string, opacity: number) => void;
   clearBackground: () => void;
   setCardOpacity: (v: number) => void;
+  setModuleOpacity: (v: number) => void;
+  /** null clears the override so that module follows the global default again. */
+  setModuleOpacityFor: (id: string, v: number | null) => void;
   setCursorStyle: (slug: string) => void;
   setRingSize: (px: number) => void;
   setFont: (kind: 'text' | 'num', preset: string) => void;
@@ -134,6 +149,8 @@ const SettingsContext = createContext<SettingsCtx>({
   setBackground: () => {},
   clearBackground: () => {},
   setCardOpacity: () => {},
+  setModuleOpacity: () => {},
+  setModuleOpacityFor: () => {},
   setCursorStyle: () => {},
   setRingSize: () => {},
   setFont: () => {},
@@ -150,6 +167,12 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.style.setProperty('--card-opacity', String(settings.cardOpacity));
   }, [settings.cardOpacity]);
+
+  // Default surface presence for every module; a per-module override (applied
+  // inline by CollapsibleSection) wins over this.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--module-opacity', String(settings.moduleOpacity));
+  }, [settings.moduleOpacity]);
 
   // Apply fonts
   useEffect(() => {
@@ -216,6 +239,25 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const setModuleOpacity = (moduleOpacity: number) => {
+    setSettings(prev => {
+      const next = { ...prev, moduleOpacity };
+      save(next);
+      return next;
+    });
+  };
+
+  const setModuleOpacityFor = (id: string, v: number | null) => {
+    setSettings(prev => {
+      const overrides = { ...prev.moduleOpacityOverrides };
+      if (v === null) delete overrides[id];
+      else overrides[id] = v;
+      const next = { ...prev, moduleOpacityOverrides: overrides };
+      save(next);
+      return next;
+    });
+  };
+
   const setCursorStyle = (cursorStyle: string) => {
     setSettings(prev => {
       const next = { ...prev, cursorStyle };
@@ -241,7 +283,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <SettingsContext.Provider value={{ settings, setAccent, setBackground, clearBackground, setCardOpacity, setCursorStyle, setRingSize, setFont }}>
+    <SettingsContext.Provider value={{ settings, setAccent, setBackground, clearBackground, setCardOpacity, setModuleOpacity, setModuleOpacityFor, setCursorStyle, setRingSize, setFont }}>
       {children}
     </SettingsContext.Provider>
   );

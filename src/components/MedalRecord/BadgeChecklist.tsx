@@ -52,7 +52,10 @@ export default function BadgeChecklist({ data, record, visibleChars, setCat, rem
 
   return (
     <>
-      <div className="grid gap-3 grid-cols-3">
+      {/* One column on phones: at 390px a 3-up grid gave each card ~112px while
+          its content (rank arc + name + progress) needs ~143px, so every label
+          wrapped to one character per line and the page scrolled sideways. */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {visibleChars.map(ch => (
           <CharCard key={ch.id} data={data} record={record} ch={ch}
             setCat={setCat} removeCharacter={removeCharacter}

@@ -62,7 +62,7 @@ export default function FloatingBiasCalc() {
   if (minimized) {
     return (
       <div
-        className="fixed right-0 top-1/3 bg-bg-card border border-white/10 rounded-l-lg px-2 py-3 shadow-xl cursor-pointer z-50"
+        className="hidden md:block fixed right-0 top-1/3 bg-bg-card border border-white/10 rounded-l-lg px-2 py-3 shadow-xl cursor-pointer z-50"
         style={{ writingMode: 'vertical-rl' }}
         onClick={() => setMinimized(false)}
       >
@@ -75,7 +75,7 @@ export default function FloatingBiasCalc() {
 
   return (
     <div
-      className="fixed bg-bg-card border border-white/10 rounded-xl shadow-2xl z-50"
+      className="hidden md:block fixed bg-bg-card border border-white/10 rounded-xl shadow-2xl z-50"
       style={{ left: pos.x, top: pos.y, width: 48 + N * colW + 4, maxHeight: '90vh', overflow: 'auto' }}
     >
       {/* Title bar (draggable) */}
