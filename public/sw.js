@@ -1,12 +1,26 @@
 /* HBR Toolbox Service Worker — offline cache */
-const CACHE = 'hbr-toolbox-v3';
+const CACHE = 'hbr-toolbox-v4';
 const SCOPE = self.registration.scope; // ends with '/', base-agnostic
 const INDEX = SCOPE;
+
+// Precached on install: the shell plus the icons/manifest. The icons matter because
+// the tab icon is fetched by the browser itself, outside any app code — when the
+// CacheFirst rule below misses, the tab is left blank while the app still renders
+// from cache.
+//
+// Bumping CACHE is what forces every existing client to drop its old cache (see the
+// activate handler). This name sat at v1 on the Vercel deployment and was never
+// raised, so those clients stayed pinned to whatever they cached first, while the
+// other deployment went v1 -> v2 -> v3 and therefore re-fetched everything.
+const PRECACHE = [INDEX, 'icon-192.png', 'icon-512.png', 'manifest.json'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.add(INDEX))
+      // Tolerant precache: one missing file must not fail the whole install, since a
+      // failed install leaves the previous worker in charge indefinitely. (Some
+      // branches ship without manifest.json or the PNG icons.)
+      .then(c => Promise.all(PRECACHE.map(u => c.add(u).catch(() => {}))))
       .then(() => self.skipWaiting())
   );
 });
