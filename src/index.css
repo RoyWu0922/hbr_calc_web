@@ -747,10 +747,8 @@ input[type="checkbox"]:checked::after {
   width: 100% !important;
   table-layout: fixed;
 }
-/* alternating row class for simple-timeline */
-.simple-timeline tr.alt-row td {
-  background: var(--planner-row-hover);
-}
+/* (The simple timeline's alternating `alt-row` stripe was removed along with the
+   detail table's — see the note below.) */
 
 /* spacer row — no gridlines */
 .planner-spacer td {
@@ -779,10 +777,23 @@ input[type="checkbox"]:checked::after {
   background: rgba(139, 92, 246, 0.04);
 }
 
-/* alternating turn pairs in detail table (skip entry/spacer/labels, then every 4 rows) */
-.planner-table:not(.simple-timeline) tbody tr:nth-child(n+4):nth-child(4n) td,
-.planner-table:not(.simple-timeline) tbody tr:nth-child(n+4):nth-child(4n+1) td {
-  background: var(--planner-row-hover);
+/* ─── No alternating row shading, and no opaque cells ─────────────────────────
+   Turn pairs used to be striped: every other pair got the translucent
+   --planner-row-hover while the rest kept the plain panel colour. Whenever the
+   panel is see-through — a background image behind the app, i.e. 组件透明度 below
+   100% — a striped row (image showing through, so it reads light) sitting beside an
+   unstyled one read as an alternating near-black band in dark mode. The stripes are
+   gone; every row paints the same way.
+
+   The other half of that bug was the sticky turn/label cells: they carried the
+   OPAQUE --app-bg-card, which made them the only solid thing in an otherwise
+   translucent table, so they stood out as a black column. They now use the panel's
+   own colour at the panel's own opacity, so they match their surroundings — still
+   fully opaque at the default 组件透明度 = 100%. */
+.planner-table thead th.bg-bg-card { background: var(--planner-header-bg); }
+.planner-table tbody td.bg-bg-card {
+  background: var(--app-component-bg);
+  background: color-mix(in srgb, var(--app-component-bg) calc(var(--card-opacity, 1) * 100%), transparent);
 }
 
 /* row hover */
