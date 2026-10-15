@@ -161,7 +161,13 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   }, [settings.accentColor]);
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--card-opacity', String(settings.cardOpacity));
+    const root = document.documentElement;
+    root.style.setProperty('--card-opacity', String(settings.cardOpacity));
+    // A frozen column has to paint its own layer to hide the cells that scroll beneath
+    // it, and on a see-through panel no layer can match the panel's colour — it would
+    // stack a second one and read too dark. Flag the mode so the planner can stop
+    // freezing that column instead of painting a mismatched strip (see index.css).
+    root.dataset.translucent = settings.cardOpacity < 1 ? 'true' : 'false';
   }, [settings.cardOpacity]);
 
   // Apply fonts

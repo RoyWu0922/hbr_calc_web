@@ -777,7 +777,7 @@ input[type="checkbox"]:checked::after {
   background: rgba(139, 92, 246, 0.04);
 }
 
-/* ─── No alternating row shading, and no opaque cells ─────────────────────────
+/* ─── No alternating row shading, and no extra layer on the frozen column ──────
    Turn pairs used to be striped: every other pair got the translucent
    --planner-row-hover while the rest kept the plain panel colour. Whenever the
    panel is see-through — a background image behind the app, i.e. 组件透明度 below
@@ -785,16 +785,19 @@ input[type="checkbox"]:checked::after {
    unstyled one read as an alternating near-black band in dark mode. The stripes are
    gone; every row paints the same way.
 
-   The other half of that bug was the sticky turn/label cells: they carried the
-   OPAQUE --app-bg-card, which made them the only solid thing in an otherwise
-   translucent table, so they stood out as a black column. They now use the panel's
-   own colour at the panel's own opacity, so they match their surroundings — still
-   fully opaque at the default 组件透明度 = 100%. */
+   The sticky turn/# cells are the other half. They must paint SOMETHING, or the
+   cells that scroll sideways show through them. Painting the panel's own colour is
+   exact while the panel is opaque, so that is the default. Once the panel is
+   see-through no opaque colour matches it (the artwork behind varies) and adding the
+   panel a second time reads one shade too dark — so in that mode the column stops
+   freezing instead: there is nothing left to hide, and it paints nothing. Either
+   way the cell's colour is the panel's, never a second layer. */
 .planner-table thead th.bg-bg-card { background: var(--planner-header-bg); }
-.planner-table tbody td.bg-bg-card {
-  background: var(--app-component-bg);
-  background: color-mix(in srgb, var(--app-component-bg) calc(var(--card-opacity, 1) * 100%), transparent);
-}
+.planner-table tbody td.bg-bg-card { background: var(--app-component-bg); }
+
+html[data-translucent='true'] .planner-table tbody td.bg-bg-card { background: transparent; }
+html[data-translucent='true'] .planner-table tbody td.bg-bg-card,
+html[data-translucent='true'] .planner-table thead th.bg-bg-card { position: static; }
 
 /* row hover */
 .planner-table tbody tr:hover td {
