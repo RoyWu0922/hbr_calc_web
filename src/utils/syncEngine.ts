@@ -20,6 +20,10 @@ function uuid() { return crypto.randomUUID(); }
 // without refreshing the mark, made the cloud look permanently one step newer
 // than "my last sync" — so the dialog kept firing while nothing new existed.
 // Comparing cloud-observed values against cloud-observed values cannot drift.
+//
+// Watermarks alone are still not enough, because THIS device's own uploads move the
+// cloud's newest stamp too. Where the data has an identity, compare identity as well
+// — see cloudNeedsMerge() below.
 type StampKind = 'up' | 'down' | 'decl';
 
 function stampKey(kind: StampKind, userId: string, table: string) {
@@ -410,18 +414,66 @@ export async function fullSync() {
 }
 
 // ─── "Is there anything new in the cloud?" ─────────────────────────────────
-// Cloud-observed vs cloud-observed (see the watermark note at the top). The
-// returned stamps let the caller remember a DECLINED offer so the same data does
-// not re-prompt every two minutes.
+// Answer it as "would a pull actually change anything on this device?", which is the
+// only question the user cares about. Cloud-observed vs cloud-observed watermarks
+// (see the note at the top) stop CLOCK drift, but not this device's OWN data: the
+// page-leave uploads (visibilitychange / beforeunload) are cut off when the page goes
+// away, so the server can have the row while the response — and therefore the "up"
+// watermark — never comes back. The cloud's newest stamp then stays ahead of ours for
+// good and the dialog fires every two minutes about a record already sitting here.
+// Reproduced live: four local edits, four prompts, every one of them the device's own
+// planner_axles row.
+//
+// So compare identity wherever identity exists. A per-record table is only "new" when
+// it holds a uuid this device has never stored (or a newer stamp for one it has);
+// single-row-per-user tables compare the cloud's stamp against the local store's own,
+// which is the same test syncMedalRecords / syncCustomSkills use to choose a pull.
 export interface CloudChange { table: string; label: string; ts: number }
 
-const CHECK_TABLES: { table: string; label: string; col: string }[] = [
-  { table: 'calc_history', label: '伤害历史', col: 'timestamp' },
-  { table: 'planner_axles', label: '轴表记录', col: 'timestamp' },
-  { table: 'white_stats', label: '白值历史', col: 'timestamp' },
-  { table: 'medal_records', label: '进度记录', col: 'updated_at' },
-  { table: 'custom_skills', label: '技能库', col: 'updated_at' },
+const CHECK_TABLES: {
+  table: string;
+  label: string;
+  col: string;
+  /** Per-record tables also live locally, so identity can be compared. */
+  local?: { dbName: string; storeName: string };
+  /** Single-row-per-user tables carry their own stamp in local storage. */
+  localStamp?: () => number;
+}[] = [
+  { table: 'calc_history', label: '伤害历史', col: 'timestamp', local: { dbName: 'hbr-calc-db', storeName: 'history' } },
+  { table: 'planner_axles', label: '轴表记录', col: 'timestamp', local: { dbName: 'hbr-calc-db', storeName: 'planner_saves' } },
+  { table: 'white_stats', label: '白值历史', col: 'timestamp', local: { dbName: 'hbr-white-stats', storeName: 'history' } },
+  { table: 'medal_records', label: '进度记录', col: 'updated_at', localStamp: () => readMedalStore()?.updatedAt || 0 },
+  { table: 'custom_skills', label: '技能库', col: 'updated_at', localStamp: () => parseInt(localStorage.getItem('hbr_skills_ts') || '0', 10) || 0 },
 ];
+
+/** How many of the cloud's newest rows this device does not already hold. */
+async function unmergedCloudRecords(
+  table: string, col: string, userId: string, known: number,
+  local: { dbName: string; storeName: string },
+): Promise<{ newest: number; unmerged: number } | null> {
+  // Newest first and bounded: anything at or below the watermark has been merged
+  // already, so only the head of the list can hold something new.
+  const { data } = await supabase.from(table)
+    .select('uuid,' + col + ',deleted').eq('user_id', userId).order(col, { ascending: false }).limit(200);
+  // Dynamic column list, so the library's row type cannot be expressed here.
+  const rows = (data || []) as unknown as Record<string, unknown>[];
+  if (!rows.length) return null;
+  const newest = rows.reduce((m, r) => Math.max(m, Number(r[col]) || 0), 0);
+  if (!newest || newest <= known) return { newest, unmerged: 0 };
+  const db = await openDB(local.dbName, local.dbName === 'hbr-white-stats' ? 1 : 5).catch(() => null);
+  const mine: any[] = db ? await db.getAll(local.storeName).catch(() => [] as any[]) : [];
+  const byUuid = new Map(mine.map((e) => [e.uuid, e]));
+  let unmerged = 0;
+  for (const row of rows) {
+    const ts = Number(row[col]) || 0;
+    if (ts <= known) break; // ordered desc — the rest are already seen
+    const existing: any = byUuid.get(row.uuid as string);
+    if (!existing) { if (!row.deleted) unmerged++; continue; }
+    if (row.deleted) { if (!existing.deleted) unmerged++; continue; }
+    if (ts > Number(existing[col] || 0)) unmerged++;
+  }
+  return { newest, unmerged };
+}
 
 export async function checkCloudChanges(): Promise<CloudChange[]> {
   const out: CloudChange[] = [];
@@ -429,13 +481,23 @@ export async function checkCloudChanges(): Promise<CloudChange[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return out;
     for (const t of CHECK_TABLES) {
-      const { data } = await supabase.from(t.table).select(t.col).eq('user_id', user.id).order(t.col, { ascending: false }).limit(1);
-      if (!data?.length) continue;
-      // Dynamic column name, so the library's row type cannot be expressed here.
-      const ts = Number((data[0] as unknown as Record<string, unknown>)[t.col]) || 0;
-      if (!ts) continue;
       const known = Math.max(readStamp('down', user.id, t.table), readStamp('decl', user.id, t.table));
-      if (ts > known) out.push({ table: t.table, label: t.label, ts });
+      if (t.local) {
+        const r = await unmergedCloudRecords(t.table, t.col, user.id, known, t.local);
+        if (!r) continue;
+        // Nothing unmerged → declare the cloud's timeline seen and stay quiet. This is
+        // what keeps an edit-then-upload cycle from re-prompting about our own record.
+        if (r.unmerged > 0) out.push({ table: t.table, label: t.label, ts: r.newest });
+        else writeStamp('down', user.id, t.table, r.newest);
+        continue;
+      }
+      // Dynamic column name, so the library's row type cannot be expressed here.
+      const { data } = await supabase.from(t.table).select(t.col).eq('user_id', user.id).order(t.col, { ascending: false }).limit(1);
+      const ts = Number((data?.[0] as unknown as Record<string, unknown> | undefined)?.[t.col]) || 0;
+      if (!ts || ts <= known) continue;
+      const localTs = t.localStamp ? t.localStamp() : 0;
+      if (ts > localTs) out.push({ table: t.table, label: t.label, ts });
+      else writeStamp('down', user.id, t.table, ts);
     }
   } catch (e) { console.error('checkCloudChanges failed:', e); }
   return out;
