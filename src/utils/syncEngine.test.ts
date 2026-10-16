@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   rows: {} as Record<string, unknown[]>,
+  localStores: {} as Record<string, unknown[]>,
   uid: 'user-1',
 }));
 
@@ -30,7 +31,12 @@ vi.mock('./supabase', () => ({
     },
   },
 }));
-vi.mock('idb', () => ({ openDB: vi.fn() }));
+vi.mock('idb', () => ({
+  openDB: async () => ({
+    getAll: async (store: string) => h.localStores[store] ?? [],
+    transaction: () => ({ store: { add: async () => {}, put: async () => {}, count: async () => 0 }, done: Promise.resolve() }),
+  }),
+}));
 vi.mock('./medalStorage', () => ({
   MEDAL_CUSTOM_KEY: 'hbr_medal_custom_chars',
   readMedalStore: () => null,
@@ -43,6 +49,7 @@ const mem = new Map<string, string>();
 beforeEach(() => {
   mem.clear();
   for (const k of Object.keys(h.rows)) delete h.rows[k];
+  for (const k of Object.keys(h.localStores)) delete h.localStores[k];
   vi.stubGlobal('localStorage', {
     getItem: (k: string) => mem.get(k) ?? null,
     setItem: (k: string, v: string) => { mem.set(k, String(v)); },
@@ -112,5 +119,54 @@ describe('checkCloudChanges', () => {
 
   it('ignores tables with no cloud rows at all', async () => {
     expect(await checkCloudChanges()).toEqual([]);
+  });
+});
+
+describe('identity beats timestamps (the recurring false prompt)', () => {
+  it("stays quiet when the newest cloud row is this device's own record", async () => {
+    // Reproduced against a live local-db backend: the page-leave upload lands on the
+    // server while the page is going away, so the response — and the "up" watermark —
+    // never arrive. The cloud's newest stamp then sits ahead of ours permanently, and
+    // the old check reported it every two minutes even though the record was here.
+    h.localStores['planner_saves'] = [{ uuid: 'u1', timestamp: 5_000 }];
+    Object.assign(h.rows, { planner_axles: [{ uuid: 'u1', timestamp: 5_000, deleted: 0 }] });
+
+    expect(await checkCloudChanges()).toEqual([]);
+    // and it must stay quiet on the following ticks, not just the first
+    expect(await checkCloudChanges()).toEqual([]);
+    expect(await checkCloudChanges()).toEqual([]);
+  });
+
+  it('reports a cloud row this device has never stored', async () => {
+    h.localStores['planner_saves'] = [{ uuid: 'u1', timestamp: 1_000 }];
+    Object.assign(h.rows, {
+      planner_axles: [
+        { uuid: 'u2', timestamp: 2_000, deleted: 0 },
+        { uuid: 'u1', timestamp: 1_000, deleted: 0 },
+      ],
+    });
+    const changes = await checkCloudChanges();
+    expect(changes.map(c => c.table)).toEqual(['planner_axles']);
+  });
+
+  it('reports a cloud row that is genuinely newer for a record we do hold', async () => {
+    h.localStores['planner_saves'] = [{ uuid: 'u1', timestamp: 1_000 }];
+    Object.assign(h.rows, { planner_axles: [{ uuid: 'u1', timestamp: 3_000, deleted: 0 }] });
+    expect((await checkCloudChanges()).map(c => c.table)).toEqual(['planner_axles']);
+  });
+
+  it('ignores a tombstone for a record this device already deleted', async () => {
+    h.localStores['planner_saves'] = [{ uuid: 'u1', timestamp: 1_000, deleted: true }];
+    Object.assign(h.rows, { planner_axles: [{ uuid: 'u1', timestamp: 2_000, deleted: 1 }] });
+    expect(await checkCloudChanges()).toEqual([]);
+  });
+
+  it('compares a single-row table against the local store, not a watermark', async () => {
+    mem.set('hbr_skills_ts', '5000');
+    Object.assign(h.rows, { custom_skills: [{ updated_at: 4_000 }] });
+    expect(await checkCloudChanges()).toEqual([]);
+
+    Object.assign(h.rows, { custom_skills: [{ updated_at: 6_000 }] });
+    expect((await checkCloudChanges()).map(c => c.table)).toEqual(['custom_skills']);
   });
 });
