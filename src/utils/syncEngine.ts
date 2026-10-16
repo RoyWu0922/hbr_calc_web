@@ -455,7 +455,8 @@ async function unmergedCloudRecords(
   // already, so only the head of the list can hold something new.
   const { data } = await supabase.from(table)
     .select('uuid,' + col + ',deleted').eq('user_id', userId).order(col, { ascending: false }).limit(200);
-  const rows = (data || []) as Record<string, unknown>[];
+  // Dynamic column list, so the library's row type cannot be expressed here.
+  const rows = (data || []) as unknown as Record<string, unknown>[];
   if (!rows.length) return null;
   const newest = rows.reduce((m, r) => Math.max(m, Number(r[col]) || 0), 0);
   if (!newest || newest <= known) return { newest, unmerged: 0 };
