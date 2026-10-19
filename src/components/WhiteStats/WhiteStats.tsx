@@ -18,7 +18,7 @@ export default function WhiteStats() {
   const [missingSpr, setMissingSpr] = useState(0);
   const [missingPowerDex, setMissingPowerDex] = useState(0);
   const [baseFix, setBaseFix] = useState({ pow: 0, dex: 0, tough: 0, spr: 0, wis: 0, luck: 0 });
-  const [equipPreset, setEquipPreset] = useState('[对HP+]最优配装');
+  const [equipPreset, setEquipPreset] = useState('[对HP+]/力量依存最优配装（力量恒星吊饰）');
   const [weaponLevel, setWeaponLevel] = useState(5);
   const [scoreBuff, setScoreBuff] = useState(0);
   const [necklaceLuck, setNecklaceLuck] = useState(0);
@@ -82,6 +82,9 @@ export default function WhiteStats() {
   };
 
   const char = CHAR_GROWTH.find(c => c.shortId === shortId);
+  // Same rule the engine uses (engine/whiteStats.ts): 裸装 means no gear at all, so
+  // 专武 and the necklace bonus are both skipped.
+  const isNaked = equipPreset === '裸装' || !equipPreset;
 
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -172,8 +175,8 @@ export default function WhiteStats() {
                 <span className="text-text-muted group-hover:text-text-secondary text-[10px]"
                   style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', border: '1px solid var(--app-checkbox-border)', fontWeight: 700, cursor: 'help' }}>?</span>
                 <div className="absolute z-30 bottom-full mb-1 left-1/2 -translate-x-1/2 bg-bg-card border border-white/10 rounded-lg p-2 shadow-xl whitespace-pre-line text-[10px] hidden group-hover:block" style={{ minWidth: 240, color: 'var(--app-text-secondary)' }}>
-                  除「对DP+最优配装」外，戒指默认为力量偏向
-                  除「脆弱最优配装」及「脆弱最优，但红晶片用完了」外，戒指额外词条默认为智力
+                  除「对DP+…」那套外，戒指默认为力量偏向
+                  除「脆弱最优（…）」这两套外，戒指额外词条默认为智力；括号里注明用的是哪颗恒星吊饰
                 </div>
               </span>
             </div>
@@ -185,8 +188,10 @@ export default function WhiteStats() {
             </select>
           </div>
           <div>
-            <div className="input-label">灵魂(专武)+值</div>
-            <select className="input-field text-sm" value={weaponLevel}
+            {/* 裸装时引擎会跳过专武加成（isNaked ? 0 : weaponBonus），所以这个档位
+                必须一起禁用，否则用户能选 +5 却拿不到任何加成。 */}
+            <div className="input-label">灵魂(专武)+值{isNaked && <span className="text-text-muted">（裸装时不计）</span>}</div>
+            <select className="input-field text-sm" value={weaponLevel} disabled={isNaked}
               onChange={e => setWeaponLevel(parseInt(e.target.value))}>
               {Object.entries(WEAPON_BONUS).map(([k, v]) => (
                 <option key={k} value={k}>+{k} (+{v})</option>
