@@ -1,5 +1,5 @@
 import {
-  CharGrowth, Bonus6, BIAS_TYPES, BADGE_BONUS, WEAPON_BONUS,
+  CharGrowth, Bonus6, BIAS_TYPES, BADGE_BONUS, WEAPON_BONUS, LEGACY_EQUIP_NAMES,
   CHAR_GROWTH, AS_BONUSES, SS_BONUSES, EQUIP_PRESETS,
 } from './whiteStatsData';
 
@@ -38,7 +38,7 @@ export const DEFAULT_INPUT: WhiteStatsInput = {
   missingSpr: 0,
   missingPowerDex: 0,
   baseFix: { pow: 0, dex: 0, tough: 0, spr: 0, wis: 0, luck: 0 },
-  equipPreset: '[对HP+]最优配装',
+  equipPreset: '[对HP+]/力量依存最优配装（力量恒星吊饰）',
   weaponLevel: 5,
   resonance: 0,
   support: { pow: 0, dex: 0, tough: 0, spr: 0, wis: 0, luck: 0 },
@@ -79,7 +79,7 @@ export function calcWhiteStats(input: WhiteStatsInput): WhiteStatsOutput {
   const weaponBonus = WEAPON_BONUS[input.weaponLevel] || 0;
 
   // Equipment preset
-  const equip = EQUIP_PRESETS.find(p => p.name === input.equipPreset);
+  const equip = EQUIP_PRESETS.find(p => p.name === (LEGACY_EQUIP_NAMES[input.equipPreset] ?? input.equipPreset));
   const equipBonus = equip || ZERO_BONUS;
   const isNaked = input.equipPreset === '裸装' || !input.equipPreset;
 

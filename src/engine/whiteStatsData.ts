@@ -395,18 +395,42 @@ export interface EquipPreset {
   name: string;
   pow: number; dex: number; tough: number; spr: number; wis: number; luck: number;
 }
+
+/**
+ * Presets were renamed when the V2.3 sheet re-did them for the new 恒星吊饰, but saved
+ * history / saved defaults keep the old name string. Map it on read so an old record
+ * still resolves to the preset it meant instead of silently falling back to no gear.
+ */
+export const LEGACY_EQUIP_NAMES: Record<string, string> = {
+  '减防最优配装': '减防最优（红晶片、智力恒星吊饰）',
+  '脆弱最优配装': '脆弱最优（红晶片、智力恒星吊饰）',
+  '[对HP+]最优配装': '[对HP+]/力量依存最优配装（力量恒星吊饰）',
+  '[对DP+]最优配装': '[对DP+]最优配装（力量恒星吊饰）',
+  '无偏向攻击最优配装': '无偏向攻击最优配装（力量恒星吊饰）',
+  '智力依存最优配装': '智力依存最优配装（红晶片、智力恒星吊饰）',
+  '体力依存最优配装': '体力依存最优配装（体力恒星吊饰）',
+  '精神max最优配装': '精神max最优配装（无恒星吊饰）',
+  '减防最优，但红晶片用完了': '减防最优（无红晶片、恒星吊饰）',
+  '脆弱最优，但红晶片用完了': '脆弱最优（无红晶片、恒星吊饰）',
+  '运气依存,蓝智力晶片': '运气依存（无红智力晶片、智力恒星吊饰）',
+  '运气依存,红智力晶片': '运气依存（红智力晶片、智力恒星吊饰）',
+};
 export const EQUIP_PRESETS: EquipPreset[] = [
+  // 不含专武：专武 +5 由 WEAPON_BONUS[weaponLevel] 单独计入（见 engine/whiteStats.ts）。
+  // 数值 = 顶配计算器那份（含专武）减 25，由 scripts/gen-equip-presets.mjs 从同一张表生成。
   { name: "裸装", pow: 0, dex: 0, tough: 0, spr: 0, wis: 0, luck: 0 },
-  { name: "减防最优配装", pow: 109, dex: 96, tough: 99, spr: 99, wis: 207, luck: 102 },
-  { name: "脆弱最优配装", pow: 109, dex: 96, tough: 99, spr: 99, wis: 152, luck: 157 },
-  { name: "[对HP+]最优配装", pow: 202, dex: 97, tough: 100, spr: 100, wis: 113, luck: 103 },
-  { name: "[对DP+]最优配装", pow: 97, dex: 202, tough: 100, spr: 100, wis: 113, luck: 103 },
-  { name: "无偏向攻击最优配装", pow: 186, dex: 117, tough: 100, spr: 100, wis: 103, luck: 103 },
-  { name: "智力依存最优配装", pow: 109, dex: 96, tough: 99, spr: 99, wis: 207, luck: 102 },
-  { name: "体力依存最优配装", pow: 110, dex: 97, tough: 193, spr: 111, wis: 103, luck: 103 },
-  { name: "精神max最优配装", pow: 110, dex: 97, tough: 126, spr: 181, wis: 103, luck: 103 },
-  { name: "减防最优，但红晶片用完了", pow: 109, dex: 96, tough: 99, spr: 99, wis: 199, luck: 102 },
-  { name: "脆弱最优，但红晶片用完了", pow: 109, dex: 96, tough: 99, spr: 99, wis: 144, luck: 157 },
+  { name: "减防最优（红晶片、智力恒星吊饰）", pow: 109, dex: 96, tough: 99, spr: 99, wis: 210, luck: 102 },
+  { name: "脆弱最优（红晶片、智力恒星吊饰）", pow: 109, dex: 96, tough: 99, spr: 99, wis: 155, luck: 157 },
+  { name: "[对HP+]/力量依存最优配装（力量恒星吊饰）", pow: 205, dex: 97, tough: 100, spr: 100, wis: 113, luck: 103 },
+  { name: "[对DP+]最优配装（力量恒星吊饰）", pow: 100, dex: 202, tough: 100, spr: 100, wis: 113, luck: 103 },
+  { name: "无偏向攻击最优配装（力量恒星吊饰）", pow: 189, dex: 117, tough: 100, spr: 100, wis: 103, luck: 103 },
+  { name: "智力依存最优配装（红晶片、智力恒星吊饰）", pow: 109, dex: 96, tough: 99, spr: 99, wis: 210, luck: 102 },
+  { name: "体力依存最优配装（体力恒星吊饰）", pow: 110, dex: 97, tough: 196, spr: 111, wis: 103, luck: 103 },
+  { name: "精神max最优配装（无恒星吊饰）", pow: 110, dex: 97, tough: 126, spr: 181, wis: 103, luck: 103 },
+  { name: "减防最优（无红晶片、恒星吊饰）", pow: 109, dex: 96, tough: 99, spr: 99, wis: 199, luck: 102 },
+  { name: "脆弱最优（无红晶片、恒星吊饰）", pow: 109, dex: 96, tough: 99, spr: 99, wis: 144, luck: 157 },
+  { name: "运气依存（无红智力晶片、智力恒星吊饰）", pow: 100, dex: 113, tough: 103, spr: 103, wis: 134, luck: 161 },
+  { name: "运气依存（红智力晶片、智力恒星吊饰）", pow: 100, dex: 113, tough: 103, spr: 103, wis: 145, luck: 161 },
 ];
 
 export interface BiasType {
