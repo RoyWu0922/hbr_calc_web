@@ -284,18 +284,21 @@ function calcODRow(row: ODRow, shared: ODShared) {
 
 const OD_NUM = 'bg-transparent border-0 text-center text-[10px] py-0.5 w-full';
 
-// 浮动 OD 面板的宽度，必须与下面那个 div 的 w-[320px] 一致：
+// 浮动 OD 面板的几何常量。宽度必须与下面那个 div 的 w-[320px] 一致：
 // 视口收边和拖动上限都按它算。边距留一点，右边竖排那个开关按钮才不会被盖住。
+// 高度按 panelRef 量到的实际高度收底边（内容会随行数长），量不到时退回标题栏高，
+// 至少保证那根拖动条露在屏幕里。
 const OD_PANEL_W = 320;
 const OD_PANEL_GAP = 16;
+const OD_PANEL_HEADER_H = 60;
 
 // 把面板坐标收进当前视口。面板位置是按「挂载那一刻」的窗口尺寸算的，之后窗口
 // 缩小（分屏、横竖屏切换、拖窗口）如果不重新收边，整块会停在屏幕右边外面——
-// 点开的表现就是「面板出现了但看不见」。x 留出面板真实宽度，y 至少留 60px
-// 让标题栏那根拖动条露出来。
-function clampODPos(p: { x: number; y: number }) {
+// 点开的表现就是「面板出现了但看不见」。x 留出面板真实宽度，y 保证面板整个
+// 底边也留在视口内（面板自己有 max-h-[80vh] + 滚动，超过视口时退化成只留顶部）。
+function clampODPos(p: { x: number; y: number }, panelH: number = OD_PANEL_HEADER_H) {
   const maxX = Math.max(0, window.innerWidth - OD_PANEL_W - OD_PANEL_GAP);
-  const maxY = Math.max(0, window.innerHeight - 60);
+  const maxY = Math.max(0, window.innerHeight - Math.max(panelH, OD_PANEL_HEADER_H));
   return { x: Math.min(Math.max(0, p.x), maxX), y: Math.min(Math.max(0, p.y), maxY) };
 }
 
@@ -314,25 +317,46 @@ function ODPanel() {
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
+  // 面板实测高度（含 max-h-[80vh] 截断后的）。量不到时按标题栏高估。
+  const panelH = useRef(OD_PANEL_HEADER_H);
+
+  const reclamp = () => setPos(p => clampODPos(p, panelH.current));
 
   // 视口变了就收一次边，否则缩小窗口后面板会留在原来的右边外面。
   useEffect(() => {
-    const onResize = () => setPos(p => clampODPos(p));
+    const onResize = () => setPos(p => clampODPos(p, panelH.current));
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const openPanel = () => { setPos(p => clampODPos(p)); setOpen(true); };
+  // 面板高度会随行数/展开状态变，长高之后原来贴底的坐标会把内容挤出屏幕底部。
+  // 量到新高度就按新高度再收一次边。
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!open || !el) return;
+    const ro = new ResizeObserver(() => {
+      panelH.current = el.offsetHeight;
+      setPos(p => clampODPos(p, panelH.current));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
+
+  const openPanel = () => { reclamp(); setOpen(true); };
 
   const onMouseDown = (e: React.MouseEvent) => {
     dragging.current = true;
     dragStart.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y };
     const onMove = (ev: MouseEvent) => {
       if (!dragging.current) return;
-      setPos(clampODPos({
+      const next = clampODPos({
         x: dragStart.current.px + ev.clientX - dragStart.current.x,
         y: dragStart.current.py + ev.clientY - dragStart.current.y,
-      }));
+      }, panelH.current);
+      // 每次移动都按实际落点重设拖动原点：被视口夹住后继续往回拖能立刻跟上，
+      // 中途 resize 也不会因为还按旧原点算而跳一下。
+      dragStart.current = { x: ev.clientX, y: ev.clientY, px: next.x, py: next.y };
+      setPos(next);
     };
     const onUp = () => { dragging.current = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
     document.addEventListener('mousemove', onMove);
