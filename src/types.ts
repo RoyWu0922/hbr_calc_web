@@ -192,6 +192,17 @@ export interface TurnPlannerState {
   showPursuit: boolean;       // 是否显示追击
   exScore: boolean;           // ex打分模式：OD上限500/200，额外OD4/OD5回合
   showDrag?: boolean;         // 是否显示拖拽换序手柄
+  /**
+   * 角色技能栏的手写覆盖，键是角色下标。
+   *
+   * 缺这个键（或整个字段）的角色仍走 buildCharSkills 从行动槽自动抽取；有键
+   * 就用数组原样显示 —— 包括空数组，那表示「这个角色这一栏我就要空的」，与
+   * 「没设置」是两件事，所以删键才是「恢复自动」。
+   *
+   * 放在 state 里而不是 localStorage：它是轴的内容，存盘轴、分享码、云端同步
+   * 要一起带走，不然同一张轴在别人那儿导出的是另一个技能表。
+   */
+  skillOverrides?: Record<number, string[]>;
   characters: [TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar, TurnPlannerChar];
   turns: PlannerTurn[];
 }

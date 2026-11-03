@@ -12,7 +12,8 @@ import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner
 import type { ComputedTurnResult, FrontAction, PlannerTurn, TurnPlannerState } from '../../types';
 import {
   S_BG1, S_BG2, buildCharSkills, buildChartModel, buildTeamNames, charColor, computeOdStyles, skillKeys,
-  computeRedChain3, countModifiers, fmtFloat, toSlot, type ChartModel, type ChartTurnRow,
+  computeRedChain3, countModifiers, fmtFloat, formatSkillEntries, normalizeSkillOverrides, parseSkillEntries, toSlot,
+  type ChartModel, type ChartTurnRow,
 } from './rowChartModel';
 
 // ─── Fixtures ─────────────────────────────────────────────────
@@ -657,5 +658,101 @@ describe('skillKeys', () => {
     // only a whole written occurrence goes, not the characters scattered.
     expect(skillKeys('三乡-活力声援-普加攻', ['三乡'])).toEqual(['活力声援普加攻']);
     expect(skillKeys('活力声援-普加攻', ['三乡'])).toEqual(['活力声援普加攻']);
+  });
+});
+
+describe('技能栏手写覆盖的文本解析', () => {
+  it('splits on every separator a user might type', () => {
+    expect(parseSkillEntries('破竹之势·慈悲之刃')).toEqual(['破竹之势', '慈悲之刃']);
+    expect(parseSkillEntries('破竹之势,慈悲之刃')).toEqual(['破竹之势', '慈悲之刃']);
+    expect(parseSkillEntries('破竹之势，慈悲之刃')).toEqual(['破竹之势', '慈悲之刃']);
+    expect(parseSkillEntries('破竹之势、慈悲之刃')).toEqual(['破竹之势', '慈悲之刃']);
+    expect(parseSkillEntries('破竹之势•慈悲之刃')).toEqual(['破竹之势', '慈悲之刃']);
+  });
+
+  it('drops empty tokens so a trailing separator or a space never renders a blank skill', () => {
+    expect(parseSkillEntries('破竹之势·')).toEqual(['破竹之势']);
+    expect(parseSkillEntries(' · 破竹之势 · · ')).toEqual(['破竹之势']);
+    expect(parseSkillEntries('')).toEqual([]);
+    expect(parseSkillEntries('   ')).toEqual([]);
+    expect(parseSkillEntries('··,，')).toEqual([]);
+  });
+
+  it('trims around each entry but keeps the text inside it', () => {
+    expect(parseSkillEntries(' Spot of Tea , 破竹之势 ')).toEqual(['Spot of Tea', '破竹之势']);
+    // A skill may legitimately contain a hyphen or digits — the editor takes
+    // what was typed instead of re-running skillKeys over it.
+    expect(parseSkillEntries('胜利之弧-普加攻·破竹之势慈悲之刃2')).toEqual(['胜利之弧-普加攻', '破竹之势慈悲之刃2']);
+  });
+
+  it('keeps duplicates in the order typed', () => {
+    expect(parseSkillEntries('加攻·加攻')).toEqual(['加攻', '加攻']);
+  });
+
+  it('round-trips through formatSkillEntries as the canonical ` · ` form', () => {
+    // The field normalises spacing, so the round-trip lands on the canonical
+    // separator rather than on whatever the user typed — that is what keeps the
+    // value stable across edits instead of drifting on every keystroke.
+    expect(formatSkillEntries(parseSkillEntries('破竹之势·慈悲之刃'))).toBe('破竹之势 · 慈悲之刃');
+    expect(formatSkillEntries(parseSkillEntries('破竹之势,慈悲之刃'))).toBe('破竹之势 · 慈悲之刃');
+    expect(formatSkillEntries(parseSkillEntries('  Spot of Tea ,加攻 '))).toBe('Spot of Tea · 加攻');
+    expect(formatSkillEntries([])).toBe('');
+  });
+});
+
+describe('skillKeys — 单字母角色名不得吃掉技能文字', () => {
+  // The planner lets a user name characters anything. With a..f the name stripper
+  // used to remove those letters from the skill text itself: `sd` → `s`,
+  // `sds` → `ss`, `ee` → nothing. The 技能一览 then said a character had no
+  // skills while the chart plainly showed it acting.
+  const names = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+  it('keeps a skill whose letters happen to contain a one-letter character name', () => {
+    expect(skillKeys('sd', names)).toEqual(['sd']);
+    expect(skillKeys('ee', names)).toEqual(['ee']);
+    expect(skillKeys('sds', names)).toEqual(['sds']);
+    expect(skillKeys('ss', names)).toEqual(['ss']);
+    expect(skillKeys('f', names)).toEqual(['f']);
+    expect(skillKeys('ad', names)).toEqual(['ad']);
+  });
+
+  it('still strips a real multi-character name', () => {
+    expect(skillKeys('圣华-火加攻', ['圣华'])).toEqual(['火加攻']);
+    expect(skillKeys('月歌-破竹之势', ['月歌', 'a'])).toEqual(['破竹之势']);
+  });
+
+  it('a one-letter name next to a multi-character one does not disable the strip', () => {
+    expect(skillKeys('a-圣华-火加攻', ['a', '圣华'])).toEqual(['a火加攻']);
+  });
+});
+
+describe('normalizeSkillOverrides — 脏值防护', () => {
+  it('keeps a well-formed map, including an empty array', () => {
+    expect(normalizeSkillOverrides({ 0: ['a', 'b'], 3: [] })).toEqual({ 0: ['a', 'b'], 3: [] });
+  });
+
+  it('drops entries whose value is not string[]', () => {
+    // `{0: 'foo'}` used to reach the renderer as a string and throw on .map.
+    expect(normalizeSkillOverrides({ 0: 'foo' })).toBeUndefined();
+    expect(normalizeSkillOverrides({ 0: 'foo', 1: ['ok'] })).toEqual({ 1: ['ok'] });
+    expect(normalizeSkillOverrides({ 0: [1, 2] })).toBeUndefined();
+    expect(normalizeSkillOverrides({ 0: null })).toBeUndefined();
+  });
+
+  it('drops non-numeric keys', () => {
+    expect(normalizeSkillOverrides({ abc: ['x'] })).toBeUndefined();
+    expect(normalizeSkillOverrides({ '-1': ['x'] })).toBeUndefined();
+  });
+
+  it('treats anything that is not a plain object as "no overrides"', () => {
+    expect(normalizeSkillOverrides(undefined)).toBeUndefined();
+    expect(normalizeSkillOverrides(null)).toBeUndefined();
+    expect(normalizeSkillOverrides('str')).toBeUndefined();
+    expect(normalizeSkillOverrides(['a'])).toBeUndefined();
+    expect(normalizeSkillOverrides({})).toBeUndefined();
+  });
+
+  it('trims entries and drops blank ones', () => {
+    expect(normalizeSkillOverrides({ 0: [' a ', '', '  ', 'b'] })).toEqual({ 0: ['a', 'b'] });
   });
 });

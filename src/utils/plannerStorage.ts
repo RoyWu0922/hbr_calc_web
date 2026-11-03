@@ -1,5 +1,6 @@
 import { openDB, type DBSchema } from 'idb';
 import type { TurnPlannerState, PlannerTurn, ODMode, TurnPlannerChar } from '../types';
+import { normalizeSkillOverrides } from '../components/TurnPlanner/rowChartModel';
 
 interface HBRCalcDB extends DBSchema {
   history: {
@@ -149,7 +150,7 @@ export async function loadPlannerTurns(): Promise<PlannerTurn[]> {
 
 // ─── Config ────────────────────────────────────────────────
 
-export async function savePlannerConfig(config: { odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean; showPursuit: boolean; exScore: boolean; showDrag: boolean }): Promise<void> {
+export async function savePlannerConfig(config: { odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean; showPursuit: boolean; exScore: boolean; showDrag: boolean; skillOverrides?: Record<number, string[]> }): Promise<void> {
   const db = await getDB();
   const tx = db.transaction('planner_config', 'readwrite');
   await tx.store.put({ key: 'odMode', value: config.odMode });
@@ -159,10 +160,14 @@ export async function savePlannerConfig(config: { odMode: ODMode; defaultPassive
   await tx.store.put({ key: 'showPursuit', value: config.showPursuit });
   await tx.store.put({ key: 'exScore', value: config.exScore });
   await tx.store.put({ key: 'showDrag', value: config.showDrag });
+  // Absent = every character falls back to buildCharSkills, so an old config
+  // without this key stays valid. Stored as one JSON value rather than a key per
+  // character because the whole map is written at once anyway.
+  await tx.store.put({ key: 'skillOverrides', value: config.skillOverrides ?? {} });
   await tx.done;
 }
 
-export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean; showPursuit: boolean; exScore: boolean; showDrag: boolean }> {
+export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPassiveOD: number; showBreak: boolean; showEncounter: boolean; showPursuit: boolean; exScore: boolean; showDrag: boolean; skillOverrides: Record<number, string[]> }> {
   const db = await getDB();
   const odMode = await db.get('planner_config', 'odMode');
   const passive = await db.get('planner_config', 'defaultPassiveOD');
@@ -171,6 +176,7 @@ export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPass
   const showPursuit = await db.get('planner_config', 'showPursuit');
   const exScore = await db.get('planner_config', 'exScore');
   const showDrag = await db.get('planner_config', 'showDrag');
+  const skillOverrides = await db.get('planner_config', 'skillOverrides');
   return {
     odMode: (odMode?.value as ODMode) || 300,
     defaultPassiveOD: (passive?.value as number) || 0,
@@ -179,6 +185,11 @@ export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPass
     showPursuit: (showPursuit?.value as boolean) || false,
     exScore: (exScore?.value as boolean) || false,
     showDrag: (showDrag?.value as boolean) || false,
+    // A hand-edited / truncated / synced-bad value must not crash the planner:
+    // normalizeSkillOverrides keeps only number → string[] entries and treats
+    // anything else as "no overrides". loadPlannerState drops the key again when
+    // the map ends up empty, so an untouched axle serialises as before.
+    skillOverrides: normalizeSkillOverrides(skillOverrides?.value) ?? {},
   };
 }
 
@@ -187,7 +198,7 @@ export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPass
 export async function savePlannerState(state: TurnPlannerState): Promise<void> {
   await savePlannerChars(state.characters as unknown as TurnPlannerChar[]);
   await savePlannerTurns(state.turns);
-  await savePlannerConfig({ odMode: state.odMode, defaultPassiveOD: state.defaultPassiveOD, showBreak: state.showBreak, showEncounter: state.showEncounter, showPursuit: state.showPursuit, exScore: state.exScore, showDrag: !!state.showDrag });
+  await savePlannerConfig({ odMode: state.odMode, defaultPassiveOD: state.defaultPassiveOD, showBreak: state.showBreak, showEncounter: state.showEncounter, showPursuit: state.showPursuit, exScore: state.exScore, showDrag: !!state.showDrag, skillOverrides: state.skillOverrides });
 }
 
 export async function loadPlannerState(): Promise<TurnPlannerState | null> {
@@ -210,6 +221,9 @@ export async function loadPlannerState(): Promise<TurnPlannerState | null> {
     showPursuit: config.showPursuit,
     exScore: !!config.exScore,
     showDrag: !!config.showDrag,
+    // Only carry the key when something is actually overridden, so a state saved
+    // before this feature and one saved after with no edits serialise the same.
+    ...(Object.keys(config.skillOverrides).length > 0 ? { skillOverrides: config.skillOverrides } : {}),
     characters: characters as TurnPlannerState['characters'],
     turns: turns.length > 0 ? turns : [],
   };

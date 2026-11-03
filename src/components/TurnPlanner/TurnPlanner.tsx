@@ -9,8 +9,9 @@ import { exportElementToPNG } from '../../utils/exportImage';
 import { supabase } from '../../utils/supabase';
 import { pullAll } from '../../utils/syncEngine';
 import type { Folder } from '../../types';
-import { buildChartMeta, buildChartModel, fmtFloat, isExtraRound, isODRound } from './rowChartModel';
+import { buildChartMeta, buildChartModel, fmtFloat, isExtraRound, isODRound, normalizeSkillOverrides } from './rowChartModel';
 import { ChartHost, FORMATS, FORMAT_LABELS, useShowCharSkills, useSimpleFormat, type ChartFormat } from './RowChart';
+import { CharSkillEditor } from './CharSkillSummary';
 
 type PlannerSubTab = 'detail' | 'simple' | 'saved';
 
@@ -714,6 +715,10 @@ function DetailTable({
     const newName = next[i].name;
     // If user swapped names between two slots, update turn references to follow the names
     let updatedTurns = state.turns;
+    // 手写的技能表跟的是角色身份，不是槽位，所以换名互换时它也要跟着搬。
+    // 上面那段把 turns[].frontActions[].charIndex 换过来，就是为了「行动跟着
+    // 名字走」；技能表若留在原槽，就会变成「f 显示着 a 手写的技能」。
+    let updatedOverrides = state.skillOverrides;
     if (newName && newName !== oldName) {
       const otherIdx = next.findIndex((c, idx) => idx !== i && c.name === newName);
       if (otherIdx >= 0) {
@@ -727,9 +732,19 @@ function DetailTable({
             return fa;
           }) as typeof t.frontActions,
         }));
+        if (state.skillOverrides) {
+          const o = { ...state.skillOverrides };
+          const a = o[i];
+          const b = o[otherIdx];
+          // A missing key must stay missing: 「没手写」和「手写了一个空表」是
+          // 两种意思，互相搬家时不能把空数组凭空造出来。
+          if (b === undefined) delete o[i]; else o[i] = b;
+          if (a === undefined) delete o[otherIdx]; else o[otherIdx] = a;
+          updatedOverrides = o;
+        }
       }
     }
-    setState({ ...state, characters: next, turns: updatedTurns });
+    setState({ ...state, characters: next, turns: updatedTurns, skillOverrides: updatedOverrides });
   };
 
   const updateTurn = (ti: number, fn: (t: PlannerTurn) => PlannerTurn) => {
@@ -1458,7 +1473,7 @@ function DetailTable({
 
 function SimpleTable({
   state, computed, score, setScore, turnsCount, setTurnsCount, onTitleChange, onImportState,
-  title, setTitle, author, setAuthor, notes, setNotes,
+  title, setTitle, author, setAuthor, notes, setNotes, onChangeState,
 }: {
   state: TurnPlannerState;
   computed: ComputedTurnResult[];
@@ -1469,6 +1484,9 @@ function SimpleTable({
   title: string; setTitle: (v: string) => void;
   author: string; setAuthor: (v: string) => void;
   notes: string; setNotes: (v: string) => void;
+  /** Writes back into the axle state. Used by the 技能一览 editor, whose edits
+   *  live in state so they save and share with the axle. */
+  onChangeState: (s: TurnPlannerState) => void;
 }) {
   // Every bit of row derivation — the OD tint blocks, the red chain, the
   // modifier numbering, the OD cell, the empty-slot rule — now lives in
@@ -1480,6 +1498,10 @@ function SimpleTable({
   // 角色技能栏 visibility. A per-viewer display preference like the 版式, so it
   // lives in localStorage and stays out of TurnPlannerState.
   const { show: showSkills, setShow: setShowSkills } = useShowCharSkills();
+  // Whether the 技能一览 editor panel is open. Session-only, like the 版式 menu:
+  // it is a piece of UI, not axle content — the EDITS go to state, the fact that
+  // the editor happened to be open does not.
+  const [editingSkills, setEditingSkills] = useState(false);
 
   const timelineRef = useRef<HTMLDivElement>(null);
 
@@ -1521,7 +1543,16 @@ function SimpleTable({
       if (data.turns !== undefined) setTurnsCount(data.turns);
       if (data.notes !== undefined) setNotes(data.notes);
       if (data.score !== undefined) setScore(data.score);
-      if (data.state?.turns?.length > 0) onImportState(data.state);
+      // A share code is arbitrary text from another user: keep only a
+      // number → string[] skillOverrides, so a hand-edited one cannot reach the
+      // renderer as a string and blow up on `.map`.
+      const importedOverrides = normalizeSkillOverrides(data.state?.skillOverrides);
+      const importedState = data.state && typeof data.state === 'object'
+        ? { ...data.state, skillOverrides: importedOverrides }
+        : null;
+      if (!importedState) { alert('分享码无效'); return; }
+      if (importedState.skillOverrides === undefined) delete importedState.skillOverrides;
+      if (importedState.turns?.length > 0) onImportState(importedState);
       alert('导入成功！');
     } catch {
       alert('分享码无效');
@@ -1614,8 +1645,36 @@ function SimpleTable({
         {/* Right: the chart. ChartHost owns the export container, so all 7 版式
             share one ref and one data-timeline-export marker — which is also why
             no "temporarily switch format to export" logic is needed. */}
-        <ChartHost model={model} meta={meta} format={format} hostRef={timelineRef} showSkills={showSkills} />
+        <ChartHost model={model} meta={meta} format={format} hostRef={timelineRef} showSkills={showSkills} skillOverrides={state.skillOverrides} />
       </div>
+      {/* 技能一览的手动编辑。放在图表外面（而非 data-timeline-export 里）：
+          导出是对那个容器的截图，编辑器若在里面，开着编辑器导出就会把输入框
+          一起印进 PNG —— 而那正是用户在调的时候。 */}
+      {showSkills && (
+        <div className="mt-3">
+          <button
+            className={`btn btn-xs mb-2 ${editingSkills ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setEditingSkills(!editingSkills)}
+            aria-pressed={editingSkills}
+            title="手动编辑技能栏的内容（随轴一起保存和分享）"
+          >{editingSkills ? '收起技能编辑' : '编辑技能一览'}</button>
+          {editingSkills && (
+            <CharSkillEditor
+              model={model}
+              overrides={state.skillOverrides}
+              onChange={overrides => {
+                // Drop the key entirely when nothing is overridden, so an axle
+                // that was edited and then fully reset serialises identically to
+                // one that was never touched.
+                const next = { ...state };
+                if (Object.keys(overrides).length > 0) next.skillOverrides = overrides;
+                else delete next.skillOverrides;
+                onChangeState(next);
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1958,6 +2017,10 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             alert('该轴数据不完整，无法加载');
             return;
           }
+          // Same sanitising as the share-code path: a saved axle can have been
+          // written by an older build or synced from another device.
+          st.skillOverrides = normalizeSkillOverrides(st.skillOverrides);
+          if (st.skillOverrides === undefined) delete st.skillOverrides;
           setState(st);
           setLoadedAxleId(entry.id ?? null);
           setAxleScore(entry.score ?? 0);
@@ -2024,7 +2087,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             </div>
           </div>
           {subTab === 'detail' ? <DetailTable state={state} setState={setState} computed={computed} /> :
-           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} onTitleChange={setAxleTitle} onImportState={s => setState({ ...s, turns: syncNormalLabels(s.turns) })} title={simpleTitle} setTitle={setSimpleTitle} author={simpleAuthor} setAuthor={setSimpleAuthor} notes={simpleNotes} setNotes={setSimpleNotes} />}
+           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} onTitleChange={setAxleTitle} onImportState={s => setState({ ...s, turns: syncNormalLabels(s.turns) })} title={simpleTitle} setTitle={setSimpleTitle} author={simpleAuthor} setAuthor={setSimpleAuthor} notes={simpleNotes} setNotes={setSimpleNotes} onChangeState={setState} />}
         </>
       )}
       <ODPanel />

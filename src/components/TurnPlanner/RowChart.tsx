@@ -108,7 +108,7 @@ export function useShowCharSkills() {
 }
 
 export function ChartHost({
-  model, meta, format, hostRef, showSkills,
+  model, meta, format, hostRef, showSkills, skillOverrides,
 }: {
   model: ChartModel;
   meta: ChartMeta;
@@ -116,6 +116,8 @@ export function ChartHost({
   hostRef: RefObject<HTMLDivElement | null>;
   /** 角色技能栏. Off by default — it changes the exported PNG. */
   showSkills: boolean;
+  /** Hand-written per-character skill lists; see CharSkillSummary. */
+  skillOverrides?: Record<number, string[]>;
 }) {
   const Variant = VARIANTS[format];
   // Measured on the live DOM, not a container query: the export clone rewrites
@@ -131,7 +133,7 @@ export function ChartHost({
           so the summary needs no export-side handling and cannot drift out of
           sync with what is on screen. It renders under all 7 版式 — it is an
           appendix to the chart, not an alternative to it. */}
-      {showSkills && <CharSkillSummary model={model} />}
+      {showSkills && <CharSkillSummary model={model} overrides={skillOverrides} />}
     </div>
   );
 }

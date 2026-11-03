@@ -496,7 +496,18 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * (MONA / QUEEN / VIOLET) and nobody types them that way.
  */
 function nameStripper(names: readonly string[]): RegExp | null {
-  const parts = names.map(n => n.trim()).filter(Boolean).map(escapeRe);
+  const parts = names
+    .map(n => n.trim())
+    .filter(Boolean)
+    // ONE character is not a name, it is a letter that appears inside skills.
+    // The roster has names like 月歌 / 圣华 / MONA, always 2+, but the planner
+    // lets a user type anything — with characters called `a`..`f` the stripper
+    // turned `sd` into `s`, `sds` into `ss` and `ee` into nothing at all, so the
+    // 技能一览 claimed a character had no skills while the chart showed it
+    // acting. A single letter can never be safely told apart from skill text,
+    // so it is left in: a skill reading `s圣华` is obvious, a missing one is not.
+    .filter(n => n.length >= 2)
+    .map(escapeRe);
   if (parts.length === 0) return null;
   parts.sort((a, b) => b.length - a.length);
   return new RegExp(parts.join('|'), 'gi');
@@ -544,4 +555,57 @@ export function skillKeys(raw: string, charNames: readonly string[] = []): strin
     if (key) keys.push(key);
   }
   return keys;
+}
+
+// ─── 技能栏手写覆盖的读写 ──────────────────────────────────────
+//
+// These live here rather than in CharSkillSummary.tsx because that file is a
+// component module: exporting plain functions from it trips
+// react-refresh/only-export-components (the rule that stops Fast Refresh from
+// dropping state). rowChartModel.ts already owns "what the bar shows", so the
+// parsing of what a user TYPES belongs next to buildCharSkills.
+
+/** What may separate two skills in the editor: the bar's own separator plus the
+ *  commas a Chinese IME produces (`、` is what it gives for a comma in Chinese
+ *  mode, and it is also how people write lists). */
+const ENTRY_SPLIT_RE = /[·•,，、]/;
+
+/** Typed text → the array stored in state. Empty tokens are dropped, so a trailing
+ *  separator or a stray space never renders as a blank skill. */
+export function parseSkillEntries(text: string): string[] {
+  return text
+    .split(ENTRY_SPLIT_RE)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+/** The array stored in state → what the input shows. Uses the same `·` the
+ *  display uses, so copy-pasting the rendered bar back into the field round-trips. */
+export function formatSkillEntries(skills: readonly string[]): string {
+  return skills.join(' · ');
+}
+
+/**
+ * Sanitise a `skillOverrides` value that came from storage, a share code or the
+ * cloud into the shape the renderer expects.
+ *
+ * The two things it must do: drop anything that is not `number → string[]` (a
+ * string value would make `skills.map` throw while rendering, and this data can
+ * arrive from a synced row or a hand-edited share code), and keep an EMPTY array
+ * as an empty array, because `[]` means "this character shows no skills" while a
+ * missing key means "derive it". Nothing valid in ⇒ `undefined` out, which is the
+ * same as "no overrides at all".
+ */
+export function normalizeSkillOverrides(value: unknown): Record<number, string[]> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const out: Record<number, string[]> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    const idx = Number(k);
+    if (!Number.isInteger(idx) || idx < 0 || !Array.isArray(v)) continue;
+    if (!v.every(s => typeof s === 'string')) continue;
+    // `[]` survives as `[]`; entries are trimmed and blanks dropped so a stored
+    // value can never render as an empty skill chip.
+    out[idx] = v.map(s => s.trim()).filter(Boolean);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
