@@ -9,7 +9,7 @@ import { exportElementToPNG } from '../../utils/exportImage';
 import { supabase } from '../../utils/supabase';
 import { pullAll } from '../../utils/syncEngine';
 import type { Folder } from '../../types';
-import { buildChartMeta, buildChartModel, fmtFloat, isExtraRound, isODRound } from './rowChartModel';
+import { buildChartMeta, buildChartModel, fmtFloat, isExtraRound, isODRound, normalizeSkillOverrides } from './rowChartModel';
 import { ChartHost, FORMATS, FORMAT_LABELS, useShowCharSkills, useSimpleFormat, type ChartFormat } from './RowChart';
 import { CharSkillEditor } from './CharSkillSummary';
 
@@ -715,6 +715,10 @@ function DetailTable({
     const newName = next[i].name;
     // If user swapped names between two slots, update turn references to follow the names
     let updatedTurns = state.turns;
+    // 手写的技能表跟的是角色身份，不是槽位，所以换名互换时它也要跟着搬。
+    // 上面那段把 turns[].frontActions[].charIndex 换过来，就是为了「行动跟着
+    // 名字走」；技能表若留在原槽，就会变成「f 显示着 a 手写的技能」。
+    let updatedOverrides = state.skillOverrides;
     if (newName && newName !== oldName) {
       const otherIdx = next.findIndex((c, idx) => idx !== i && c.name === newName);
       if (otherIdx >= 0) {
@@ -728,9 +732,19 @@ function DetailTable({
             return fa;
           }) as typeof t.frontActions,
         }));
+        if (state.skillOverrides) {
+          const o = { ...state.skillOverrides };
+          const a = o[i];
+          const b = o[otherIdx];
+          // A missing key must stay missing: 「没手写」和「手写了一个空表」是
+          // 两种意思，互相搬家时不能把空数组凭空造出来。
+          if (b === undefined) delete o[i]; else o[i] = b;
+          if (a === undefined) delete o[otherIdx]; else o[otherIdx] = a;
+          updatedOverrides = o;
+        }
       }
     }
-    setState({ ...state, characters: next, turns: updatedTurns });
+    setState({ ...state, characters: next, turns: updatedTurns, skillOverrides: updatedOverrides });
   };
 
   const updateTurn = (ti: number, fn: (t: PlannerTurn) => PlannerTurn) => {
@@ -1529,7 +1543,16 @@ function SimpleTable({
       if (data.turns !== undefined) setTurnsCount(data.turns);
       if (data.notes !== undefined) setNotes(data.notes);
       if (data.score !== undefined) setScore(data.score);
-      if (data.state?.turns?.length > 0) onImportState(data.state);
+      // A share code is arbitrary text from another user: keep only a
+      // number → string[] skillOverrides, so a hand-edited one cannot reach the
+      // renderer as a string and blow up on `.map`.
+      const importedOverrides = normalizeSkillOverrides(data.state?.skillOverrides);
+      const importedState = data.state && typeof data.state === 'object'
+        ? { ...data.state, skillOverrides: importedOverrides }
+        : null;
+      if (!importedState) { alert('分享码无效'); return; }
+      if (importedState.skillOverrides === undefined) delete importedState.skillOverrides;
+      if (importedState.turns?.length > 0) onImportState(importedState);
       alert('导入成功！');
     } catch {
       alert('分享码无效');
@@ -1994,6 +2017,10 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             alert('该轴数据不完整，无法加载');
             return;
           }
+          // Same sanitising as the share-code path: a saved axle can have been
+          // written by an older build or synced from another device.
+          st.skillOverrides = normalizeSkillOverrides(st.skillOverrides);
+          if (st.skillOverrides === undefined) delete st.skillOverrides;
           setState(st);
           setLoadedAxleId(entry.id ?? null);
           setAxleScore(entry.score ?? 0);

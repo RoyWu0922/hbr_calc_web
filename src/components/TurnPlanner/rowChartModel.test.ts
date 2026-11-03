@@ -12,7 +12,7 @@ import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner
 import type { ComputedTurnResult, FrontAction, PlannerTurn, TurnPlannerState } from '../../types';
 import {
   S_BG1, S_BG2, buildCharSkills, buildChartModel, buildTeamNames, charColor, computeOdStyles, skillKeys,
-  computeRedChain3, countModifiers, fmtFloat, formatSkillEntries, parseSkillEntries, toSlot,
+  computeRedChain3, countModifiers, fmtFloat, formatSkillEntries, normalizeSkillOverrides, parseSkillEntries, toSlot,
   type ChartModel, type ChartTurnRow,
 } from './rowChartModel';
 
@@ -723,5 +723,36 @@ describe('skillKeys — 单字母角色名不得吃掉技能文字', () => {
 
   it('a one-letter name next to a multi-character one does not disable the strip', () => {
     expect(skillKeys('a-圣华-火加攻', ['a', '圣华'])).toEqual(['a火加攻']);
+  });
+});
+
+describe('normalizeSkillOverrides — 脏值防护', () => {
+  it('keeps a well-formed map, including an empty array', () => {
+    expect(normalizeSkillOverrides({ 0: ['a', 'b'], 3: [] })).toEqual({ 0: ['a', 'b'], 3: [] });
+  });
+
+  it('drops entries whose value is not string[]', () => {
+    // `{0: 'foo'}` used to reach the renderer as a string and throw on .map.
+    expect(normalizeSkillOverrides({ 0: 'foo' })).toBeUndefined();
+    expect(normalizeSkillOverrides({ 0: 'foo', 1: ['ok'] })).toEqual({ 1: ['ok'] });
+    expect(normalizeSkillOverrides({ 0: [1, 2] })).toBeUndefined();
+    expect(normalizeSkillOverrides({ 0: null })).toBeUndefined();
+  });
+
+  it('drops non-numeric keys', () => {
+    expect(normalizeSkillOverrides({ abc: ['x'] })).toBeUndefined();
+    expect(normalizeSkillOverrides({ '-1': ['x'] })).toBeUndefined();
+  });
+
+  it('treats anything that is not a plain object as "no overrides"', () => {
+    expect(normalizeSkillOverrides(undefined)).toBeUndefined();
+    expect(normalizeSkillOverrides(null)).toBeUndefined();
+    expect(normalizeSkillOverrides('str')).toBeUndefined();
+    expect(normalizeSkillOverrides(['a'])).toBeUndefined();
+    expect(normalizeSkillOverrides({})).toBeUndefined();
+  });
+
+  it('trims entries and drops blank ones', () => {
+    expect(normalizeSkillOverrides({ 0: [' a ', '', '  ', 'b'] })).toEqual({ 0: ['a', 'b'] });
   });
 });

@@ -584,3 +584,28 @@ export function parseSkillEntries(text: string): string[] {
 export function formatSkillEntries(skills: readonly string[]): string {
   return skills.join(' · ');
 }
+
+/**
+ * Sanitise a `skillOverrides` value that came from storage, a share code or the
+ * cloud into the shape the renderer expects.
+ *
+ * The two things it must do: drop anything that is not `number → string[]` (a
+ * string value would make `skills.map` throw while rendering, and this data can
+ * arrive from a synced row or a hand-edited share code), and keep an EMPTY array
+ * as an empty array, because `[]` means "this character shows no skills" while a
+ * missing key means "derive it". Nothing valid in ⇒ `undefined` out, which is the
+ * same as "no overrides at all".
+ */
+export function normalizeSkillOverrides(value: unknown): Record<number, string[]> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const out: Record<number, string[]> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    const idx = Number(k);
+    if (!Number.isInteger(idx) || idx < 0 || !Array.isArray(v)) continue;
+    if (!v.every(s => typeof s === 'string')) continue;
+    // `[]` survives as `[]`; entries are trimmed and blanks dropped so a stored
+    // value can never render as an empty skill chip.
+    out[idx] = v.map(s => s.trim()).filter(Boolean);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}

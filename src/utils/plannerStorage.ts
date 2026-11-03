@@ -1,5 +1,6 @@
 import { openDB, type DBSchema } from 'idb';
 import type { TurnPlannerState, PlannerTurn, ODMode, TurnPlannerChar } from '../types';
+import { normalizeSkillOverrides } from '../components/TurnPlanner/rowChartModel';
 
 interface HBRCalcDB extends DBSchema {
   history: {
@@ -184,11 +185,11 @@ export async function loadPlannerConfig(): Promise<{ odMode: ODMode; defaultPass
     showPursuit: (showPursuit?.value as boolean) || false,
     exScore: (exScore?.value as boolean) || false,
     showDrag: (showDrag?.value as boolean) || false,
-    // A hand-edited / truncated value must not crash the planner: anything that
-    // is not a plain object reads as "no overrides".
-    skillOverrides: (skillOverrides?.value && typeof skillOverrides.value === 'object' && !Array.isArray(skillOverrides.value))
-      ? skillOverrides.value as Record<number, string[]>
-      : {},
+    // A hand-edited / truncated / synced-bad value must not crash the planner:
+    // normalizeSkillOverrides keeps only number → string[] entries and treats
+    // anything else as "no overrides". loadPlannerState drops the key again when
+    // the map ends up empty, so an untouched axle serialises as before.
+    skillOverrides: normalizeSkillOverrides(skillOverrides?.value) ?? {},
   };
 }
 
