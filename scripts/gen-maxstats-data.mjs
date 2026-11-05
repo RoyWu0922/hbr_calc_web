@@ -1,5 +1,5 @@
 /**
- * Generate max-stats calculator data from 全角色裸装满属性及组合计算_V2.3.xlsx.
+ * Generate max-stats calculator data from 全角色裸装满属性及组合计算_V2.4.xlsx.
  * Output: src/data/maxStatsData.json
  *
  * - characters: 67 chars, each with their styles + level-200 max base stats
@@ -7,9 +7,8 @@
  * - equips: 13 装备基础数据 presets (already include the +5 weapon bonus)
  * - urPotential: 专属潜在特性 (per-character, usually two +20)
  *
- * v2.3 vs v2.2: 数据更新至 HBR V6.11.20；新增 4 个卡面（色葉 禁忌的組合、麻里 顫慄的護士鈴、
- * 惠 絕佳的釣魚好日子、由希 魔幻之花）；按新恒星吊坠修正 12 套配装；更新 31 个卡面白值。
- * 装备名（不只是数值）变了，界面上是按名字选中配装，重新生成后默认项随首条目走。
+ * v2.4 vs v2.3: 数据更新至 HBR V6.12.0；新增 2 个卡面（吹雪 擺脫束縛、可憐 午夜的靈魂收割）；
+ * 吹雪与可憐的 15 个旧卡面白值上调（力/器用/知性等）；配装表与 UR 潜在特性无变化。
  *
  * 组合计算页 formula: total = charBase(style) + ceil(0.1 × supportBase(style)) + equip
  */
@@ -18,7 +17,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const XLSX = require('xlsx');
 
-const wb = XLSX.readFile('全角色裸装满属性及组合计算_V2.3.xlsx');
+const wb = XLSX.readFile('全角色裸装满属性及组合计算_V2.4.xlsx');
 
 // ─── 角色基础数据 (A=Element, B=Team, C=Character, D=Style, G..L=6 stats) ──
 const ws = wb.Sheets['角色基础数据'];
@@ -68,7 +67,7 @@ const output = {
   characters,
   equips,
   urPotential,
-  note: '数据来源: 不会打牌的qeit (HBR V6.11.20, 徽章13 / 满破满强化 / 专属潜在 / 转生+20 / 灵魂+5 / 专武+5 / 开花 / 因子15)',
+  note: '数据来源: 不会打牌的qeit (HBR V6.12.0, 徽章13 / 满破满强化 / 专属潜在 / 转生+20 / 灵魂+5 / 专武+5 / 开花 / 因子15)',
 };
 mkdirSync('src/data', { recursive: true });
 writeFileSync('src/data/maxStatsData.json', JSON.stringify(output));
