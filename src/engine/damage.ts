@@ -119,8 +119,8 @@ export function calcBuffPowerDetail(buff: BuffSkill): BuffPowerDetail {
   let orbPower: number;
   if (buff.name === '指挥(别改)') {
     orbPower = maxPower * orb * 0.04;
-  } else if (combinedAttr > 0 && combinedAttr - 100 <= border) {
-    orbPower = (combinedAttr / (border + 100)) * maxPower * orb * 0.04;
+  } else if (combinedAttr > 0 && combinedAttr - 300 <= border) {
+    orbPower = (combinedAttr / (border + 300)) * maxPower * orb * 0.04;
   } else {
     orbPower = maxPower * orb * 0.04;
   }
