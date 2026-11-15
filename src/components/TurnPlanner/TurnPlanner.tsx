@@ -9,7 +9,8 @@ import { exportElementToPNG } from '../../utils/exportImage';
 import { supabase } from '../../utils/supabase';
 import { pullAll } from '../../utils/syncEngine';
 import type { Folder } from '../../types';
-import { buildChartMeta, buildChartModel, fmtFloat, isExtraRound, isODRound, normalizeSkillOverrides } from './rowChartModel';
+import { buildChartMeta, buildChartModel, fmtFloat, isExtraRound, isODRound } from './rowChartModel';
+import { applyCharEdit, charIdentity, ensureCharIds } from './charIdentity';
 import { ChartHost, FORMATS, FORMAT_LABELS, useShowCharSkills, useSimpleFormat, type ChartFormat } from './RowChart';
 import { CharSkillEditor } from './CharSkillSummary';
 
@@ -655,6 +656,23 @@ function syncNormalLabels(turns: PlannerTurn[]): PlannerTurn[] {
   });
 }
 
+/**
+ * 读盘、导入、重置的统一入口：补齐身份序号 + 重排回合标号。
+ *
+ * 老轴、别人给的分享码都没有 `characters[].id`，这里按槽位号补上，于是老数据的
+ * 表现和改动前一致；之后入场行换名互换才会真正只动入场行。`characters` 不是数组
+ * （分享码被手改坏）就原样放过，交给下游的校验去报错。
+ */
+function normalizeState(s: TurnPlannerState): TurnPlannerState {
+  return {
+    ...s,
+    characters: Array.isArray(s.characters)
+      ? ensureCharIds(s.characters) as TurnPlannerState['characters']
+      : s.characters,
+    turns: syncNormalLabels(s.turns),
+  };
+}
+
 // ─── Shared tiny input style ──────────────────────────────────
 const TINY = 'input-field text-[8px] py-px px-0.5 w-full text-center';
 const TINY_NUM = 'input-field text-[8px] py-px px-0 text-center eval-num';
@@ -695,6 +713,31 @@ function EvalInput({ className, value, setValue, placeholder, step, style }: {
 
 // ─── Detail Table ─────────────────────────────────────────────
 
+/**
+ * 入场行的角色名输入。
+ *
+ * 名字不逐键提交，失焦或回车才提交。换名互换（把 A、C 填成对方的名字）是一个
+ * 整条记录对调的动作，逐键提交会在中文输入法打「月」到「月歌」的中途撞上别的
+ * 槽，把人误换一遍。所以只在提交时跑一次。
+ */
+function EntryNameInput({ className, style, value, placeholder, onCommit }: {
+  className?: string; style?: React.CSSProperties;
+  value: string; placeholder?: string;
+  onCommit: (v: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  useEffect(() => { setText(value); }, [value]);
+  const flush = () => { if (text !== value) onCommit(text); };
+  return (
+    <input className={className} style={style} type="text" placeholder={placeholder}
+      value={text}
+      onChange={e => setText(e.target.value)}
+      onBlur={flush}
+      onKeyDown={e => { if (e.key === 'Enter') { flush(); e.currentTarget.blur(); } }}
+    />
+  );
+}
+
 function DetailTable({
   state, setState, computed,
 }: {
@@ -709,42 +752,13 @@ function DetailTable({
   const odOverflowDec = odMode < 300 ? 3 : 1;
 
   const updateChar = (i: number, fn: (c: typeof characters[number]) => typeof characters[number]) => {
-    const next = [...characters] as typeof characters;
-    const oldName = next[i].name;
-    next[i] = fn(next[i]);
-    const newName = next[i].name;
-    // If user swapped names between two slots, update turn references to follow the names
-    let updatedTurns = state.turns;
-    // 手写的技能表跟的是角色身份，不是槽位，所以换名互换时它也要跟着搬。
-    // 上面那段把 turns[].frontActions[].charIndex 换过来，就是为了「行动跟着
-    // 名字走」；技能表若留在原槽，就会变成「f 显示着 a 手写的技能」。
-    let updatedOverrides = state.skillOverrides;
-    if (newName && newName !== oldName) {
-      const otherIdx = next.findIndex((c, idx) => idx !== i && c.name === newName);
-      if (otherIdx >= 0) {
-        // Swap: otherIdx keeps oldName, update turn charIndex references
-        next[otherIdx] = { ...next[otherIdx], name: oldName };
-        updatedTurns = state.turns.map(t => ({
-          ...t,
-          frontActions: t.frontActions.map(fa => {
-            if (fa.charIndex === otherIdx) return { ...fa, charIndex: i };
-            if (fa.charIndex === i) return { ...fa, charIndex: otherIdx };
-            return fa;
-          }) as typeof t.frontActions,
-        }));
-        if (state.skillOverrides) {
-          const o = { ...state.skillOverrides };
-          const a = o[i];
-          const b = o[otherIdx];
-          // A missing key must stay missing: 「没手写」和「手写了一个空表」是
-          // 两种意思，互相搬家时不能把空数组凭空造出来。
-          if (b === undefined) delete o[i]; else o[i] = b;
-          if (a === undefined) delete o[otherIdx]; else o[otherIdx] = a;
-          updatedOverrides = o;
-        }
-      }
-    }
-    setState({ ...state, characters: next, turns: updatedTurns, skillOverrides: updatedOverrides });
+    // 入场行换名互换的整套规则在 charIdentity.applyCharEdit 里（纯函数，有测试）。
+    const edited = applyCharEdit(characters, state.turns, i, fn(characters[i]));
+    setState({
+      ...state,
+      characters: ensureCharIds(edited.characters) as typeof characters,
+      turns: edited.turns,
+    });
   };
 
   const updateTurn = (ti: number, fn: (t: PlannerTurn) => PlannerTurn) => {
@@ -1110,8 +1124,8 @@ function DetailTable({
             {characters.map((c, i) => (
               <td key={i} colSpan={i < 3 ? (showBreak ? 5 : 4) : 2}>
                 <div className="flex gap-0.5">
-                  <input className={TINY} style={{ flex: 1 }} placeholder={`C${i + 1}`} value={c.name}
-                    onChange={e => updateChar(i, ch => ({ ...ch, name: e.target.value }))} />
+                  <EntryNameInput className={TINY} style={{ flex: 1 }} placeholder={`C${i + 1}`} value={c.name}
+                    onCommit={v => updateChar(i, ch => ({ ...ch, name: v }))} />
                   <EvalInput className={TINY} style={{ width: i < 3 ? '28%' : '45%' }} placeholder="SP" value={c.sp}
                     setValue={v => updateChar(i, ch => ({ ...ch, sp: v }))} />
                 </div>
@@ -1177,7 +1191,10 @@ function DetailTable({
               : odStyle === 'od-block3' ? odBlockBg3
               : (isOD || isODin || extraIsRed) ? 'rgba(239,68,68,0.06)' : isExtra ? 'rgba(34,197,94,0.04)' : '';
             const frontIdxSet = new Set(turn.frontActions.map(a => a.charIndex).filter(i => i >= 0));
-            const backChars = [0, 1, 2, 3, 4, 5].filter(i => !frontIdxSet.has(i));
+            // 后1-后3 按身份序号排，不按槽位：入场行换名互换后，后列的人不会重排。
+            const backChars = [0, 1, 2, 3, 4, 5]
+              .filter(i => !frontIdxSet.has(i))
+              .sort((a, b) => charIdentity(characters, a) - charIdentity(characters, b));
             // Auto-number modifier rows
             let modNum = 0;
             if (isModifier) { for (let k = 0; k <= ti; k++) { if (turns[k].encounterModifier !== undefined) modNum++; } }
@@ -1543,16 +1560,7 @@ function SimpleTable({
       if (data.turns !== undefined) setTurnsCount(data.turns);
       if (data.notes !== undefined) setNotes(data.notes);
       if (data.score !== undefined) setScore(data.score);
-      // A share code is arbitrary text from another user: keep only a
-      // number → string[] skillOverrides, so a hand-edited one cannot reach the
-      // renderer as a string and blow up on `.map`.
-      const importedOverrides = normalizeSkillOverrides(data.state?.skillOverrides);
-      const importedState = data.state && typeof data.state === 'object'
-        ? { ...data.state, skillOverrides: importedOverrides }
-        : null;
-      if (!importedState) { alert('分享码无效'); return; }
-      if (importedState.skillOverrides === undefined) delete importedState.skillOverrides;
-      if (importedState.turns?.length > 0) onImportState(importedState);
+      if (data.state?.turns?.length > 0) onImportState(data.state);
       alert('导入成功！');
     } catch {
       alert('分享码无效');
@@ -1980,10 +1988,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
   const [simpleTitle, setSimpleTitle] = useState('');
   const [simpleAuthor, setSimpleAuthor] = useState('');
   const [simpleNotes, setSimpleNotes] = useState('');
-  const [state, setState] = useState<TurnPlannerState>(() => {
-    const s = createDefaultState();
-    return { ...s, turns: syncNormalLabels(s.turns) };
-  });
+  const [state, setState] = useState<TurnPlannerState>(() => normalizeState(createDefaultState()));
   const [loaded, setLoaded] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -1991,7 +1996,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
     (async () => {
       const saved = await loadPlannerState();
       if (saved && saved.turns.length > 0) {
-        setState({ ...saved, turns: syncNormalLabels(saved.turns) });
+        setState(normalizeState(saved));
       }
       setLoaded(true);
     })();
@@ -2017,11 +2022,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             alert('该轴数据不完整，无法加载');
             return;
           }
-          // Same sanitising as the share-code path: a saved axle can have been
-          // written by an older build or synced from another device.
-          st.skillOverrides = normalizeSkillOverrides(st.skillOverrides);
-          if (st.skillOverrides === undefined) delete st.skillOverrides;
-          setState(st);
+          setState(normalizeState(st));
           setLoadedAxleId(entry.id ?? null);
           setAxleScore(entry.score ?? 0);
           setAxleTurns(entry.turns ?? 0);
@@ -2043,7 +2044,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
               </select>
               <button className="btn btn-secondary btn-xs ml-1 px-2 h-8" title="重置" onClick={() => {
                 if (confirm('确定重置排轴？所有未保存的内容将丢失。')) {
-                  setState({ ...createDefaultState(), turns: syncNormalLabels(createDefaultState().turns) });
+                  setState(normalizeState(createDefaultState()));
                 }
               }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2078,7 +2079,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
                       await saveAxle(label, state, axleScore, axleTurns, simpleAuthor, simpleNotes);
                     }
                   }
-                  setState({ ...createDefaultState(), turns: syncNormalLabels(createDefaultState().turns) });
+                  setState(normalizeState(createDefaultState()));
                   setLoadedAxleId(null); setAxleTitle(''); setSimpleTitle(''); setSimpleAuthor('');
                   setSimpleNotes(''); setAxleScore(0); setAxleTurns(0);
                 }}>
@@ -2087,7 +2088,7 @@ export default function TurnPlanner({ mode, onSwitchToEditor }: { mode: 'editor'
             </div>
           </div>
           {subTab === 'detail' ? <DetailTable state={state} setState={setState} computed={computed} /> :
-           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} onTitleChange={setAxleTitle} onImportState={s => setState({ ...s, turns: syncNormalLabels(s.turns) })} title={simpleTitle} setTitle={setSimpleTitle} author={simpleAuthor} setAuthor={setSimpleAuthor} notes={simpleNotes} setNotes={setSimpleNotes} onChangeState={setState} />}
+           <SimpleTable state={state} computed={computed} score={axleScore} setScore={setAxleScore} turnsCount={axleTurns} setTurnsCount={setAxleTurns} onTitleChange={setAxleTitle} onImportState={s => setState(normalizeState(s))} title={simpleTitle} setTitle={setSimpleTitle} author={simpleAuthor} setAuthor={setSimpleAuthor} notes={simpleNotes} setNotes={setSimpleNotes} onChangeState={setState} />}
         </>
       )}
       <ODPanel />

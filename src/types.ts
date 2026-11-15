@@ -157,6 +157,14 @@ export interface MultiBodyConfig {
 export interface TurnPlannerChar {
   name: string;
   sp: number;           // 当前SP（随回合推进而更新，存在idb里）
+  /**
+   * 身份序号（0-5）：不随槽位走的那个「是谁」。
+   *
+   * 入场行换名互换时它跟着名字走，后1-后3 的排序、角色配色、技能一览的键都按它
+   * 取，所以换名只改入场行，下面一行都不动。老轴没有这个字段，读取时由
+   * ensureCharIds 按槽位号补齐，行为与改动前一致。见 charIdentity.ts。
+   */
+  id?: number;
 }
 
 export interface FrontAction {
@@ -193,7 +201,7 @@ export interface TurnPlannerState {
   exScore: boolean;           // ex打分模式：OD上限500/200，额外OD4/OD5回合
   showDrag?: boolean;         // 是否显示拖拽换序手柄
   /**
-   * 角色技能栏的手写覆盖，键是角色下标。
+   * 角色技能栏的手写覆盖，键是身份序号（见 charIdentity.ts），不是槽位号。
    *
    * 缺这个键（或整个字段）的角色仍走 buildCharSkills 从行动槽自动抽取；有键
    * 就用数组原样显示 —— 包括空数组，那表示「这个角色这一栏我就要空的」，与

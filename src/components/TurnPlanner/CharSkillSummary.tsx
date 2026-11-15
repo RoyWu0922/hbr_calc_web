@@ -29,7 +29,7 @@ export function CharSkillSummary({
   model, overrides,
 }: {
   model: ChartModel;
-  /** Per-character hand-written lists, keyed by charIndex. See the file header. */
+  /** Per-character hand-written lists, keyed by 身份序号 (见 charIdentity.ts)。 */
   overrides?: Record<number, string[]>;
 }) {
   const rows = useMemo(() => buildCharSkills(model), [model]);
@@ -39,11 +39,11 @@ export function CharSkillSummary({
       <div className="rc-skills-head">角色技能一览</div>
       {rows.map(r => {
         // `!== undefined` rather than `??`: an empty override is a real value.
-        const override = overrides?.[r.charIndex];
+        const override = overrides?.[r.colorIndex];
         const skills = override !== undefined ? override : r.skills;
         return (
-          <div key={r.charIndex} className="rc-skills-row">
-            <span className="rc-skills-nm" style={{ color: charColor(r.charIndex) }} title={r.name}>
+          <div key={r.colorIndex} className="rc-skills-row">
+            <span className="rc-skills-nm" style={{ color: charColor(r.colorIndex) }} title={r.name}>
               {r.name}
             </span>
             <span className="rc-skills-list">
@@ -98,11 +98,11 @@ export function CharSkillEditor({
   const rows = useMemo(() => buildCharSkills(model), [model]);
 
   // What the field shows for a row when nobody has edited it: the derived list.
-  const autoText = (r: CharSkillRow) => formatSkillEntries(overrides?.[r.charIndex] ?? r.skills);
+  const autoText = (r: CharSkillRow) => formatSkillEntries(overrides?.[r.colorIndex] ?? r.skills);
 
   const [draft, setDraft] = useState<Record<number, string>>(() => {
     const d: Record<number, string> = {};
-    for (const r of rows) d[r.charIndex] = autoText(r);
+    for (const r of rows) d[r.colorIndex] = autoText(r);
     return d;
   });
 
@@ -115,7 +115,7 @@ export function CharSkillEditor({
     const sig = JSON.stringify(overrides ?? {});
     if (lastEmitted.current === sig) return;
     const d: Record<number, string> = {};
-    for (const r of rows) d[r.charIndex] = formatSkillEntries(overrides?.[r.charIndex] ?? r.skills);
+    for (const r of rows) d[r.colorIndex] = formatSkillEntries(overrides?.[r.colorIndex] ?? r.skills);
     setDraft(d);
     // `rows` is derived from `model`; including it re-syncs when the axle's own
     // actions change, which is the other case where the auto text moves.
@@ -126,29 +126,29 @@ export function CharSkillEditor({
     onChange(next);
   };
 
-  const setRow = (charIndex: number, text: string) => {
-    setDraft(d => ({ ...d, [charIndex]: text }));
+  const setRow = (colorIndex: number, text: string) => {
+    setDraft(d => ({ ...d, [colorIndex]: text }));
     const next = { ...(overrides ?? {}) };
-    next[charIndex] = parseSkillEntries(text);
+    next[colorIndex] = parseSkillEntries(text);
     emit(next);
   };
 
-  const resetRow = (charIndex: number) => {
+  const resetRow = (colorIndex: number) => {
     const next = { ...(overrides ?? {}) };
-    delete next[charIndex];
-    const auto = rows.find(r => r.charIndex === charIndex);
-    setDraft(d => ({ ...d, [charIndex]: auto ? formatSkillEntries(auto.skills) : '' }));
+    delete next[colorIndex];
+    const auto = rows.find(r => r.colorIndex === colorIndex);
+    setDraft(d => ({ ...d, [colorIndex]: auto ? formatSkillEntries(auto.skills) : '' }));
     emit(next);
   };
 
   const resetAll = () => {
     const d: Record<number, string> = {};
-    for (const r of rows) d[r.charIndex] = formatSkillEntries(r.skills);
+    for (const r of rows) d[r.colorIndex] = formatSkillEntries(r.skills);
     setDraft(d);
     emit({});
   };
 
-  const overriddenCount = rows.filter(r => overrides?.[r.charIndex] !== undefined).length;
+  const overriddenCount = rows.filter(r => overrides?.[r.colorIndex] !== undefined).length;
 
   return (
     <div className="card p-3 space-y-2">
@@ -164,25 +164,25 @@ export function CharSkillEditor({
         >全部恢复自动</button>
       </div>
       {rows.map(r => {
-        const isOverridden = overrides?.[r.charIndex] !== undefined;
+        const isOverridden = overrides?.[r.colorIndex] !== undefined;
         return (
-          <div key={r.charIndex} className="flex items-center gap-2">
+          <div key={r.colorIndex} className="flex items-center gap-2">
             <span
               className="rc-skills-nm flex-shrink-0"
-              style={{ color: charColor(r.charIndex), width: 68 }}
+              style={{ color: charColor(r.colorIndex), width: 68 }}
               title={r.name}
             >{r.name}</span>
             <input
               className="input-field text-xs py-1 flex-1 min-w-0"
               type="text"
-              value={draft[r.charIndex] ?? ''}
+              value={draft[r.colorIndex] ?? ''}
               placeholder="（这一栏不显示技能）"
-              onChange={e => setRow(r.charIndex, e.target.value)}
+              onChange={e => setRow(r.colorIndex, e.target.value)}
               aria-label={`${r.name || '角色'} 的技能，逗号分隔`}
             />
             <button
               className="btn btn-secondary btn-xs flex-shrink-0 whitespace-nowrap"
-              onClick={() => resetRow(r.charIndex)}
+              onClick={() => resetRow(r.colorIndex)}
               disabled={!isOverridden}
               title="这一个角色改回自动抽取"
             >恢复自动</button>

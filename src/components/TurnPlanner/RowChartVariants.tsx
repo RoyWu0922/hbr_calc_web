@@ -84,8 +84,8 @@ export function RowChartBand({ model, meta }: VariantProps) {
               labelClass={labelTone(row)}
               slots={row.slots}
               od={row.od}
-              slotPrefix={slot => <ColorBar color={charColor(slot.charIndex)} />}
-              nameStyle={slot => ({ color: charColor(slot.charIndex) })}
+              slotPrefix={slot => <ColorBar color={charColor(slot.colorIndex)} />}
+              nameStyle={slot => ({ color: charColor(slot.colorIndex) })}
             />
       ))}
     </div>
@@ -216,7 +216,7 @@ export function RowChartLog({ model, meta }: VariantProps) {
               labelClass={labelTone(row)}
               slots={row.slots}
               od={row.od}
-              nameStyle={slot => ({ color: charColor(slot.charIndex) })}
+              nameStyle={slot => ({ color: charColor(slot.colorIndex) })}
               slotSeparator={slot => (slot.action ? <span className="rc-sep">·</span> : null)}
             />
       ))}
@@ -302,8 +302,8 @@ export function RowChartLane({ model, meta }: VariantProps) {
         {model.laneRows.map(lr => (
           <Fragment key={lr.charIndex}>
             <div className="rc-lane-rowhead">
-              <span className="rc-lane-dot" style={{ background: charColor(lr.charIndex) }} aria-hidden="true" />
-              <span className="rc-lane-nm" style={{ color: charColor(lr.charIndex) }} title={lr.name}>{lr.name}</span>
+              <span className="rc-lane-dot" style={{ background: charColor(lr.colorIndex) }} aria-hidden="true" />
+              <span className="rc-lane-nm" style={{ color: charColor(lr.colorIndex) }} title={lr.name}>{lr.name}</span>
             </div>
             {turns.map(r => {
               const lanes = model.laneByChar[lr.charIndex]?.[r.ti] ?? [];

@@ -12,7 +12,7 @@ import { computeTurnPlanner, createDefaultState } from '../../engine/turnPlanner
 import type { ComputedTurnResult, FrontAction, PlannerTurn, TurnPlannerState } from '../../types';
 import {
   S_BG1, S_BG2, buildCharSkills, buildChartModel, buildTeamNames, charColor, computeOdStyles, skillKeys,
-  computeRedChain3, countModifiers, fmtFloat, formatSkillEntries, normalizeSkillOverrides, parseSkillEntries, toSlot,
+  computeRedChain3, countModifiers, fmtFloat, formatSkillEntries, parseSkillEntries, toSlot,
   type ChartModel, type ChartTurnRow,
 } from './rowChartModel';
 
@@ -295,7 +295,7 @@ describe('slots and lanes', () => {
   it('falls back to C{n} for an unnamed character, in both the slot and the lane', () => {
     const s = state({ turns: [turn('1', { frontActions: [fa(4, '大招'), fa(-1), fa(-1)] })] });
     const model = modelOf(s);
-    expect(turnRows(model)[0].slots[0]).toEqual({ charIndex: 4, name: 'C5', action: '大招' });
+    expect(turnRows(model)[0].slots[0]).toEqual({ charIndex: 4, colorIndex: 4, name: 'C5', action: '大招' });
     expect(model.laneByChar[4][0]).toEqual([{ slotIndex: 0, charIndex: 4, name: 'C5', action: '大招' }]);
     // and the same fallback feeds the header
     expect(buildTeamNames(s.characters)).toEqual({ front: 'C1  C2  C3', back: 'C4  C5  C6' });
@@ -306,7 +306,7 @@ describe('slots and lanes', () => {
     const chars0 = createDefaultState().characters;
     const chars = chars0.map((c, i) => (i === 0 ? { ...c, name: '月城最中' } : c)) as typeof chars0;
     const s = state({ characters: chars, turns: [turn('1', { frontActions: [fa(0), fa(-1), fa(-1)] })] });
-    expect(turnRows(modelOf(s))[0].slots[0]).toEqual({ charIndex: 0, name: '月城最中', action: '' });
+    expect(turnRows(modelOf(s))[0].slots[0]).toEqual({ charIndex: 0, colorIndex: 0, name: '月城最中', action: '' });
   });
 
   it('stacks two slots in one lane cell when the same character acts twice', () => {
@@ -323,8 +323,9 @@ describe('slots and lanes', () => {
   it('gives every character slot a lane row, named like a slot would be', () => {
     const model = modelOf(createDefaultState());
     expect(model.laneRows).toEqual([
-      { charIndex: 0, name: 'C1' }, { charIndex: 1, name: 'C2' }, { charIndex: 2, name: 'C3' },
-      { charIndex: 3, name: 'C4' }, { charIndex: 4, name: 'C5' }, { charIndex: 5, name: 'C6' },
+      { charIndex: 0, colorIndex: 0, name: 'C1' }, { charIndex: 1, colorIndex: 1, name: 'C2' },
+      { charIndex: 2, colorIndex: 2, name: 'C3' }, { charIndex: 3, colorIndex: 3, name: 'C4' },
+      { charIndex: 4, colorIndex: 4, name: 'C5' }, { charIndex: 5, colorIndex: 5, name: 'C6' },
     ]);
   });
 
@@ -334,7 +335,7 @@ describe('slots and lanes', () => {
     const model = modelOf(state({ characters: chars, turns: [turn('1', { frontActions: [fa(3, '追击'), fa(-1), fa(-1)] })] }));
     // The lane header and the row chart's slot must resolve the same name — both
     // go through charDisplayName, and this is what would break if they did not.
-    expect(model.laneRows[3]).toEqual({ charIndex: 3, name: '国见玉' });
+    expect(model.laneRows[3]).toEqual({ charIndex: 3, colorIndex: 3, name: '国见玉' });
     expect(turnRows(model)[0].slots[0].name).toBe('国见玉');
   });
 
@@ -345,8 +346,8 @@ describe('slots and lanes', () => {
   });
 
   it('toSlot normalises an empty action and an absent slot', () => {
-    expect(toSlot(undefined, state().characters)).toEqual({ charIndex: -1, name: '', action: '' });
-    expect(toSlot({ charIndex: -1, action: 'x' }, state().characters)).toEqual({ charIndex: -1, name: '', action: 'x' });
+    expect(toSlot(undefined, state().characters)).toEqual({ charIndex: -1, colorIndex: -1, name: '', action: '' });
+    expect(toSlot({ charIndex: -1, action: 'x' }, state().characters)).toEqual({ charIndex: -1, colorIndex: -1, name: '', action: 'x' });
   });
 
   it('charColor maps 0-5 and nothing else', () => {
@@ -391,7 +392,7 @@ describe('invalid charIndex', () => {
     // slot has always kept its action in the model (SlotBody renders 「—」 and
     // ignores it), so NaN must not be a third kind of slot.
     expect(slots[0]).toEqual(toSlot(fa(-1, '大招'), s.characters));
-    expect(slots[0]).toEqual({ charIndex: -1, name: '', action: '大招' });
+    expect(slots[0]).toEqual({ charIndex: -1, colorIndex: -1, name: '', action: '大招' });
     // the valid slot beside it is untouched
     expect(slots[1].charIndex).toBe(0);
     // and nothing was filed under a NaN lane
@@ -535,7 +536,7 @@ describe('buildCharSkills', () => {
     const chars0 = createDefaultState().characters;
     const chars = chars0.map((c, i) => (i === 4 ? { ...c, name: '白河结奈' } : c)) as typeof chars0;
     const s = state({ characters: chars, turns: [turn('1', { frontActions: [fa(4, '终焉之刃'), fa(-1), fa(-1)] })] });
-    expect(buildCharSkills(modelOf(s))[4]).toEqual({ charIndex: 4, name: '白河结奈', skills: ['终焉之刃'] });
+    expect(buildCharSkills(modelOf(s))[4]).toEqual({ charIndex: 4, colorIndex: 4, name: '白河结奈', skills: ['终焉之刃'] });
   });
 
   it('drops a NaN slot instead of filing it under a lane', () => {
@@ -723,36 +724,5 @@ describe('skillKeys — 单字母角色名不得吃掉技能文字', () => {
 
   it('a one-letter name next to a multi-character one does not disable the strip', () => {
     expect(skillKeys('a-圣华-火加攻', ['a', '圣华'])).toEqual(['a火加攻']);
-  });
-});
-
-describe('normalizeSkillOverrides — 脏值防护', () => {
-  it('keeps a well-formed map, including an empty array', () => {
-    expect(normalizeSkillOverrides({ 0: ['a', 'b'], 3: [] })).toEqual({ 0: ['a', 'b'], 3: [] });
-  });
-
-  it('drops entries whose value is not string[]', () => {
-    // `{0: 'foo'}` used to reach the renderer as a string and throw on .map.
-    expect(normalizeSkillOverrides({ 0: 'foo' })).toBeUndefined();
-    expect(normalizeSkillOverrides({ 0: 'foo', 1: ['ok'] })).toEqual({ 1: ['ok'] });
-    expect(normalizeSkillOverrides({ 0: [1, 2] })).toBeUndefined();
-    expect(normalizeSkillOverrides({ 0: null })).toBeUndefined();
-  });
-
-  it('drops non-numeric keys', () => {
-    expect(normalizeSkillOverrides({ abc: ['x'] })).toBeUndefined();
-    expect(normalizeSkillOverrides({ '-1': ['x'] })).toBeUndefined();
-  });
-
-  it('treats anything that is not a plain object as "no overrides"', () => {
-    expect(normalizeSkillOverrides(undefined)).toBeUndefined();
-    expect(normalizeSkillOverrides(null)).toBeUndefined();
-    expect(normalizeSkillOverrides('str')).toBeUndefined();
-    expect(normalizeSkillOverrides(['a'])).toBeUndefined();
-    expect(normalizeSkillOverrides({})).toBeUndefined();
-  });
-
-  it('trims entries and drops blank ones', () => {
-    expect(normalizeSkillOverrides({ 0: [' a ', '', '  ', 'b'] })).toEqual({ 0: ['a', 'b'] });
   });
 });

@@ -13,6 +13,7 @@
  * testable without a component renderer.
  */
 import type { ComputedTurnResult, PlannerTurn, TurnPlannerChar, TurnPlannerState } from '../../types';
+import { charIdentity } from './charIdentity';
 
 // ─── Formatting ───────────────────────────────────────────────
 
@@ -99,6 +100,8 @@ export interface ODModel {
 
 export interface ChartSlot {
   charIndex: number;   // -1 = empty
+  /** 配色 / 身份序号（见 charIdentity.ts）；空槽为 -1。 */
+  colorIndex: number;
   name: string;        // '' for an empty slot
   action: string;
 }
@@ -154,6 +157,8 @@ export interface ChartLane {
  */
 export interface ChartLaneRow {
   charIndex: number;
+  /** 配色 / 身份序号（见 charIdentity.ts）。 */
+  colorIndex: number;
   name: string;
 }
 
@@ -287,12 +292,13 @@ export function toSlot(
   fa: { charIndex: number; action: string } | undefined,
   characters: TurnPlannerChar[],
 ): ChartSlot {
-  if (!fa) return { charIndex: -1, name: '', action: '' };
+  if (!fa) return { charIndex: -1, colorIndex: -1, name: '', action: '' };
   // Not-an-integer counts as empty, so the name, the colour and the lane cell all
   // agree on 「—」. See isValidSlotIndex for what NaN used to do.
   const ci = isValidSlotIndex(fa.charIndex, characters.length) ? fa.charIndex : -1;
   return {
     charIndex: ci,
+    colorIndex: ci >= 0 ? charIdentity(characters, ci) : -1,
     name: ci >= 0 ? charDisplayName(characters, ci) : '',
     action: fa.action || '',
   };
@@ -406,7 +412,10 @@ export function buildChartModel(state: TurnPlannerState, computed: ComputedTurnR
     odByTi,
     colStatus,
     laneByChar,
-    laneRows: characters.map((_, ci) => ({ charIndex: ci, name: charDisplayName(characters, ci) })),
+    // 按身份序号排，不按槽位：入场行换名互换后，泳道行和技能一览的顺序不动。
+    laneRows: characters
+      .map((_, ci) => ({ charIndex: ci, colorIndex: charIdentity(characters, ci), name: charDisplayName(characters, ci) }))
+      .sort((a, b) => a.colorIndex - b.colorIndex),
     charNames: characters.map(c => c.name.trim()).filter(Boolean),
     nTurns: rows.reduce((n, r) => (r.kind === 'turn' ? n + 1 : n), 0),
     odDec,
@@ -419,6 +428,8 @@ export function buildChartModel(state: TurnPlannerState, computed: ComputedTurnR
 /** One row of the 角色技能栏: a character and the skills they used. */
 export interface CharSkillRow {
   charIndex: number;
+  /** 技能一览的键与配色都按身份序号走（见 charIdentity.ts）。 */
+  colorIndex: number;
   name: string;
   /** Distinct actions in first-use order; [] for a character who never acted. */
   skills: string[];
@@ -464,7 +475,7 @@ export function buildCharSkills(model: ChartModel): CharSkillRow[] {
         }
       }
     }
-    return { charIndex: lr.charIndex, name: lr.name, skills };
+    return { charIndex: lr.charIndex, colorIndex: lr.colorIndex, name: lr.name, skills };
   });
 }
 
@@ -583,29 +594,4 @@ export function parseSkillEntries(text: string): string[] {
  *  display uses, so copy-pasting the rendered bar back into the field round-trips. */
 export function formatSkillEntries(skills: readonly string[]): string {
   return skills.join(' · ');
-}
-
-/**
- * Sanitise a `skillOverrides` value that came from storage, a share code or the
- * cloud into the shape the renderer expects.
- *
- * The two things it must do: drop anything that is not `number → string[]` (a
- * string value would make `skills.map` throw while rendering, and this data can
- * arrive from a synced row or a hand-edited share code), and keep an EMPTY array
- * as an empty array, because `[]` means "this character shows no skills" while a
- * missing key means "derive it". Nothing valid in ⇒ `undefined` out, which is the
- * same as "no overrides at all".
- */
-export function normalizeSkillOverrides(value: unknown): Record<number, string[]> | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const out: Record<number, string[]> = {};
-  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    const idx = Number(k);
-    if (!Number.isInteger(idx) || idx < 0 || !Array.isArray(v)) continue;
-    if (!v.every(s => typeof s === 'string')) continue;
-    // `[]` survives as `[]`; entries are trimmed and blanks dropped so a stored
-    // value can never render as an empty skill chip.
-    out[idx] = v.map(s => s.trim()).filter(Boolean);
-  }
-  return Object.keys(out).length > 0 ? out : undefined;
 }
