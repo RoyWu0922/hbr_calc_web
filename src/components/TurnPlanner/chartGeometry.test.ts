@@ -59,9 +59,13 @@ describe('rowRootMinWidth', () => {
     const slot = (col - 146 - 4) / 3;
     expect(slot).toBeGreaterThanOrEqual(nameW + 3 + acW);
     // …and the two-column switch has to honour the name too, or 双栏 comes back
-    // with the name clipped instead of the action.
+    // with the name clipped instead of the action. Asserted as a DIFFERENCE in
+    // the switch line: the half itself is always wider than one slot, so
+    // comparing it to nameW+gap+acW passes with nameW ignored.
+    expect(splitMinWidth(acW, nameW)).toBeGreaterThan(splitMinWidth(acW));
+    expect(splitMinWidth(acW, nameW)).toBe(2 * splitColWidth(acW, nameW) + 21);
     const half = (splitMinWidth(acW, nameW) - 21) / 2;
-    expect(half).toBeGreaterThanOrEqual(nameW + 3 + acW);
+    expect(derivedActionWidth('split', half, nameW)).toBeGreaterThanOrEqual(acW);
   });
 
   it('gives every 版式 room for a long name as well as a long action', () => {

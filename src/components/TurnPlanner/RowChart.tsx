@@ -16,7 +16,7 @@
  */
 import { useEffect, useMemo, useState, type ComponentType, type RefObject } from 'react';
 import { useElementWidth } from '../../hooks/useElementWidth';
-import { useAppSettings } from '../../utils/appSettings';
+import { resolveFont, useAppSettings } from '../../utils/appSettings';
 import { CharSkillSummary } from './CharSkillSummary';
 import { AC_SAFETY, measureMaxTextWidth, splitMinWidth } from './chartGeometry';
 import type { ChartMeta, ChartModel } from './rowChartModel';
@@ -135,11 +135,15 @@ function useActionWidths(model: ChartModel) {
   }, [model, settings.fontText, fontGeneration]);
 
   return useMemo(() => {
-    const [, , names, actions] = signature.split('\u0001');
+    const [fontPreset, , names, actions] = signature.split('\u0001');
     if (!names && !actions) return ZERO_WIDTHS;
-    // Read off the DOM rather than rebuilt from the preset: it is the family the
-    // rows will actually inherit, whatever --font-body resolved to.
-    const family = typeof document === 'undefined' ? 'sans-serif' : getComputedStyle(document.body).fontFamily;
+    // Resolved from the preset that is PART OF THE SIGNATURE, not from
+    // getComputedStyle: AppSettingsProvider writes --font-body in an effect, so
+    // during this very render the DOM still carries the previous font — and
+    // switching between two already-loaded fonts fires neither `ready` nor
+    // `loadingdone`, so the stale width would be cached under the new signature
+    // and never corrected. resolveFont is the same stack the provider writes.
+    const family = typeof document === 'undefined' ? 'sans-serif' : resolveFont(fontPreset, 'text');
     const texts = (s: string) => (s ? s.split('\u0000') : []);
     return {
       acWidth: measureMaxTextWidth(texts(actions), { size: 11, weight: 400, family }) + AC_SAFETY,
