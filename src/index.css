@@ -855,8 +855,14 @@ html[data-translucent='true'] .planner-table thead th.bg-bg-card { position: sta
      is ~610px on a 1060px viewport, where 30% is 41px and 月城最中 ellipsised to
      「月城…」. Below this floor the name wins and the action absorbs the
      difference, which is the right trade — an unreadable character name defeats
-     the point of the 角色色带 / 角色泳道 版式. */
-  min-width: 52px;
+     the point of the 角色色带 / 角色泳道 版式.
+
+     --rc-nm-min is the widest name THIS axle has, measured in JS (see
+     chartGeometry.ts) and written on the 版式 root. The geometry is computed
+     against that same number, so a fixed floor here alone would leave the box
+     narrower than the layout assumes — and the name, not the action, would be
+     what ellipsises. */
+  min-width: max(52px, var(--rc-nm-min, 0px));
   text-align: center;
   color: var(--rc-muted);
 }
@@ -1076,7 +1082,14 @@ html[data-translucent='true'] .planner-table thead th.bg-bg-card { position: sta
 .rc-log .rc-slot { flex: 1 1 0; min-width: 0; justify-content: center; }
 .rc-log .rc-nm,
 .rc-log .rc-ac { flex: 0 1 auto; min-width: 0; }
-.rc-log .rc-nm { font-weight: 600; }
+.rc-log .rc-nm {
+  font-weight: 600;
+  /* 行程表's pair is content-sized, so `flex: 0 1 auto` (above) would let the
+     name shrink when the third is tight — the geometry reserved the measured
+     name width, so the box has to honour it or the name, not the action, is what
+     clips. Same variable as the row 版式; see chartGeometry.ts. */
+  min-width: var(--rc-nm-min, 0px);
+}
 .rc-log .rc-empty { flex: 0 0 auto; width: auto; }
 /* Shared by 行程表 (name · action) and 角色泳道's 词条 strip. A real node, never
    `content:"·"` — the export drops `content:""` pseudo-elements. */
@@ -1093,12 +1106,10 @@ html[data-translucent='true'] .planner-table thead th.bg-bg-card { position: sta
 .rc-split-div { flex: 0 0 1px; align-self: stretch; background: var(--rc-grid); }
 /* K's slot track is half the width of every other 版式's, so the shared 52px
    name floor (sized for a full-width slot) would leave the action ~1 character.
-   40px is the compromise: a 4-character name ellipsises to 「月城最…」 but stays
-   identifiable, and the action keeps room for a 3-character skill name.
-   Deliberately not lower — an unreadable name defeats the format, and the
-   breakpoint in RowChart.tsx is derived from this number. The full name is on
-   the tooltip either way. */
-.rc-split .rc-nm { min-width: 40px; }
+   40px is the compromise, and --rc-nm-min raises it to the widest name this axle
+   actually has — so a 4-character name reads in full instead of 「月城最…」, and
+   the action still keeps the room the geometry reserved for it. */
+.rc-split .rc-nm { min-width: max(40px, var(--rc-nm-min, 0px)); }
 
 /* 7 · 角色技能栏 —— 7 个版式通用（它不是版式，是图表的附属） */
 /* Rendered by ChartHost inside the export container, under whichever 版式 is
