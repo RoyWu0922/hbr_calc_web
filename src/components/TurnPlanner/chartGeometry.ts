@@ -55,6 +55,8 @@ interface RowSpec {
   nameFloor: number;
   /** Extra px one slot spends on decoration, not text. */
   extras: number;
+  /** `.rc-slots`' column gap for this 版式 — 行程表 widens it to 12px. */
+  slotGap: number;
   /**
    * Whether the slot splits its width 30% name / 70% action. 行程表's pair is
    * content-sized instead, so its need is simply additive.
@@ -64,14 +66,16 @@ interface RowSpec {
 
 const ROW_SPECS: Record<RowFormat, RowSpec> = {
   // '68px 1fr 96px' — two gaps.
-  band: { furniture: ROW_PAD + 68 + 96 + ROW_GAP * 2, nameFloor: NAME_FLOOR, extras: 4, ratioSplit: true },
-  zebra: { furniture: ROW_PAD + 68 + 96 + ROW_GAP * 2, nameFloor: NAME_FLOOR, extras: 6, ratioSplit: true },
+  band: { furniture: ROW_PAD + 68 + 96 + ROW_GAP * 2, nameFloor: NAME_FLOOR, extras: 4, slotGap: SLOT_GAP, ratioSplit: true },
+  zebra: { furniture: ROW_PAD + 68 + 96 + ROW_GAP * 2, nameFloor: NAME_FLOOR, extras: 6, slotGap: SLOT_GAP, ratioSplit: true },
   // '34px 58px 1fr 92px' — three gaps.
-  rail: { furniture: ROW_PAD + 34 + 58 + 92 + ROW_GAP * 3, nameFloor: NAME_FLOOR, extras: 0, ratioSplit: true },
+  rail: { furniture: ROW_PAD + 34 + 58 + 92 + ROW_GAP * 3, nameFloor: NAME_FLOOR, extras: 0, slotGap: SLOT_GAP, ratioSplit: true },
   // '16px 62px 1fr 88px' — three gaps; the pair's `·` plus its two gaps.
-  log: { furniture: ROW_PAD + 16 + 62 + 88 + ROW_GAP * 3, nameFloor: 44, extras: 10, ratioSplit: false },
+  // `.rc-log .rc-slots { gap: 4px 12px }` — its column gap is 6× the shared 2px,
+  // which is 20px of the row's width that the shared SLOT_GAP does not cover.
+  log: { furniture: ROW_PAD + 16 + 62 + 88 + ROW_GAP * 3, nameFloor: 44, extras: 10, slotGap: 12, ratioSplit: false },
   // '56px 1fr 62px' — two gaps. Two columns only when 双栏 renders them.
-  split: { furniture: ROW_PAD + 56 + 62 + ROW_GAP * 2, nameFloor: SPLIT_NAME_FLOOR, extras: 0, ratioSplit: true },
+  split: { furniture: ROW_PAD + 56 + 62 + ROW_GAP * 2, nameFloor: SPLIT_NAME_FLOOR, extras: 0, slotGap: SLOT_GAP, ratioSplit: true },
 };
 
 /*
@@ -91,10 +95,17 @@ const ROW_SPECS: Record<RowFormat, RowSpec> = {
  * slot has to be proportionally bigger (`proportional`). Using only the additive
  * branch was 1.4px short for a 12-character skill, which is exactly the kind of
  * off-by-a-glyph that a pixel floor cannot be trusted to absorb.
+ *
+ * `nameW` raises the name floor to the widest name this axle actually has: the
+ * fixed floors are sized for a 3–4 character name, and a four-character one in
+ * 双栏紧凑's 40px box ellipsised to 「月城最…」 — the same defect as the action
+ * text, one column over, and newly reachable now that the compact format's
+ * two-column mode comes back for short skills.
  */
-function slotNeed(spec: RowSpec, acW: number): number {
+function slotNeed(spec: RowSpec, acW: number, nameW: number): number {
   const fixed = NAME_ACT_GAP + spec.extras;
-  const additive = spec.nameFloor + fixed + acW;
+  const nameFloor = Math.max(spec.nameFloor, nameW);
+  const additive = nameFloor + fixed + acW;
   if (!spec.ratioSplit) return Math.ceil(additive);
   return Math.ceil(Math.max(additive, (acW + fixed) / ACTION_SHARE));
 }
@@ -102,13 +113,28 @@ function slotNeed(spec: RowSpec, acW: number): number {
 /**
  * Minimum width of a row 版式's root so no action has to ellipsise.
  *
- * `acW` is the widest action in px, 0 before the measurement has run — the
+ * `acW` is the widest action in px, 0 when the axle has no actions at all — the
  * result is then clamped to ROW_BASE_MIN, i.e. the layout the chart has always
- * had, so an unmeasured chart cannot shrink either.
+ * had, so an empty chart cannot shrink either.
  */
-export function rowRootMinWidth(format: RowFormat, acW: number): number {
-  const slots = 3 * slotNeed(ROW_SPECS[format], acW) + SLOT_GAP * 2;
-  return Math.max(ROW_BASE_MIN, ROW_SPECS[format].furniture + slots);
+export function rowRootMinWidth(format: RowFormat, acW: number, nameW = 0): number {
+  const spec = ROW_SPECS[format];
+  const slots = 3 * slotNeed(spec, acW, nameW) + spec.slotGap * 2;
+  return Math.max(ROW_BASE_MIN, spec.furniture + slots);
+}
+
+/**
+ * One 双栏紧凑 column's floor, WITHOUT the whole-chart 520px floor.
+ *
+ * The two-column decision has to ask 「does a HALF fit」, and ROW_BASE_MIN is the
+ * floor of a whole chart, not of a half — clamping a half to it put the switch
+ * at 2 × 520 + 21 = 1061px, i.e. above the ~720px the panel actually gets, so
+ * the format silently lost its two-column mode even for short skills. A half
+ * only has to hold a row.
+ */
+export function splitColWidth(acW: number, nameW = 0): number {
+  const spec = ROW_SPECS.split;
+  return Math.ceil(spec.furniture + 3 * slotNeed(spec, acW, nameW) + spec.slotGap * 2);
 }
 
 /**
@@ -117,10 +143,11 @@ export function rowRootMinWidth(format: RowFormat, acW: number): number {
  * 「the action track is at least as wide as the text it must hold」 without
  * re-deriving the furniture numbers in the test file.
  */
-export function derivedActionWidth(format: RowFormat, rootWidth: number): number {
+export function derivedActionWidth(format: RowFormat, rootWidth: number, nameW = 0): number {
   const spec = ROW_SPECS[format];
-  const slot = (rootWidth - spec.furniture - SLOT_GAP * 2) / 3;
-  const name = spec.ratioSplit ? Math.max(slot * (1 - ACTION_SHARE), spec.nameFloor) : spec.nameFloor;
+  const nameFloor = Math.max(spec.nameFloor, nameW);
+  const slot = (rootWidth - spec.furniture - spec.slotGap * 2) / 3;
+  const name = spec.ratioSplit ? Math.max(slot * (1 - ACTION_SHARE), nameFloor) : nameFloor;
   return slot - name - NAME_ACT_GAP - spec.extras;
 }
 
@@ -128,14 +155,26 @@ export function derivedActionWidth(format: RowFormat, rootWidth: number): number
 export const TABLE_FIXED = { round: 56, name: 56, od: 64 } as const;
 
 /**
+ * The 表格's own min-width: `.planner-table` declares `max(100%, 760px)` so a
+ * narrow host scrolls instead of compressing the tracks, and this table used to
+ * kill that floor by pinning an inline `minWidth: '100%'`. It also carries an
+ * inline `width` that never took effect — `.simple-timeline` sets
+ * `width: 100% !important`, which wins over any inline width — so the columns'
+ * own widths (the colgroup below) are what actually size it. Hence: min-width,
+ * no width.
+ */
+export function tableMinWidth(acW: number): number {
+  return Math.max(760, tableWidth(acW));
+}
+
+/**
  * The action column's width in the 表格 版式, from the action text's own width.
  *
- * `acW` here is the RAW 12px measurement — no AC_SAFETY, because a table cell
- * cannot grow to fit and its chrome is known exactly: `.planner-table td` has
- * 0.125rem of side padding plus a 1px border on each side (≈6px), and the
- * 100px floor it used to have was already ~5px short of an 8-character skill.
- * So the extra is 10px: the chrome, plus the same few px of rounding slack the
- * row 版式 buy with AC_SAFETY.
+ * `acW` here is the RAW 12px measurement — no AC_SAFETY, because the cell's
+ * chrome is known: `.planner-table td` has 0.125rem of side padding plus a
+ * collapsed border, ~6–8px, and the 100px floor it used to have was already
+ * ~5px short of an 8-character skill. The extra is 10px: the chrome plus the
+ * same few px of rounding slack the row 版式 buy with AC_SAFETY.
  */
 export function tableActionColWidth(acW: number): number {
   return Math.max(100, Math.ceil(acW) + 10);
@@ -156,12 +195,14 @@ export function laneColMin(acW: number): number {
 }
 
 /**
- * Host width at which 双栏紧凑 can show two columns without either of them being
- * narrower than its own floor: two column floors plus the 20px flex gap and the
- * 1px divider between them.
+ * Host width at which 双栏紧凑 can show two columns: two column floors (each
+ * WITHOUT the whole-chart 520px floor, see splitColWidth) plus the 20px flex gap
+ * and the 1px divider between them. The panel gives the chart ~720px, so two
+ * columns still only appear for short skills — a long skill legitimately wants
+ * the full width.
  */
-export function splitMinWidth(acW: number): number {
-  return 2 * rowRootMinWidth('split', acW) + 21;
+export function splitMinWidth(acW: number, nameW = 0): number {
+  return 2 * splitColWidth(acW, nameW) + 21;
 }
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AC_SAFETY, ROW_BASE_MIN, derivedActionWidth, laneColMin, measureMaxTextWidth,
-  rowRootMinWidth, splitMinWidth, tableActionColWidth, tableWidth,
+  rowRootMinWidth, splitColWidth, splitMinWidth, tableActionColWidth, tableMinWidth, tableWidth,
 } from './chartGeometry';
 
 /**
@@ -47,6 +47,23 @@ describe('rowRootMinWidth', () => {
       }
     }
   });
+
+  it('holds a four-character name in 双栏紧凑, where the 40px box used to ellipsise it', () => {
+    // 月城最中 at 11px/600 measures ~48px with the safety margin; the fixed 40px
+    // floor cut it to 「月城最…」, which is the same defect as the action text.
+    const nameW = 48;
+    const root = rowRootMinWidth('split', 44, nameW);
+    const slot = (root - 146 - 4) / 3;
+    expect(slot).toBeGreaterThanOrEqual(nameW + 3 + 44);
+  });
+
+  it('gives every 版式 room for a long name as well as a long action', () => {
+    const acW = 143;
+    const nameW = 66; // a 6-character name
+    for (const f of FORMATS) {
+      expect(derivedActionWidth(f, rowRootMinWidth(f, acW, nameW), nameW)).toBeGreaterThanOrEqual(acW);
+    }
+  });
 });
 
 describe('table 版式', () => {
@@ -62,6 +79,19 @@ describe('table 版式', () => {
     // 4px of side padding + 2px of border, then slack.
     expect(tableActionColWidth(acW) - 6).toBeGreaterThan(acW);
   });
+
+  it('keeps .planner-table\'s 760px floor, which the old inline min-width killed', () => {
+    // Restoring the floor is what makes a narrow host scroll the table instead
+    // of compressing its columns — the inline `minWidth: '100%'` used to win
+    // over the stylesheet's `max(100%, 760px)`.
+    expect(tableMinWidth(0)).toBe(760);
+    // A 12-char skill's own table is 717px, i.e. the floor still governs…
+    expect(tableWidth(133)).toBeLessThan(760);
+    expect(tableMinWidth(133)).toBe(760);
+    // …and a 20-char one is wider than the floor, so the text governs.
+    expect(tableWidth(200)).toBeGreaterThan(760);
+    expect(tableMinWidth(200)).toBe(tableWidth(200));
+  });
 });
 
 describe('laneColMin', () => {
@@ -74,17 +104,26 @@ describe('laneColMin', () => {
   });
 });
 
-describe('splitMinWidth', () => {
+describe('splitMinWidth / splitColWidth', () => {
+  it('measures a HALF, not a whole chart — the 520px floor is not a column floor', () => {
+    // Clamping a half to ROW_BASE_MIN put the switch at 2×520+21 = 1061px, above
+    // the ~720px the panel gives the chart, so 双栏 lost its two-column mode.
+    expect(splitColWidth(20)).toBeLessThan(ROW_BASE_MIN);
+    expect(splitMinWidth(20)).toBeLessThan(2 * ROW_BASE_MIN + 21);
+    expect(splitMinWidth(20)).toBe(2 * splitColWidth(20) + 21);
+  });
+
   it('is two full columns plus the 20px gap and 1px divider', () => {
     for (const acW of [0, 88, 121]) {
-      expect(splitMinWidth(acW)).toBe(2 * rowRootMinWidth('split', acW) + 21);
+      expect(splitMinWidth(acW)).toBe(2 * splitColWidth(acW) + 21);
     }
   });
 
   it('never switches to two columns before both halves fit their own floor', () => {
-    const acW = 121;
-    const half = (splitMinWidth(acW) - 21) / 2;
-    expect(derivedActionWidth('split', half)).toBeGreaterThanOrEqual(acW);
+    for (const acW of [20, 88, 121]) {
+      const half = (splitMinWidth(acW) - 21) / 2;
+      expect(derivedActionWidth('split', half)).toBeGreaterThanOrEqual(acW);
+    }
   });
 });
 

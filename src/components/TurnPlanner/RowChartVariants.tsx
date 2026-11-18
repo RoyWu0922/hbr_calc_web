@@ -18,7 +18,7 @@
  * --simple-slot-N tinting was keyed by SLOT position, which is why a character
  * changed colour when they moved slots.
  */
-import { Fragment } from 'react';
+import { Fragment, type CSSProperties } from 'react';
 import { charColor } from './rowChartModel';
 import { laneColMin, rowRootMinWidth, splitMinWidth } from './chartGeometry';
 import type { ChartTurnRow } from './rowChartModel';
@@ -29,18 +29,29 @@ import {
 } from './RowChartPrimitives';
 
 /**
- * Every row 版式 pins its root to `rowRootMinWidth(format, acWidth)`: the width
- * at which the widest action in THIS axle fits its slot without ellipsising.
- * Before that, the tracks were sized for a short skill and the overflow was
- * hidden with `text-overflow: ellipsis` — a ~44px action cell on the real panel,
- * so 「破竹之势慈悲之刃」 printed as its first four characters.
+ * Every row 版式 pins its root to `rowRootMinWidth(format, acWidth, nameWidth)`:
+ * the width at which the widest action AND the widest character name in THIS
+ * axle fit their boxes without ellipsising. Before that, the tracks were sized
+ * for a short skill and the overflow was hidden with `text-overflow: ellipsis` —
+ * a ~44px action cell on the real panel, so 「破竹之势慈悲之刃」 printed as its
+ * first four characters.
+ *
+ * `--rc-nm-min` carries the measured name width to the CSS: the name box has a
+ * fixed `min-width` (52px, 40px in 双栏紧凑) and the geometry is computed against
+ * the measured name, so the two must move together or the box is narrower than
+ * the layout assumes and the name — not the action — is what clips.
  *
  * The floor is a MINIMUM only: a host wider than it lays out exactly as it used
  * to (equal thirds, every row the same height), and a narrower host scrolls.
  */
-const minWidthStyle = (format: Parameters<typeof rowRootMinWidth>[0], acWidth: number) => ({
-  minWidth: rowRootMinWidth(format, acWidth),
-});
+const minWidthStyle = (
+  format: Parameters<typeof rowRootMinWidth>[0],
+  acWidth: number,
+  nameWidth: number,
+): CSSProperties => ({
+  minWidth: rowRootMinWidth(format, acWidth, nameWidth),
+  '--rc-nm-min': `${nameWidth}px`,
+} as CSSProperties);
 
 /**
  * Label | 3 slots | OD. Shared by B and C; E and G prepend a leading column and
@@ -76,9 +87,9 @@ const HEAD = (template: string) => (
  * `content: ""` pseudo-elements, so a bar built that way would be missing from
  * the PNG. An empty slot renders no bar at all (charColor returns undefined).
  */
-export function RowChartBand({ model, meta, acWidth }: VariantProps) {
+export function RowChartBand({ model, meta, acWidth, nameWidth }: VariantProps) {
   return (
-    <div className="rc-band rc-wide" style={minWidthStyle('band', acWidth)}>
+    <div className="rc-band rc-wide" style={minWidthStyle('band', acWidth, nameWidth)}>
       <ChartMetaBlock meta={meta} />
       {model.rows.map(row => (
         row.kind === 'modifier'
@@ -118,9 +129,9 @@ export function RowChartBand({ model, meta, acWidth }: VariantProps) {
  * and the shell hands the variant the slot index so it need not recount which
  * one is first.
  */
-export function RowChartZebra({ model, meta, acWidth }: VariantProps) {
+export function RowChartZebra({ model, meta, acWidth, nameWidth }: VariantProps) {
   return (
-    <div className="rc-zebra rc-wide" style={minWidthStyle('zebra', acWidth)}>
+    <div className="rc-zebra rc-wide" style={minWidthStyle('zebra', acWidth, nameWidth)}>
       <ChartMetaBlock meta={meta} />
       {model.rows.map(row => (
         row.kind === 'modifier'
@@ -158,9 +169,9 @@ export function RowChartZebra({ model, meta, acWidth }: VariantProps) {
  * between rows. It lives inside .rc-rail-list, which wraps only the rows, so the
  * rail starts below the column header instead of running through it.
  */
-export function RowChartRail({ model, meta, acWidth }: VariantProps) {
+export function RowChartRail({ model, meta, acWidth, nameWidth }: VariantProps) {
   return (
-    <div className="rc-rail-variant rc-wide" style={minWidthStyle('rail', acWidth)}>
+    <div className="rc-rail-variant rc-wide" style={minWidthStyle('rail', acWidth, nameWidth)}>
       <ChartMetaBlock meta={meta} />
       {HEAD(RAIL_TEMPLATE)}
       <div className="rc-rail-list">
@@ -205,9 +216,9 @@ export function RowChartRail({ model, meta, acWidth }: VariantProps) {
  * The `·` is a real node via slotSeparator: an `::after { content: "·" }` would
  * be visible on screen and absent from the export.
  */
-export function RowChartLog({ model, meta, acWidth }: VariantProps) {
+export function RowChartLog({ model, meta, acWidth, nameWidth }: VariantProps) {
   return (
-    <div className="rc-log rc-wide" style={minWidthStyle('log', acWidth)}>
+    <div className="rc-log rc-wide" style={minWidthStyle('log', acWidth, nameWidth)}>
       <ChartMetaBlock meta={meta} />
       {HEAD(LOG_TEMPLATE)}
       {model.rows.map(row => (
@@ -362,7 +373,7 @@ export function RowChartLane({ model, meta, acWidth }: VariantProps) {
  * No name abbreviation: a trimmed name would need its own rule set and would
  * disagree with every other 版式. The name keeps its `title` tooltip instead.
  */
-export function RowChartSplit({ model, meta, cols, acWidth }: VariantProps) {
+export function RowChartSplit({ model, meta, cols, acWidth, nameWidth }: VariantProps) {
   // A single row cannot fill two columns — splitting it would render an empty
   // half and a divider beside nothing. `cols` is a measurement of the host, not
   // a promise that the content divides, so the guard belongs on the content
@@ -380,7 +391,10 @@ export function RowChartSplit({ model, meta, cols, acWidth }: VariantProps) {
       // Two columns need two floors plus the 20px gap and 1px divider; one
       // column only its own. `cols` already accounts for that (ChartHost asks
       // splitMinWidth), so this just makes the floor match what is rendered.
-      style={{ minWidth: twoCols ? splitMinWidth(acWidth) : rowRootMinWidth('split', acWidth) }}
+      style={{
+        minWidth: twoCols ? splitMinWidth(acWidth, nameWidth) : rowRootMinWidth('split', acWidth, nameWidth),
+        '--rc-nm-min': `${nameWidth}px`,
+      } as CSSProperties}
     >
       <ChartMetaBlock meta={meta} />
       <div className={twoCols ? 'rc-split-cols' : undefined}>

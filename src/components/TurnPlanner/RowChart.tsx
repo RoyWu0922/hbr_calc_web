@@ -14,8 +14,9 @@
  * TurnPlannerState: it is a per-viewer preference and has no business riding
  * along in share codes, saved axles or the Supabase sync.
  */
-import { useMemo, useState, type ComponentType, type RefObject } from 'react';
+import { useEffect, useMemo, useState, type ComponentType, type RefObject } from 'react';
 import { useElementWidth } from '../../hooks/useElementWidth';
+import { resolveFont, useAppSettings } from '../../utils/appSettings';
 import { CharSkillSummary } from './CharSkillSummary';
 import { AC_SAFETY, measureMaxTextWidth, splitMinWidth } from './chartGeometry';
 import type { ChartMeta, ChartModel } from './rowChartModel';
@@ -30,13 +31,21 @@ export interface VariantProps {
   /** Column count. Only 双栏紧凑 varies it; every other format ignores it. */
   cols: number;
   /**
-   * Width (px) of the widest action text, as rendered, + AC_SAFETY. 0 until the
-   * measurement has run. Every 版式 uses it as a MINIMUM track size so a skill
-   * is never ellipsised — see chartGeometry.ts for why guessing a pixel floor
-   * instead produced four visible characters.
+   * Width (px) of the widest action text, as rendered, + AC_SAFETY. 0 when the
+   * axle has no actions at all (never "not measured yet" — the measurement runs
+   * during the first render). Every 版式 uses it as a MINIMUM track size so a
+   * skill is never ellipsised — see chartGeometry.ts for why guessing a pixel
+   * floor instead produced four visible characters.
    */
   acWidth: number;
-  /** The same for the 表格 版式, which renders its actions at 12px rather than 11px. */
+  /**
+   * Width (px) of the widest character name on the axle, + AC_SAFETY. The name
+   * box has its own floor (52px, 40px in 双栏紧凑) tuned for a 3–4 character
+   * name, so a longer one ellipsised — the same defect as the action text, one
+   * column over.
+   */
+  nameWidth: number;
+  /** The same as acWidth for the 表格 版式, which renders its actions at 12px rather than 11px. */
   acWidthTable: number;
 }
 
@@ -74,45 +83,64 @@ const VARIANTS: Record<ChartFormat, ComponentType<VariantProps>> = {
  * never ellipsised — the old fixed floors left a ~44px action cell, i.e. four
  * characters, which is what 「只能输出4个字」 was.
  *
- * Measured in a useMemo rather than an effect, for two reasons: the chart must
- * be right on its FIRST paint (an effect would paint the old narrow layout and
- * then jump, and an export clicked in between captures the wrong one), and a
- * synchronous setState in an effect is a cascading render by definition. The
- * measurement itself only reads layout from a temporary, removed-again <span>,
- * so it has no observable side effect.
+ * Measured in a useMemo rather than an effect: the chart must be right on its
+ * FIRST paint (an effect would paint the old narrow layout and then jump, and an
+ * export clicked in between captures the wrong one), and a synchronous setState
+ * in an effect is a cascading render by definition. The measurement only reads
+ * layout from a temporary, removed-again <span>, so it has no observable effect.
  *
- * Keyed on the TEXT, not on `model`: the model is rebuilt whenever the planner
- * state changes (including every keystroke in the detail table), while this
- * needs two measurements per string. The font comes from <body> because the
- * chart only sets its size — the family is inherited — and reading it from the
- * host ref during render would be null on the first pass.
- *
- * 0 means "nothing to measure" and every caller falls back to its own floor.
+ * Three things invalidate the cache, and all three change how wide a string
+ * renders: the text itself, the 文字字体 setting (设置 → 字体, which rewrites the
+ * `--font-body` variable), and a webfont that arrives after the first paint
+ * (`document.fonts.ready`). Keying only on the text measured with a fallback
+ * font and never again would leave the floor short by the font's own difference.
  */
 function useActionWidths(model: ChartModel) {
+  const { settings } = useAppSettings();
+  const [fontGeneration, setFontGeneration] = useState(0);
+  useEffect(() => {
+    if (typeof document === 'undefined' || !document.fonts) return;
+    let alive = true;
+    void document.fonts.ready.then(() => { if (alive) setFontGeneration(g => g + 1); });
+    return () => { alive = false; };
+  }, []);
+
+  // fontGeneration rides in THIS memo rather than the measuring one: a new
+  // identity here is what invalidates the cache below, which keeps the measuring
+  // memo's dependency list honest. The linter cannot see that a rebuild is the
+  // point of the dependency, so it is suppressed here — deliberately, once.
   const signature = useMemo(() => {
-    const texts: string[] = [];
+    const actionTexts: string[] = [];
+    const nameTexts: string[] = [];
     for (const row of model.rows) {
       if (row.kind !== 'turn') continue;
-      for (const slot of row.slots) if (slot.action) texts.push(slot.action);
+      for (const slot of row.slots) {
+        if (slot.action) actionTexts.push(slot.action);
+        if (slot.name) nameTexts.push(slot.name);
+      }
     }
-    return texts.join('\u0000');
-  }, [model]);
+    return { actions: actionTexts.join('\u0000'), names: nameTexts.join('\u0000') };
+  }, [model, fontGeneration]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return useMemo(() => {
-    if (!signature) return ZERO_WIDTHS;
-    const family = typeof document === 'undefined' ? 'sans-serif' : getComputedStyle(document.body).fontFamily;
-    const texts = signature.split('\u0000');
+    if (!signature.actions && !signature.names) return ZERO_WIDTHS;
+    // The resolved preset, not getComputedStyle: AppSettingsProvider writes this
+    // same stack into --font-body on <html>, the chart inherits it, and passing
+    // the preset through makes the setting a real input instead of a key.
+    const family = typeof document === 'undefined' ? 'sans-serif' : resolveFont(settings.fontText, 'text');
+    const texts = (s: string) => (s ? s.split('\u0000') : []);
     return {
-      acWidth: measureMaxTextWidth(texts, { size: 11, weight: 400, family }) + AC_SAFETY,
+      acWidth: measureMaxTextWidth(texts(signature.actions), { size: 11, weight: 400, family }) + AC_SAFETY,
+      // 600 because 行程表's name is bold — the widest case the box must hold.
+      nameWidth: measureMaxTextWidth(texts(signature.names), { size: 11, weight: 600, family }) + AC_SAFETY,
       // Raw, not padded: the 表格 formula knows its cell chrome exactly and adds
       // its own slack (see tableActionColWidth).
-      acWidthTable: measureMaxTextWidth(texts, { size: 12, weight: 400, family }),
+      acWidthTable: measureMaxTextWidth(texts(signature.actions), { size: 12, weight: 400, family }),
     };
-  }, [signature]);
+  }, [signature, settings.fontText]);
 }
 
-const ZERO_WIDTHS = { acWidth: 0, acWidthTable: 0 };
+const ZERO_WIDTHS = { acWidth: 0, acWidthTable: 0, nameWidth: 0 };
 
 export function useSimpleFormat() {
   const [format, setFormat] = useState<ChartFormat>(() => {
@@ -163,13 +191,13 @@ export function ChartHost({
   // exists inside the clone. Reading the real clientWidth keeps the exported
   // column count identical to what the user is looking at.
   const width = useElementWidth(hostRef);
-  const { acWidth, acWidthTable } = useActionWidths(model);
+  const { acWidth, acWidthTable, nameWidth } = useActionWidths(model);
   // Two columns only while both halves can hold a full action at their floor.
   // Below that the format renders one full-width column (same list, same styling).
-  const cols = width >= splitMinWidth(acWidth) ? 2 : 1;
+  const cols = width >= splitMinWidth(acWidth, nameWidth) ? 2 : 1;
   return (
     <div ref={hostRef} data-timeline-export className="card overflow-x-auto !p-0 w-full md:flex-1">
-      <Variant model={model} meta={meta} cols={cols} acWidth={acWidth} acWidthTable={acWidthTable} />
+      <Variant model={model} meta={meta} cols={cols} acWidth={acWidth} acWidthTable={acWidthTable} nameWidth={nameWidth} />
       {/* Inside the export container on purpose: the PNG captures this element,
           so the summary needs no export-side handling and cannot drift out of
           sync with what is on screen. It renders under all 7 版式 — it is an
