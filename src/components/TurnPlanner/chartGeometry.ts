@@ -157,11 +157,10 @@ export const TABLE_FIXED = { round: 56, name: 56, od: 64 } as const;
 /**
  * The 表格's own min-width: `.planner-table` declares `max(100%, 760px)` so a
  * narrow host scrolls instead of compressing the tracks, and this table used to
- * kill that floor by pinning an inline `minWidth: '100%'`. It also carries an
- * inline `width` that never took effect — `.simple-timeline` sets
- * `width: 100% !important`, which wins over any inline width — so the columns'
- * own widths (the colgroup below) are what actually size it. Hence: min-width,
- * no width.
+ * kill that floor by pinning an inline `minWidth: '100%'` (and carried an inline
+ * `width` that never took effect, since `.simple-timeline` sets
+ * `width: 100% !important`). Both are gone: the colgroup's own column widths
+ * size the table, and this is the floor that makes a narrow host scroll.
  */
 export function tableMinWidth(acW: number): number {
   return Math.max(760, tableWidth(acW));
