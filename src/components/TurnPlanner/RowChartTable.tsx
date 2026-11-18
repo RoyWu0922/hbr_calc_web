@@ -13,6 +13,7 @@
 import { Fragment } from 'react';
 import type { ChartMeta, ChartModel, ChartModRow, ChartTurnRow } from './rowChartModel';
 import { ODValue, labelTone } from './RowChartPrimitives';
+import { tableActionColWidth, tableWidth } from './chartGeometry';
 
 /**
  * Theme-tied per-slot column tint. This is keyed on SLOT position, which is
@@ -25,17 +26,22 @@ const SIMPLE_SLOT_COLORS = [
   'var(--simple-slot3)',
 ] as const;
 
-export function RowChartTable({ model, meta }: { model: ChartModel; meta: ChartMeta }) {
+export function RowChartTable({ model, meta, acWidthTable }: { model: ChartModel; meta: ChartMeta; acWidthTable: number }) {
+  // The action columns follow the widest skill instead of a fixed 100px. At
+  // `tableLayout: fixed` a cell can never grow to fit its text, so a 12-character
+  // skill was cut at the column edge — the 表格 half of the same complaint the
+  // row 版式 fixed by measuring. 100px stays the floor.
+  const actionCol = tableActionColWidth(acWidthTable);
   return (
-    <table className="planner-table simple-timeline" style={{ tableLayout: 'fixed', width: 588, minWidth: '100%' }}>
+    <table className="planner-table simple-timeline" style={{ tableLayout: 'fixed', width: tableWidth(acWidthTable), minWidth: '100%' }}>
       <colgroup>
         <col style={{ width: 56 }} />
         <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[0] }} />
-        <col style={{ width: 100, background: SIMPLE_SLOT_COLORS[0] }} />
+        <col style={{ width: actionCol, background: SIMPLE_SLOT_COLORS[0] }} />
         <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[1] }} />
-        <col style={{ width: 100, background: SIMPLE_SLOT_COLORS[1] }} />
+        <col style={{ width: actionCol, background: SIMPLE_SLOT_COLORS[1] }} />
         <col style={{ width: 56, background: SIMPLE_SLOT_COLORS[2] }} />
-        <col style={{ width: 100, background: SIMPLE_SLOT_COLORS[2] }} />
+        <col style={{ width: actionCol, background: SIMPLE_SLOT_COLORS[2] }} />
         <col style={{ width: 64 }} />
       </colgroup>
       <thead>

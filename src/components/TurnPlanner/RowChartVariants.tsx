@@ -20,12 +20,27 @@
  */
 import { Fragment } from 'react';
 import { charColor } from './rowChartModel';
+import { laneColMin, rowRootMinWidth, splitMinWidth } from './chartGeometry';
 import type { ChartTurnRow } from './rowChartModel';
 import type { VariantProps } from './RowChart';
 import {
   ChartColHead, ChartMetaBlock, ColorBar, ModRow, NodeMark, ODValue, RailDot, RowShell,
   colStatusTone, labelTone, toneClass, toneColor,
 } from './RowChartPrimitives';
+
+/**
+ * Every row 版式 pins its root to `rowRootMinWidth(format, acWidth)`: the width
+ * at which the widest action in THIS axle fits its slot without ellipsising.
+ * Before that, the tracks were sized for a short skill and the overflow was
+ * hidden with `text-overflow: ellipsis` — a ~44px action cell on the real panel,
+ * so 「破竹之势慈悲之刃」 printed as its first four characters.
+ *
+ * The floor is a MINIMUM only: a host wider than it lays out exactly as it used
+ * to (equal thirds, every row the same height), and a narrower host scrolls.
+ */
+const minWidthStyle = (format: Parameters<typeof rowRootMinWidth>[0], acWidth: number) => ({
+  minWidth: rowRootMinWidth(format, acWidth),
+});
 
 /**
  * Label | 3 slots | OD. Shared by B and C; E and G prepend a leading column and
@@ -61,9 +76,9 @@ const HEAD = (template: string) => (
  * `content: ""` pseudo-elements, so a bar built that way would be missing from
  * the PNG. An empty slot renders no bar at all (charColor returns undefined).
  */
-export function RowChartBand({ model, meta }: VariantProps) {
+export function RowChartBand({ model, meta, acWidth }: VariantProps) {
   return (
-    <div className="rc-band rc-wide">
+    <div className="rc-band rc-wide" style={minWidthStyle('band', acWidth)}>
       <ChartMetaBlock meta={meta} />
       {model.rows.map(row => (
         row.kind === 'modifier'
@@ -103,9 +118,9 @@ export function RowChartBand({ model, meta }: VariantProps) {
  * and the shell hands the variant the slot index so it need not recount which
  * one is first.
  */
-export function RowChartZebra({ model, meta }: VariantProps) {
+export function RowChartZebra({ model, meta, acWidth }: VariantProps) {
   return (
-    <div className="rc-zebra rc-wide">
+    <div className="rc-zebra rc-wide" style={minWidthStyle('zebra', acWidth)}>
       <ChartMetaBlock meta={meta} />
       {model.rows.map(row => (
         row.kind === 'modifier'
@@ -143,9 +158,9 @@ export function RowChartZebra({ model, meta }: VariantProps) {
  * between rows. It lives inside .rc-rail-list, which wraps only the rows, so the
  * rail starts below the column header instead of running through it.
  */
-export function RowChartRail({ model, meta }: VariantProps) {
+export function RowChartRail({ model, meta, acWidth }: VariantProps) {
   return (
-    <div className="rc-rail-variant rc-wide">
+    <div className="rc-rail-variant rc-wide" style={minWidthStyle('rail', acWidth)}>
       <ChartMetaBlock meta={meta} />
       {HEAD(RAIL_TEMPLATE)}
       <div className="rc-rail-list">
@@ -190,9 +205,9 @@ export function RowChartRail({ model, meta }: VariantProps) {
  * The `·` is a real node via slotSeparator: an `::after { content: "·" }` would
  * be visible on screen and absent from the export.
  */
-export function RowChartLog({ model, meta }: VariantProps) {
+export function RowChartLog({ model, meta, acWidth }: VariantProps) {
   return (
-    <div className="rc-log rc-wide">
+    <div className="rc-log rc-wide" style={minWidthStyle('log', acWidth)}>
       <ChartMetaBlock meta={meta} />
       {HEAD(LOG_TEMPLATE)}
       {model.rows.map(row => (
@@ -228,8 +243,6 @@ export function RowChartLog({ model, meta }: VariantProps) {
 
 /** First column of the lane grid: the frozen character names. */
 const LANE_HEAD_W = 96;
-/** Floor for a round column — below this the OD cell and stacked actions collide. */
-const LANE_COL_MIN = 88;
 
 /**
  * Rows are characters, columns are rounds — the transpose of every other 版式,
@@ -259,14 +272,18 @@ const LANE_COL_MIN = 88;
  * to the full width. The first column is sticky so the names stay legible while
  * scrolling horizontally — hence its opaque --rc-frozen background.
  */
-export function RowChartLane({ model, meta }: VariantProps) {
+export function RowChartLane({ model, meta, acWidth }: VariantProps) {
   const turns = model.rows.filter((r): r is ChartTurnRow => r.kind === 'turn');
   const mods = model.rows.filter(r => r.kind === 'modifier');
+  // A round column is at least the widest action plus the cell's own padding —
+  // `contain: inline-size` below makes these cells contribute NOTHING to the
+  // track, so this floor is the only thing that can stop an action ellipsising.
+  const colMin = laneColMin(acWidth);
   // `repeat(0, …)` is out of the spec's [1,∞) range, and an invalid value makes
   // the browser drop the whole grid-template-columns declaration — so a 0-turn
   // axle must emit the header column alone rather than a zero-count repeat.
   const template = turns.length > 0
-    ? `${LANE_HEAD_W}px repeat(${turns.length}, minmax(${LANE_COL_MIN}px, 1fr))`
+    ? `${LANE_HEAD_W}px repeat(${turns.length}, minmax(${colMin}px, 1fr))`
     : `${LANE_HEAD_W}px`;
 
   return (
@@ -345,7 +362,7 @@ export function RowChartLane({ model, meta }: VariantProps) {
  * No name abbreviation: a trimmed name would need its own rule set and would
  * disagree with every other 版式. The name keeps its `title` tooltip instead.
  */
-export function RowChartSplit({ model, meta, cols }: VariantProps) {
+export function RowChartSplit({ model, meta, cols, acWidth }: VariantProps) {
   // A single row cannot fill two columns — splitting it would render an empty
   // half and a divider beside nothing. `cols` is a measurement of the host, not
   // a promise that the content divides, so the guard belongs on the content
@@ -358,7 +375,13 @@ export function RowChartSplit({ model, meta, cols }: VariantProps) {
   const columns = twoCols ? [model.rows.slice(0, half), model.rows.slice(half)] : [model.rows];
 
   return (
-    <div className="rc-split rc-wide">
+    <div
+      className="rc-split rc-wide"
+      // Two columns need two floors plus the 20px gap and 1px divider; one
+      // column only its own. `cols` already accounts for that (ChartHost asks
+      // splitMinWidth), so this just makes the floor match what is rendered.
+      style={{ minWidth: twoCols ? splitMinWidth(acWidth) : rowRootMinWidth('split', acWidth) }}
+    >
       <ChartMetaBlock meta={meta} />
       <div className={twoCols ? 'rc-split-cols' : undefined}>
         {columns.map((rows, ci) => (

@@ -14,9 +14,10 @@
  * TurnPlannerState: it is a per-viewer preference and has no business riding
  * along in share codes, saved axles or the Supabase sync.
  */
-import { useState, type ComponentType, type RefObject } from 'react';
+import { useMemo, useState, type ComponentType, type RefObject } from 'react';
 import { useElementWidth } from '../../hooks/useElementWidth';
 import { CharSkillSummary } from './CharSkillSummary';
+import { AC_SAFETY, measureMaxTextWidth, splitMinWidth } from './chartGeometry';
 import type { ChartMeta, ChartModel } from './rowChartModel';
 import { RowChartTable } from './RowChartTable';
 import {
@@ -28,6 +29,15 @@ export interface VariantProps {
   meta: ChartMeta;
   /** Column count. Only 双栏紧凑 varies it; every other format ignores it. */
   cols: number;
+  /**
+   * Width (px) of the widest action text, as rendered, + AC_SAFETY. 0 until the
+   * measurement has run. Every 版式 uses it as a MINIMUM track size so a skill
+   * is never ellipsised — see chartGeometry.ts for why guessing a pixel floor
+   * instead produced four visible characters.
+   */
+  acWidth: number;
+  /** The same for the 表格 版式, which renders its actions at 12px rather than 11px. */
+  acWidthTable: number;
 }
 
 export const FORMAT_LABELS = {
@@ -41,6 +51,8 @@ export const FORMAT_LABELS = {
 } as const;
 
 export type ChartFormat = keyof typeof FORMAT_LABELS;
+
+const FORMAT_KEY = 'planner-simple-format';
 
 /** Dropdown order = declaration order. */
 export const FORMATS = Object.keys(FORMAT_LABELS) as ChartFormat[];
@@ -56,25 +68,51 @@ const VARIANTS: Record<ChartFormat, ComponentType<VariantProps>> = {
 };
 
 /**
- * 双栏紧凑 switches at this host width, derived rather than picked.
+ * The widest action text, measured in the two font sizes the chart renders it
+ * in: `.rc-row` uses 11px, the 表格 版式's `text-xs` cells 12px. Every 版式
+ * turns these into minimum track widths (chartGeometry.ts), so a skill name is
+ * never ellipsised — the old fixed floors left a ~44px action cell, i.e. four
+ * characters, which is what 「只能输出4个字」 was.
  *
- * Per half: the split gaps and 1px divider cost 41px, the row's own padding 16,
- * the label and OD tracks (SPLIT_TEMPLATE) 118, the grid gaps 12 — so a half
- * W/2 wide leaves (W/2 - 20.5 - 146) / 3 per slot. The name floor is 40px
- * (.rc-split) plus a 3px slot gap, so the action track gets its own 3 characters
- * (33px) at exactly W = 790. Below that the action collapses to an ellipsis and
- * the format stops being a readable axle; above it, both halves hold.
+ * Measured in a useMemo rather than an effect, for two reasons: the chart must
+ * be right on its FIRST paint (an effect would paint the old narrow layout and
+ * then jump, and an export clicked in between captures the wrong one), and a
+ * synchronous setState in an effect is a cascading render by definition. The
+ * measurement itself only reads layout from a temporary, removed-again <span>,
+ * so it has no observable side effect.
  *
- * Note the host is capped at 832px by the page layout (main is max-w-7xl =
- * 1280px and the meta card takes a fixed 400px + 16px gap), so the plan's
- * pencilled-in 900px would have meant 双栏紧凑 rendered as one column on every
- * screen that exists. 790 puts the real switch at a ~1240px window, i.e. two
- * columns show up exactly for the windows wide enough to render them well —
- * every 1280px-and-wider window gets the 395px halves this was tuned against.
+ * Keyed on the TEXT, not on `model`: the model is rebuilt whenever the planner
+ * state changes (including every keystroke in the detail table), while this
+ * needs two measurements per string. The font comes from <body> because the
+ * chart only sets its size — the family is inherited — and reading it from the
+ * host ref during render would be null on the first pass.
+ *
+ * 0 means "nothing to measure" and every caller falls back to its own floor.
  */
-const SPLIT_MIN_WIDTH = 790;
+function useActionWidths(model: ChartModel) {
+  const signature = useMemo(() => {
+    const texts: string[] = [];
+    for (const row of model.rows) {
+      if (row.kind !== 'turn') continue;
+      for (const slot of row.slots) if (slot.action) texts.push(slot.action);
+    }
+    return texts.join('\u0000');
+  }, [model]);
 
-const FORMAT_KEY = 'planner-simple-format';
+  return useMemo(() => {
+    if (!signature) return ZERO_WIDTHS;
+    const family = typeof document === 'undefined' ? 'sans-serif' : getComputedStyle(document.body).fontFamily;
+    const texts = signature.split('\u0000');
+    return {
+      acWidth: measureMaxTextWidth(texts, { size: 11, weight: 400, family }) + AC_SAFETY,
+      // Raw, not padded: the 表格 formula knows its cell chrome exactly and adds
+      // its own slack (see tableActionColWidth).
+      acWidthTable: measureMaxTextWidth(texts, { size: 12, weight: 400, family }),
+    };
+  }, [signature]);
+}
+
+const ZERO_WIDTHS = { acWidth: 0, acWidthTable: 0 };
 
 export function useSimpleFormat() {
   const [format, setFormat] = useState<ChartFormat>(() => {
@@ -125,10 +163,13 @@ export function ChartHost({
   // exists inside the clone. Reading the real clientWidth keeps the exported
   // column count identical to what the user is looking at.
   const width = useElementWidth(hostRef);
-  const cols = width >= SPLIT_MIN_WIDTH ? 2 : 1;
+  const { acWidth, acWidthTable } = useActionWidths(model);
+  // Two columns only while both halves can hold a full action at their floor.
+  // Below that the format renders one full-width column (same list, same styling).
+  const cols = width >= splitMinWidth(acWidth) ? 2 : 1;
   return (
     <div ref={hostRef} data-timeline-export className="card overflow-x-auto !p-0 w-full md:flex-1">
-      <Variant model={model} meta={meta} cols={cols} />
+      <Variant model={model} meta={meta} cols={cols} acWidth={acWidth} acWidthTable={acWidthTable} />
       {/* Inside the export container on purpose: the PNG captures this element,
           so the summary needs no export-side handling and cannot drift out of
           sync with what is on screen. It renders under all 7 版式 — it is an
