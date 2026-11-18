@@ -16,7 +16,7 @@
  */
 import { useEffect, useMemo, useState, type ComponentType, type RefObject } from 'react';
 import { useElementWidth } from '../../hooks/useElementWidth';
-import { resolveFont, useAppSettings } from '../../utils/appSettings';
+import { useAppSettings } from '../../utils/appSettings';
 import { CharSkillSummary } from './CharSkillSummary';
 import { AC_SAFETY, measureMaxTextWidth, splitMinWidth } from './chartGeometry';
 import type { ChartMeta, ChartModel } from './rowChartModel';
@@ -101,14 +101,26 @@ function useActionWidths(model: ChartModel) {
   useEffect(() => {
     if (typeof document === 'undefined' || !document.fonts) return;
     let alive = true;
-    void document.fonts.ready.then(() => { if (alive) setFontGeneration(g => g + 1); });
-    return () => { alive = false; };
+    // BOTH, because they cover different events: `ready` settles the fonts the
+    // page was already using at load, and `loadingdone` fires again for every
+    // later download — which is the common case here, since the presets are
+    // fetched on first use when the user switches 文字字体.
+    const bump = () => { if (alive) setFontGeneration(g => g + 1); };
+    void document.fonts.ready.then(bump);
+    document.fonts.addEventListener('loadingdone', bump);
+    return () => {
+      alive = false;
+      document.fonts.removeEventListener('loadingdone', bump);
+    };
   }, []);
 
-  // fontGeneration rides in THIS memo rather than the measuring one: a new
-  // identity here is what invalidates the cache below, which keeps the measuring
-  // memo's dependency list honest. The linter cannot see that a rebuild is the
-  // point of the dependency, so it is suppressed here — deliberately, once.
+  // ONE STRING, not an object: useMemo compares dependencies by value, so the
+  // text keeps its identity across the planner's re-renders (every keystroke in
+  // the detail table rebuilds `model`) and the measurement below only re-runs
+  // when a string or the font actually changed. The font preset and generation
+  // ride inside it for the same reason — a late webfont changes the metrics of
+  // the same text, and folding them in is what makes them honest dependencies
+  // instead of keys the linter rightly calls unnecessary.
   const signature = useMemo(() => {
     const actionTexts: string[] = [];
     const nameTexts: string[] = [];
@@ -119,25 +131,25 @@ function useActionWidths(model: ChartModel) {
         if (slot.name) nameTexts.push(slot.name);
       }
     }
-    return { actions: actionTexts.join('\u0000'), names: nameTexts.join('\u0000') };
-  }, [model, fontGeneration]); // eslint-disable-line react-hooks/exhaustive-deps
+    return [settings.fontText, fontGeneration, nameTexts.join('\u0000'), actionTexts.join('\u0000')].join('\u0001');
+  }, [model, settings.fontText, fontGeneration]);
 
   return useMemo(() => {
-    if (!signature.actions && !signature.names) return ZERO_WIDTHS;
-    // The resolved preset, not getComputedStyle: AppSettingsProvider writes this
-    // same stack into --font-body on <html>, the chart inherits it, and passing
-    // the preset through makes the setting a real input instead of a key.
-    const family = typeof document === 'undefined' ? 'sans-serif' : resolveFont(settings.fontText, 'text');
+    const [, , names, actions] = signature.split('\u0001');
+    if (!names && !actions) return ZERO_WIDTHS;
+    // Read off the DOM rather than rebuilt from the preset: it is the family the
+    // rows will actually inherit, whatever --font-body resolved to.
+    const family = typeof document === 'undefined' ? 'sans-serif' : getComputedStyle(document.body).fontFamily;
     const texts = (s: string) => (s ? s.split('\u0000') : []);
     return {
-      acWidth: measureMaxTextWidth(texts(signature.actions), { size: 11, weight: 400, family }) + AC_SAFETY,
+      acWidth: measureMaxTextWidth(texts(actions), { size: 11, weight: 400, family }) + AC_SAFETY,
       // 600 because 行程表's name is bold — the widest case the box must hold.
-      nameWidth: measureMaxTextWidth(texts(signature.names), { size: 11, weight: 600, family }) + AC_SAFETY,
+      nameWidth: measureMaxTextWidth(texts(names), { size: 11, weight: 600, family }) + AC_SAFETY,
       // Raw, not padded: the 表格 formula knows its cell chrome exactly and adds
       // its own slack (see tableActionColWidth).
-      acWidthTable: measureMaxTextWidth(texts(signature.actions), { size: 12, weight: 400, family }),
+      acWidthTable: measureMaxTextWidth(texts(actions), { size: 12, weight: 400, family }),
     };
-  }, [signature, settings.fontText]);
+  }, [signature]);
 }
 
 const ZERO_WIDTHS = { acWidth: 0, acWidthTable: 0, nameWidth: 0 };

@@ -180,7 +180,7 @@ export function tableActionColWidth(acW: number): number {
   return Math.max(100, Math.ceil(acW) + 10);
 }
 
-/** The 表格's total width, which it also pins as its `width`. */
+/** The 表格's total column width (the columns, which is what actually sizes it). */
 export function tableWidth(acW: number): number {
   return TABLE_FIXED.round + TABLE_FIXED.od + 3 * (TABLE_FIXED.name + tableActionColWidth(acW));
 }

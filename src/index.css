@@ -1082,7 +1082,14 @@ html[data-translucent='true'] .planner-table thead th.bg-bg-card { position: sta
 .rc-log .rc-slot { flex: 1 1 0; min-width: 0; justify-content: center; }
 .rc-log .rc-nm,
 .rc-log .rc-ac { flex: 0 1 auto; min-width: 0; }
-.rc-log .rc-nm { font-weight: 600; }
+.rc-log .rc-nm {
+  font-weight: 600;
+  /* 行程表's pair is content-sized, so `flex: 0 1 auto` (above) would let the
+     name shrink when the third is tight — the geometry reserved the measured
+     name width, so the box has to honour it or the name, not the action, is what
+     clips. Same variable as the row 版式; see chartGeometry.ts. */
+  min-width: var(--rc-nm-min, 0px);
+}
 .rc-log .rc-empty { flex: 0 0 auto; width: auto; }
 /* Shared by 行程表 (name · action) and 角色泳道's 词条 strip. A real node, never
    `content:"·"` — the export drops `content:""` pseudo-elements. */

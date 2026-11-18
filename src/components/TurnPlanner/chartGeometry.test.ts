@@ -51,10 +51,17 @@ describe('rowRootMinWidth', () => {
   it('holds a four-character name in 双栏紧凑, where the 40px box used to ellipsise it', () => {
     // 月城最中 at 11px/600 measures ~48px with the safety margin; the fixed 40px
     // floor cut it to 「月城最…」, which is the same defect as the action text.
+    // Asserted on splitColWidth, NOT rowRootMinWidth: the latter is clamped to
+    // the 520px whole-chart floor and would pass even with nameW ignored.
     const nameW = 48;
-    const root = rowRootMinWidth('split', 44, nameW);
-    const slot = (root - 146 - 4) / 3;
-    expect(slot).toBeGreaterThanOrEqual(nameW + 3 + 44);
+    const acW = 44;
+    const col = splitColWidth(acW, nameW);
+    const slot = (col - 146 - 4) / 3;
+    expect(slot).toBeGreaterThanOrEqual(nameW + 3 + acW);
+    // …and the two-column switch has to honour the name too, or 双栏 comes back
+    // with the name clipped instead of the action.
+    const half = (splitMinWidth(acW, nameW) - 21) / 2;
+    expect(half).toBeGreaterThanOrEqual(nameW + 3 + acW);
   });
 
   it('gives every 版式 room for a long name as well as a long action', () => {
