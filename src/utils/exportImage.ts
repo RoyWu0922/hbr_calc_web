@@ -96,21 +96,28 @@ export function collectLiveStyleText(doc: Document = document): string {
  */
 export function buildClonePatcher(liveCss: string) {
   return (clonedDoc: Document): void => {
-    // 1. Put the app's CSS into the clone as ONE <style>, in place of every
-    //    stylesheet <link>. See the file header: reading the clone's own
-    //    `link.sheet` is what silently emptied the phone export, so nothing
-    //    here depends on the clone having fetched — or being allowed to read —
-    //    any sheet at all.
-    const style = clonedDoc.createElement('style');
-    style.textContent = stripUnsupported(liveCss);
-    const links = Array.from(clonedDoc.querySelectorAll('link[rel="stylesheet"]'));
-    if (links.length > 0) {
-      links[0].parentNode?.replaceChild(style, links[0]);
-      for (let i = 1; i < links.length; i++) links[i].parentNode?.removeChild(links[i]);
-    } else if (liveCss && !clonedDoc.querySelector('style')) {
-      // Dev server (Vite injects <style> tags): only inject when the clone has
-      // no stylesheet node of its own, so its CSS is not written twice.
-      clonedDoc.head.appendChild(style);
+    // 1. Replace the clone's OWN stylesheet nodes with one <style> carrying the
+    //    live CSS. See the file header: reading the clone's own `link.sheet` is
+    //    what silently emptied the phone export, so nothing here depends on the
+    //    clone having fetched — or being allowed to read — any sheet at all.
+    //
+    //    EVERY stylesheet node goes, not just the <link>s: document.styleSheets
+    //    enumerates <style> tags too, so whatever the clone kept would be a
+    //    second copy of rules already inside `liveCss`. Do not try to tell dev
+    //    from prod by 「there is no <link>」 — index.html always carries the
+    //    Google Fonts <link>, so dev has that link AND Vite's injected <style>.
+    //
+    //    Empty `liveCss` means every sheet was unreadable, and leaving the
+    //    clone's own stylesheet is the only way to still render: deleting the
+    //    app's only sheet in that state is the exact failure this fix removes.
+    if (liveCss) {
+      const style = clonedDoc.createElement('style');
+      style.textContent = stripUnsupported(liveCss);
+      const stale = Array.from(clonedDoc.querySelectorAll('link[rel="stylesheet"], style'));
+      const anchor = stale[0];
+      if (anchor?.parentNode) anchor.parentNode.replaceChild(style, anchor);
+      else clonedDoc.head.appendChild(style);
+      for (const node of stale) node.parentNode?.removeChild(node);
     }
 
     // 1b. Pin relative url() resolution to the app's own base URL. The clone's
