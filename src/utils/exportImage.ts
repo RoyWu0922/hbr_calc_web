@@ -9,6 +9,19 @@
  * backdrop-filter (glass blur) is also unsupported by html2canvas; exported
  * cards render with their solid rgba background over the theme body color.
  *
+ * The clone's CSS comes from the LIVE document (collectLiveStyleText) injected
+ * as one <style>, and the cloned <link> elements are removed. It is deliberately
+ * NOT read out of the clone's own stylesheet: the clone lives in a hidden
+ * about:blank iframe that html2canvas fills via `document.open()/write()`, and
+ * several engines (iOS Safari, the Android in-app WebViews that open shared
+ * links) treat a stylesheet loaded into such a document as unreadable — reading
+ * `link.sheet.cssRules` there throws SecurityError. The old code deleted that
+ * link in its catch block, i.e. deleted the app's only stylesheet, and the PNG
+ * came out as unstyled stacked text with nothing surviving but the JS-hardcoded
+ * `rowBg` colours — a 简轴 image one column wide and taller than the screen,
+ * which is the 「手机上导出轴图变成这样」 report. The live document's sheets are
+ * loaded and same-origin by definition, so they read fine everywhere.
+ *
  * Two more limitations worth knowing before you build an export target:
  *
  *   - `content: ""` pseudo-elements are NOT rendered. resolvePseudoContent()
@@ -22,8 +35,179 @@
  *     getBoundingClientRect() on the cloned tree. So grid columns, flex
  *     ratios and `gap: 1px` hairlines DO export correctly.
  */
+
+/**
+ * Color functions html2canvas v1.4.1 cannot parse. Note the pattern stops at
+ * the first `)`, so `color-mix(in srgb, var(--x) calc(var(--card-opacity, 1) *
+ * 100%), transparent)` is only partly matched — the leftover makes the
+ * declaration invalid and the browser drops it, which is the intended neutral
+ * fallback for a colour html2canvas cannot read anyway.
+ */
+const UNSUPPORTED_COLOR_SRC =
+  'oklch\\([^)]+\\)|oklab\\([^)]+\\)|lch\\([^)]+\\)|lab\\([^)]+\\)|color-mix\\([^)]+\\)';
+const UNSUPPORTED_COLOR_RE = new RegExp(UNSUPPORTED_COLOR_SRC, 'gi');
+/**
+ * Non-global twin for `.test()`. A /g regex keeps `lastIndex` between calls, so
+ * testing one shared instance against a list of declarations skipped every
+ * second match — some inline unsupported colours went through untouched.
+ */
+const UNSUPPORTED_COLOR_TEST = new RegExp(UNSUPPORTED_COLOR_SRC, 'i');
+const FALLBACK = '#666';
+
+const stripUnsupported = (css: string): string => css.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
+const isUnsupported = (value: string): boolean => UNSUPPORTED_COLOR_TEST.test(value);
+
+/**
+ * Serialize every readable rule of the LIVE document's stylesheets into one CSS
+ * string. Call this BEFORE html2canvas clones anything.
+ *
+ * Cross-origin sheets (the Google Fonts <link> in index.html) throw on
+ * `cssRules` — skip them. They were always absent from the export; the clone
+ * used to just lose that link.
+ */
+export function collectLiveStyleText(doc: Document = document): string {
+  const parts: string[] = [];
+  const push = (sheet: CSSStyleSheet | null | undefined) => {
+    if (!sheet) return;
+    try {
+      const rules = sheet.cssRules;
+      if (!rules) return;
+      for (let i = 0; i < rules.length; i++) {
+        const text = rules[i]?.cssText;
+        if (text) parts.push(text);
+      }
+    } catch {
+      // Cross-origin or otherwise unreadable — nothing to copy.
+    }
+  };
+
+  for (let i = 0; i < doc.styleSheets.length; i++) push(doc.styleSheets[i]);
+  // Constructable sheets carry no <link>/<style> node, so they need their own pass.
+  const adopted = (doc as Document & { adoptedStyleSheets?: CSSStyleSheet[] }).adoptedStyleSheets;
+  if (adopted) for (const sheet of Array.from(adopted)) push(sheet);
+
+  return parts.join('\n');
+}
+
+/**
+ * The whole clone-side fix-up, expressed as a function of the live CSS text so
+ * it can also be driven without a real export (probe callers import it directly
+ * instead of going through exportElementToPNG).
+ */
+export function buildClonePatcher(liveCss: string) {
+  return (clonedDoc: Document): void => {
+    // 1. Put the app's CSS into the clone as ONE <style>, in place of every
+    //    stylesheet <link>. See the file header: reading the clone's own
+    //    `link.sheet` is what silently emptied the phone export, so nothing
+    //    here depends on the clone having fetched — or being allowed to read —
+    //    any sheet at all.
+    const style = clonedDoc.createElement('style');
+    style.textContent = stripUnsupported(liveCss);
+    const links = Array.from(clonedDoc.querySelectorAll('link[rel="stylesheet"]'));
+    if (links.length > 0) {
+      links[0].parentNode?.replaceChild(style, links[0]);
+      for (let i = 1; i < links.length; i++) links[i].parentNode?.removeChild(links[i]);
+    } else if (liveCss && !clonedDoc.querySelector('style')) {
+      // Dev server (Vite injects <style> tags): only inject when the clone has
+      // no stylesheet node of its own, so its CSS is not written twice.
+      clonedDoc.head.appendChild(style);
+    }
+
+    // 1b. Pin relative url() resolution to the app's own base URL. The clone's
+    //     document URL is about:blank, so a relative font/image URL inside the
+    //     injected CSS would otherwise resolve against whatever the engine
+    //     inherits — or not resolve at all.
+    if (!clonedDoc.querySelector('base')) {
+      const base = clonedDoc.createElement('base');
+      base.setAttribute('href', document.baseURI);
+      clonedDoc.head.insertBefore(base, clonedDoc.head.firstChild);
+    }
+
+    // 2. Strip unsupported colors from inline styles
+    clonedDoc.querySelectorAll('*').forEach((elm: Element) => {
+      const s = (elm as HTMLElement).style;
+      for (let i = s.length - 1; i >= 0; i--) {
+        if (isUnsupported(s.getPropertyValue(s[i]))) s.removeProperty(s[i]);
+      }
+      if (elm.hasAttribute('style')) {
+        const attr = elm.getAttribute('style') || '';
+        const cleaned = stripUnsupported(attr);
+        if (cleaned !== attr) elm.setAttribute('style', cleaned);
+      }
+    });
+
+    // 3. Strip unsupported colors from <style> tag text
+    clonedDoc.querySelectorAll('style').forEach((st: HTMLStyleElement) => {
+      if (st.textContent) st.textContent = stripUnsupported(st.textContent);
+    });
+
+    // 4. Keep table cells vertically centred. Guarded on a <table> actually
+    //    being present so this doesn't leak into non-table export targets
+    //    (e.g. MedalRecord).
+    //
+    //    This rule used to also force `line-height: 1.4` and 6px/3px padding
+    //    on every cell. That was a workaround for html2canvas painting text
+    //    ~6px below its own line box (the LOCAL PATCH in FontMetrics,
+    //    html2canvas.esm.js): the extra padding bought the glyphs somewhere
+    //    to fall. With the baseline fixed the workaround is not just
+    //    redundant but harmful, because it relayed the table out inside the
+    //    clone and the PNG stopped matching the screen. Measured on the 简轴
+    //    表格 export: 30.5px rows in a 148px-tall image with the padding
+    //    forced, 25.5px rows in a 119px image without it — and the live
+    //    element is 119px. vertical-align stays: it is what puts the line box
+    //    where the cell's middle is, and html2canvas reads that geometry back.
+    if (clonedDoc.querySelector('table')) {
+      const cellCss = clonedDoc.createElement('style');
+      cellCss.textContent = [
+        'td, th {',
+        '  vertical-align: middle !important;',
+        '}',
+        'td > *, th > * { vertical-align: middle !important; }',
+      ].join('\n');
+      clonedDoc.head.appendChild(cellCss);
+    }
+
+    // 5. Expand a horizontally-scrollable export target to its full content
+    //    width. overflow-x-auto makes html2canvas render only the visible
+    //    box, so anything past the right edge gets clipped — the root cause
+    //    of "the exported image only shows part of the table".
+    //
+    //    content-box because `scrollWidth` measures the CONTENT, while the
+    //    app styles this element with border-box: assigning to border-box
+    //    spends the 1px borders (±2px) out of the content, so the content
+    //    that was supposed to fit exactly overflowed by exactly that much.
+    //    Measured on the 角色泳道 axle: the last round column's right grid
+    //    line came out as page background instead of the line — the content
+    //    box was 2px narrower than the grid it was sized for. With the box
+    //    model corrected the canvas is 888 → 890 and the line is painted.
+    const tl = clonedDoc.querySelector('[data-timeline-export]') as HTMLElement | null;
+    if (tl) {
+      const fullWidth = tl.scrollWidth;
+      tl.style.overflow = 'visible';
+      tl.style.boxSizing = 'content-box';
+      tl.style.width = `${fullWidth}px`;
+    }
+
+    // 6. Freeze CSS animations on the clone. html2canvas kills transitions
+    //    (you can see the injected `transition-property: none`) but NOT
+    //    animations, so a cloned element replays them from the start and
+    //    html2canvas samples whatever frame the capture lands on. `.card`
+    //    is `animation: cardIn 0.4s ease both`, whose keyframes run
+    //    opacity 0 → 1, so an export rooted on a .card came out washed out
+    //    at a run-to-run varying alpha (~0.5) instead of what's on screen.
+    //    Killing the animation leaves the element at its base style, which
+    //    is the settled state the user actually sees.
+    const animCss = clonedDoc.createElement('style');
+    animCss.textContent = '*, *::before, *::after { animation: none !important; }';
+    clonedDoc.head.appendChild(animCss);
+  };
+}
+
 export async function exportElementToPNG(el: HTMLElement, filename: string): Promise<void> {
   try {
+    // Read the CSS while we are still on the live document — the clone cannot
+    // be trusted to have a readable stylesheet (see the file header).
+    const liveCss = collectLiveStyleText();
     const html2canvas = (await import('./html2canvas.esm.js')).default;
     const canvas = await html2canvas(el, {
       // Match the current app theme (dark/light), not a forced light background
@@ -59,108 +243,7 @@ export async function exportElementToPNG(el: HTMLElement, filename: string): Pro
         if (node.style?.display === 'none') return true;
         return node.classList.contains('hidden');
       },
-      onclone(clonedDoc: Document) {
-        const UNSUPPORTED_COLOR_RE = /oklch\([^)]+\)|oklab\([^)]+\)|lch\([^)]+\)|lab\([^)]+\)|color-mix\([^)]+\)/gi;
-        const FALLBACK = '#666';
-
-        // 1. Convert <link> stylesheets to inline <style> so we can strip
-        //    unsupported colors from their CSS text (Tailwind v4 loads via <link>).
-        clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach((link: Element) => {
-          const l = link as HTMLLinkElement;
-          try {
-            const sheet = l.sheet;
-            if (sheet && sheet.cssRules) {
-              const css = Array.prototype.slice.call(sheet.cssRules)
-                .map((r: CSSRule) => (r as CSSStyleRule).cssText || '')
-                .join('\n');
-              const style = clonedDoc.createElement('style');
-              style.textContent = css.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
-              l.parentNode?.replaceChild(style, l);
-            }
-          } catch {
-            // Cross-origin or inaccessible sheet — drop it so oklch() won't leak through
-            l.parentNode?.removeChild(l);
-          }
-        });
-
-        // 2. Strip unsupported colors from inline styles
-        clonedDoc.querySelectorAll('*').forEach((elm: Element) => {
-          const s = (elm as HTMLElement).style;
-          for (let i = s.length - 1; i >= 0; i--) {
-            if (UNSUPPORTED_COLOR_RE.test(s.getPropertyValue(s[i]))) s.removeProperty(s[i]);
-          }
-          if (elm.hasAttribute('style')) {
-            const attr = elm.getAttribute('style') || '';
-            const cleaned = attr.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
-            if (cleaned !== attr) elm.setAttribute('style', cleaned);
-          }
-        });
-
-        // 3. Strip unsupported colors from <style> tag text
-        clonedDoc.querySelectorAll('style').forEach((st: HTMLStyleElement) => {
-          if (st.textContent) st.textContent = st.textContent.replace(UNSUPPORTED_COLOR_RE, FALLBACK);
-        });
-
-        // 4. Keep table cells vertically centred. Guarded on a <table> actually
-        //    being present so this doesn't leak into non-table export targets
-        //    (e.g. MedalRecord).
-        //
-        //    This rule used to also force `line-height: 1.4` and 6px/3px padding
-        //    on every cell. That was a workaround for html2canvas painting text
-        //    ~6px below its own line box (the LOCAL PATCH in FontMetrics,
-        //    html2canvas.esm.js): the extra padding bought the glyphs somewhere
-        //    to fall. With the baseline fixed the workaround is not just
-        //    redundant but harmful, because it relayed the table out inside the
-        //    clone and the PNG stopped matching the screen. Measured on the 简轴
-        //    表格 export: 30.5px rows in a 148px-tall image with the padding
-        //    forced, 25.5px rows in a 119px image without it — and the live
-        //    element is 119px. vertical-align stays: it is what puts the line box
-        //    where the cell's middle is, and html2canvas reads that geometry back.
-        if (clonedDoc.querySelector('table')) {
-          const cellCss = clonedDoc.createElement('style');
-          cellCss.textContent = [
-            'td, th {',
-            '  vertical-align: middle !important;',
-            '}',
-            'td > *, th > * { vertical-align: middle !important; }',
-          ].join('\n');
-          clonedDoc.head.appendChild(cellCss);
-        }
-
-        // 5. Expand a horizontally-scrollable export target to its full content
-        //    width. overflow-x-auto makes html2canvas render only the visible
-        //    box, so anything past the right edge gets clipped — the root cause
-        //    of "the exported image only shows part of the table".
-        //
-        //    content-box because `scrollWidth` measures the CONTENT, while the
-        //    app styles this element with border-box: assigning to border-box
-        //    spends the 1px borders (±2px) out of the content, so the content
-        //    that was supposed to fit exactly overflowed by exactly that much.
-        //    Measured on the 角色泳道 axle: the last round column's right grid
-        //    line came out as page background instead of the line — the content
-        //    box was 2px narrower than the grid it was sized for. With the box
-        //    model corrected the canvas is 888 → 890 and the line is painted.
-        const tl = clonedDoc.querySelector('[data-timeline-export]') as HTMLElement | null;
-        if (tl) {
-          const fullWidth = tl.scrollWidth;
-          tl.style.overflow = 'visible';
-          tl.style.boxSizing = 'content-box';
-          tl.style.width = `${fullWidth}px`;
-        }
-
-        // 6. Freeze CSS animations on the clone. html2canvas kills transitions
-        //    (you can see the injected `transition-property: none`) but NOT
-        //    animations, so a cloned element replays them from the start and
-        //    html2canvas samples whatever frame the capture lands on. `.card`
-        //    is `animation: cardIn 0.4s ease both`, whose keyframes run
-        //    opacity 0 → 1, so an export rooted on a .card came out washed out
-        //    at a run-to-run varying alpha (~0.5) instead of what's on screen.
-        //    Killing the animation leaves the element at its base style, which
-        //    is the settled state the user actually sees.
-        const animCss = clonedDoc.createElement('style');
-        animCss.textContent = '*, *::before, *::after { animation: none !important; }';
-        clonedDoc.head.appendChild(animCss);
-      },
+      onclone: buildClonePatcher(liveCss),
     });
     canvas.toBlob((blob: Blob | null) => {
       if (!blob) { alert('生成图片失败'); return; }
