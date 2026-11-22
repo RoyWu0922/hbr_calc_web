@@ -102,19 +102,19 @@ export function buildClonePatcher(liveCss: string) {
     //    what silently emptied the phone export, so nothing here depends on the
     //    clone having fetched — or being allowed to read — any sheet at all.
     //
-    //    EVERY stylesheet node goes, not just the <link>s: document.styleSheets
-    //    enumerates <style> tags too, so whatever the clone kept would be a
+    //    Every <link> and every head <style> goes — document.styleSheets
+    //    enumerates <style> tags too, so whatever the clone kept there would be a
     //    second copy of rules already inside `liveCss`. Do not try to tell dev
     //    from prod by 「there is no <link>」 — index.html always carries the
     //    Google Fonts <link>, so dev has that link AND Vite's injected <style>.
     //
-    //    Only the <link>s and the head's <style>s go: html2canvas injects its own
-    //    pseudo-element-hiding sheet into the clone's BODY (createStyles(body, …),
-    //    `.___html2canvas___pseudoelement_before/after`) before onclone runs, and
-    //    that one is not part of `liveCss` — removing it is not ours to do. The
-    //    sheet only matters for pseudo-elements with a non-empty `content`, which
-    //    this app never writes (every `content: ""` is dropped by html2canvas
-    //    anyway), but there is no reason to break it for a future caller.
+    //    The body is left alone, and that is the one exception: html2canvas
+    //    injects its own pseudo-element-hiding sheet into the clone's BODY
+    //    (createStyles(body, …), `.___html2canvas___pseudoelement_before/after`)
+    //    before onclone runs, and that one is not part of `liveCss`. The sheet
+    //    only matters for pseudo-elements with a non-empty `content`, which this
+    //    app never writes (every `content: ""` is dropped by html2canvas anyway),
+    //    but there is no reason to break it for a future caller.
     //
     //    Empty `liveCss` means every sheet was unreadable, and leaving the
     //    clone's own stylesheet is the only way to still render: deleting the

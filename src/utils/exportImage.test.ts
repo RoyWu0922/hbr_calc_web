@@ -9,8 +9,9 @@
  * in the implementation fails loudly instead of silently matching nothing.
  *
  * What these pin (both findings from the first review round):
- *   - the clone's own <link>s AND <style>s are replaced by ONE injected sheet,
- *     regardless of whether the document also carries the Google Fonts <link>
+ *   - the clone's own <link>s and head <style>s are replaced by ONE injected
+ *     sheet, regardless of whether the document also carries the Google Fonts
+ *     <link>; a body-level <style> (html2canvas's pseudo-element hider) is kept
  *   - an empty live CSS leaves the clone's stylesheets alone — deleting the
  *     app's only sheet is the bug this whole file exists to prevent
  *   - <base href> is added once, and not twice
