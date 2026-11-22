@@ -193,6 +193,25 @@ describe('buildClonePatcher stylesheets', () => {
     expect(styles[1].textContent).toContain('animation: none');
   });
 
+  it('keeps the pseudo-element style html2canvas injects into the clone body', () => {
+    // html2canvas runs createStyles(body, …) BEFORE onclone: that sheet hides the
+    // real ::before/::after of elements it faked a node for. It is not part of
+    // liveCss, and deleting it would double-paint such a pseudo-element — the
+    // app writes none today, so this is a guard, not a live path.
+    useFakeGlobalDocument('https://example.test/planner/axle');
+    const { doc } = cloneWithDocs();
+    const pseudoSheet = doc.body.appendChild(new FakeElement('style'));
+    pseudoSheet.textContent = '.___html2canvas___pseudoelement_before:before { content: "" !important; }';
+
+    buildClonePatcher('a{color:red}')(asDoc(doc));
+
+    expect(doc.querySelectorAll('style').map(s => s.textContent)).toContain(
+      '.___html2canvas___pseudoelement_before:before { content: "" !important; }',
+    );
+    // …while the head's copy is gone: injected sheet + animation-killer only
+    expect(doc.head.querySelectorAll('style')).toHaveLength(2);
+  });
+
   it('leaves the clone stylesheets alone when the live CSS is empty', () => {
     useFakeGlobalDocument('https://example.test/planner/axle');
     const { doc } = cloneWithDocs();

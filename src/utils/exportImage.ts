@@ -10,7 +10,8 @@
  * cards render with their solid rgba background over the theme body color.
  *
  * The clone's CSS comes from the LIVE document (collectLiveStyleText) injected
- * as one <style>, and the cloned <link> elements are removed. It is deliberately
+ * as one <style>: the cloned <link>s and the cloned head <style>s are removed and
+ * replaced by it. It is deliberately
  * NOT read out of the clone's own stylesheet: the clone lives in a hidden
  * about:blank iframe that html2canvas fills via `document.open()/write()`, and
  * several engines (iOS Safari, the Android in-app WebViews that open shared
@@ -107,13 +108,24 @@ export function buildClonePatcher(liveCss: string) {
     //    from prod by 「there is no <link>」 — index.html always carries the
     //    Google Fonts <link>, so dev has that link AND Vite's injected <style>.
     //
+    //    Only the <link>s and the head's <style>s go: html2canvas injects its own
+    //    pseudo-element-hiding sheet into the clone's BODY (createStyles(body, …),
+    //    `.___html2canvas___pseudoelement_before/after`) before onclone runs, and
+    //    that one is not part of `liveCss` — removing it is not ours to do. The
+    //    sheet only matters for pseudo-elements with a non-empty `content`, which
+    //    this app never writes (every `content: ""` is dropped by html2canvas
+    //    anyway), but there is no reason to break it for a future caller.
+    //
     //    Empty `liveCss` means every sheet was unreadable, and leaving the
     //    clone's own stylesheet is the only way to still render: deleting the
     //    app's only sheet in that state is the exact failure this fix removes.
     if (liveCss) {
       const style = clonedDoc.createElement('style');
       style.textContent = stripUnsupported(liveCss);
-      const stale = Array.from(clonedDoc.querySelectorAll('link[rel="stylesheet"], style'));
+      const stale = [
+        ...Array.from(clonedDoc.querySelectorAll('link[rel="stylesheet"]')),
+        ...Array.from(clonedDoc.head.querySelectorAll('style')),
+      ];
       const anchor = stale[0];
       if (anchor?.parentNode) anchor.parentNode.replaceChild(style, anchor);
       else clonedDoc.head.appendChild(style);
